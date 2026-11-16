@@ -16,7 +16,7 @@
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint:deps && npm run test",
     "postinstall": "node node_modules/electron/install.js && node tools/electron-kalenderrecht.mjs",
-    "app": "npm run build:helfer && electron-vite build && electron-builder --mac --dir && codesign --force --deep --sign - dist/mac-arm64/Rundblick.app",
+    "app": "npm run build:helfer && electron-vite build && electron-builder --mac --dir && sh tools/signieren.sh dist/mac-arm64/Rundblick.app",
     "demo": "electron-vite build && RB_DATEN=/tmp/rundblick-demo RB_DEMO=1 RB_KALENDER=beispiel electron ."
   },
   "devDependencies": {
