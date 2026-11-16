@@ -135,8 +135,11 @@ export class RundblickBody implements Body {
 
   async zeitraum(q: { von: Datum; bis: Datum }) {
     const d = this.x.domain, st = this.x.cache.stand();
-    if (this.zugriffStand === 'erlaubt' && (!st.von || !st.bis || q.von < st.von || q.bis > st.bis)) {
-      void this.laden(st.von && st.von < q.von ? st.von : q.von, st.bis && st.bis > q.bis ? st.bis : q.bis);
+    // Außerhalb des zwischengespeicherten Fensters im Hintergrund nachladen (höchstens ±2 Jahre um heute)
+    const heute = this.x.uhr.heute(), min = plusTage(heute, -730), max = plusTage(heute, 730);
+    const von = q.von < min ? min : q.von, bis = q.bis > max ? max : q.bis;
+    if (this.zugriffStand === 'erlaubt' && von <= bis && (!st.von || !st.bis || von < st.von || bis > st.bis)) {
+      void this.laden(st.von && st.von < von ? st.von : von, st.bis && st.bis > bis ? st.bis : bis);
     }
     return zeitraum({
       von: q.von, bis: q.bis, heute: this.x.uhr.heute(), jetzt: this.x.uhr.minuteDesTages(),
@@ -191,6 +194,8 @@ export class RundblickBody implements Body {
     const p = q.praefix.toLowerCase();
     return [...zaehler.entries()].filter(([w]) => w.toLowerCase().startsWith(p)).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'de')).map(([w]) => w).slice(0, 12);
   }
+
+  async heute() { return { datum: this.x.uhr.heute(), minute: this.x.uhr.minuteDesTages() }; }
 
   async layout(): Promise<Layout> { return this.x.einstellungen.lesen<Layout>('layout', null); }
 

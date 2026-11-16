@@ -7,7 +7,7 @@ import { esc, pruefe, toast } from './dom';
 import { H0, H1, SPANMIN } from './sichten/kalender';
 
 let heute = '';
-const heuteLaden = async () => { heute = (await body.board()).heute; };
+const heuteLaden = async () => { heute = (await body.heute()).datum; };
 
 export function interaktionAnbinden(): void {
   void heuteLaden();

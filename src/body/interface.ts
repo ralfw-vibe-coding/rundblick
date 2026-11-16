@@ -131,6 +131,7 @@ export interface Body {
   erfassungVorschau(q: { text: string }): Promise<ErfassungVorschau>;
   vorschlaege(q: { art: 'tag' | 'person' | 'ort'; praefix: string }): Promise<string[]>;
   layout(): Promise<Layout>;
+  heute(): Promise<{ datum: Datum; minute: number }>;
 
   // ---- Benachrichtigung
   beiAenderung(cb: (bereiche: Bereich[]) => void): () => void;
@@ -143,5 +144,5 @@ export const BODY_METHODEN: readonly BodyMethode[] = [
   'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung',
   'spalteAnlegen', 'spalteUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',
-  'liste', 'board', 'zeitraum', 'aufgabe', 'buchung', 'einstellungen', 'erfassungVorschau', 'vorschlaege', 'layout',
+  'liste', 'board', 'zeitraum', 'aufgabe', 'buchung', 'einstellungen', 'erfassungVorschau', 'vorschlaege', 'layout', 'heute',
 ];

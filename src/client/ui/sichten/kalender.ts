@@ -42,7 +42,7 @@ export class KalenderSicht implements Sicht {
 
   async render(el: HTMLElement, dichte: Dichte): Promise<void> {
     this.el = el; this.dichte = dichte;
-    if (!this.heute) this.heute = (await body.zeitraum({ von: '2000-01-01', bis: '2000-01-01' })).heute;
+    if (!this.heute) this.heute = (await body.heute()).datum;
     const anker = this.z.anker ?? this.heute;
     if (dichte === 'mini') {
       const z = await body.zeitraum({ von: this.heute, bis: this.heute });

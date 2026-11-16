@@ -139,6 +139,24 @@ describe('Zeitraum und Kapazität', () => {
   });
 });
 
+describe('Nachladen externer Termine', () => {
+  it('lädt außerhalb des Fensters nach, aber höchstens ±2 Jahre um heute', async () => {
+    const quelle = beispielKalender();
+    const abfragen: [string, string][] = [];
+    const orig = quelle.termine;
+    quelle.termine = (von, bis) => { abfragen.push([von, bis]); return orig(von, bis); };
+    const es = new SpeicherEventStore('t', zaehlerIds('e').neu, () => uhr.jetzt());
+    const b = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: quelle, cache: kalenderCache(), info: { datenordner: '', geraet: '' } });
+    await b.synchronisieren();
+    await b.zeitraum({ von: '2000-01-01', bis: '2000-01-02' });
+    await b.zeitraum({ von: '2027-08-01', bis: '2027-08-31' });
+    await new Promise(r => setTimeout(r, 10));
+    expect(abfragen.every(([von]) => von >= '2024-11-16')).toBe(true);
+    expect(abfragen).toHaveLength(2);
+    expect(abfragen.at(-1)![1]).toBe('2027-08-31');
+  });
+});
+
 describe('Einstellungen', () => {
   it('liefert Spalten, Kapazität, Standarddauer und Kalender', async () => {
     await body.synchronisieren();
