@@ -1,0 +1,29 @@
+{
+  "name": "rundblick",
+  "productName": "Rundblick",
+  "version": "0.1.0",
+  "private": true,
+  "description": "rb – Aufgaben, Board und Kalender im Überblick",
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "start": "electron-vite preview",
+    "build": "electron-vite build",
+    "build:helfer": "sh helfer/build.sh",
+    "typecheck": "tsc --noEmit",
+    "lint:deps": "depcruise src --config .dependency-cruiser.cjs",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint:deps && npm run test",
+    "postinstall": "node node_modules/electron/install.js && node tools/electron-kalenderrecht.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "dependency-cruiser": "^18.7.2",
+    "electron": "^45.2.3",
+    "electron-vite": "^6.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0"
+  }
+}
