@@ -123,7 +123,14 @@
   // Externe Termine (in der App: Cache aus Google Calendar / iCloud – read-only Overlay)
   const external = [];
   let eid = 1;
-  const X = (quelle, titel, datum, start, dauer) => external.push({ id: 'x' + (eid++), quelle, titel, datum, start, dauer });
+  // Externe Kalender (aus EventKit). Pro Kalender einstellbar: sichtbar? belegt er Kapazität?
+  const KALENDER = [
+    { id: 'arbeit', name: 'Arbeit', konto: 'Google', quelle: 'gcal', sichtbar: true, belegt: true },
+    { id: 'privat', name: 'Privat', konto: 'iCloud', quelle: 'icloud', sichtbar: true, belegt: false },
+    { id: 'familie', name: 'Familie', konto: 'iCloud', quelle: 'icloud', sichtbar: true, belegt: false },
+  ];
+  const KAL_VON = { 'Yoga': 'privat', 'Lauftreff': 'privat', 'Abendessen Familie': 'familie', 'Konzert Elbphilharmonie': 'familie' };
+  const X = (quelle, titel, datum, start, dauer) => external.push({ id: 'x' + (eid++), quelle, kalender: KAL_VON[titel] || 'arbeit', titel, datum, start, dauer });
   for (let i = -21; i <= 60; i++) {
     const dt = d(i), w = D.wd(dt);
     if (w === 0) X('gcal', 'Jour fixe', dt, '09:30', 30);
@@ -150,6 +157,13 @@
     bookingsOf(tid) { return bookings.filter(b => b.taskId === tid).sort((a, b) => (a.datum + (a.start || '')).localeCompare(b.datum + (b.start || ''))); },
     isDeferred(t) { return !!t.wv && t.wv > HEUTE; },
     visibleTasks() { return tasks.filter(t => !t.done && !Store.isDeferred(t)); },
+    // Board: abgeschlossene Aufgaben bleiben in ihrer Spalte stehen (nur zurückgestellte fehlen)
+    boardTasks() { return tasks.filter(t => t.status && !Store.isDeferred(t)); },
+    KALENDER,
+    kal(id) { return KALENDER.find(k => k.id === id); },
+    // Standarddauer neuer Buchungen (Einstellung); jede Buchung lässt sich danach ändern
+    STANDARDDAUER: 60,
+    setDauer(id, min) { const b = Store.booking(id); if (b) { b.dauer = Math.max(15, Math.min(12 * 60, min)); Store.emit(); } },
     KATEGORIEN,
     statusName(id) { return (STATUS.find(s => s.id === id) || {}).name || ''; },
     kat(statusId) { return (STATUS.find(s => s.id === statusId) || {}).kat || null; },
@@ -169,9 +183,9 @@
     setStatus(id, s) { const t = Store.task(id); if (t && t.status !== s) { t.status = s; Store.emit(); } },
     complete(id) { const t = Store.task(id); if (t) { t.done = true; Store.emit(); } },
     reopen(id) { const t = Store.task(id); if (t) { t.done = false; Store.emit(); } },
-    addBooking(taskId, datum, start, dauer) { const b = B('b' + (nid++), taskId, datum, dauer || 60, start || null, Store.task(taskId).titel); bookings.push(b); Store.emit(); return b; },
+    addBooking(taskId, datum, start, dauer) { const b = B('b' + (nid++), taskId, datum, dauer || Store.STANDARDDAUER, start || null, Store.task(taskId).titel); bookings.push(b); Store.emit(); return b; },
     moveBooking(id, datum, start) { const b = Store.booking(id); if (b) { b.datum = datum; b.start = start; Store.emit(); } return b; },
-    addFree(datum, start, dauer, titel) { const b = B('b' + (nid++), null, datum, dauer || 60, start || null, titel); bookings.push(b); Store.emit(); return b; },
+    addFree(datum, start, dauer, titel) { const b = B('b' + (nid++), null, datum, dauer || Store.STANDARDDAUER, start || null, titel); bookings.push(b); Store.emit(); return b; },
     // „Aus einer Buchung eine Aufgabe machen“: Buchung bleibt, bekommt eine neue Aufgabe
     bookingToTask(id, status) {
       const b = Store.booking(id);
@@ -192,7 +206,7 @@
       return {
         termine: own.filter(x => x.b.start).map(x => Object.assign({ kind: 'own', id: x.b.id, s: D.min(x.b.start), e: D.min(x.b.start) + x.b.dauer }, info(x))),
         reservierungen: own.filter(x => !x.b.start).map(x => Object.assign({ id: x.b.id, dauer: x.b.dauer }, info(x))),
-        extern: external.filter(x => x.datum === datum).map(x => ({ kind: x.quelle, id: x.id, titel: x.titel, s: D.min(x.start), e: D.min(x.start) + x.dauer })),
+        extern: external.filter(x => x.datum === datum && Store.kal(x.kalender).sichtbar).map(x => ({ kind: x.quelle, id: x.id, titel: x.titel, kalender: Store.kal(x.kalender).name, belegt: Store.kal(x.kalender).belegt, s: D.min(x.start), e: D.min(x.start) + x.dauer })),
         fristen: tasks.filter(t => t.frist === datum && !t.done),
         wiedervorlagen: tasks.filter(t => t.wv === datum && !t.done),
       };
@@ -203,9 +217,11 @@
     KAPAZITAET: [360, 360, 360, 360, 300, 0, 0],
     kapazitaet(datum) { return Store.KAPAZITAET[D.wd(datum)]; },
     // eigene Buchungen, die Kapazität belegen
-    load(datum) { return bookings.filter(b => b.datum === datum && b.belegt && (!b.taskId || !Store.task(b.taskId).done)).reduce((s, b) => s + b.dauer, 0); },
+    load(datum) { return Store.loadEigen(datum) + Store.loadExtern(datum, true); },
+    loadEigen(datum) { return bookings.filter(b => b.datum === datum && b.belegt && (!b.taskId || !Store.task(b.taskId).done)).reduce((s, b) => s + b.dauer, 0); },
     // externe Termine (zur Info, belegen keine Planungskapazität)
-    loadExtern(datum) { return external.filter(x => x.datum === datum).reduce((s, x) => s + x.dauer, 0); },
+    // externe Termine: belegt=true → nur aus Kalendern, die Kapazität belegen; false → die übrigen (nur Info)
+    loadExtern(datum, belegt) { return external.filter(x => x.datum === datum && Store.kal(x.kalender).belegt === belegt).reduce((s, x) => s + x.dauer, 0); },
     // kumulierte gebuchte Kapazität einer Aufgabe
     gebucht(taskId) { return bookings.filter(b => b.taskId === taskId && b.belegt).reduce((s, b) => s + b.dauer, 0); },
   };
@@ -262,7 +278,7 @@
       else if (tk.length > 1 && c === '>') {
         const datum = parseDate(rest);
         if (!datum) { r.fehler.push(tk); continue; }
-        const bk = { datum, start: null, dauer: 60 };
+        const bk = { datum, start: null, dauer: Store.STANDARDDAUER };
         if (toks[i + 1] && /^\d{1,2}:\d{2}$/.test(toks[i + 1])) { bk.start = D.hm(D.min(toks[++i])); }
         if (toks[i + 1] && parseDauer(toks[i + 1])) { bk.dauer = parseDauer(toks[++i]); }
         r.booking = bk;

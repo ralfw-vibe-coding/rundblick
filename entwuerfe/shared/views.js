@@ -114,16 +114,16 @@
   // ---------- Kanban ----------
   function card(t, mode, withStatus) {
     const kat = S.kat(t.status);
-    return `<div class="card ${kat === 'beendet' ? 'ended' : ''}" draggable="true" data-task="${t.id}">
+    return `<div class="card ${kat === 'beendet' ? 'ended' : ''} ${t.done ? 'closed' : ''}" draggable="true" data-task="${t.id}">
       <div class="t">${esc(t.titel)}</div>
-      <div class="meta">${withStatus ? `<span class="chip"><span class="sdot st-${t.status}"></span>${esc(S.statusName(t.status))}</span>` : ''}${due(t)}${bk(t)}${mode === 'full' ? tags(t) : ''}${kat === 'beendet' ? `<button class="done-btn" data-act="complete" title="Aufgabe abschließen – eigener Zustand, unabhängig von der Spalte">✓ abschließen</button>` : ''}${avatar(t)}</div>
+      <div class="meta">${withStatus ? `<span class="chip"><span class="sdot st-${t.status}"></span>${esc(S.statusName(t.status))}</span>` : ''}${due(t)}${bk(t)}${mode === 'full' ? tags(t) : ''}${t.done ? `<span class="closed-badge" title="Abgeschlossen – bleibt auf dem Board stehen">✓ abgeschlossen</span><button class="done-btn" data-act="reopen" title="Wieder öffnen" style="color:var(--mute)">↺</button>` : kat === 'beendet' ? `<button class="done-btn" data-act="complete" title="Aufgabe abschließen – eigener Zustand, unabhängig von der Spalte">✓ abschließen</button>` : ''}${avatar(t)}</div>
     </div>`;
   }
   // Board: beliebig viele Spalten, gruppiert in drei Kategorien.
   // full = alle Spalten; compact = eine Spalte je Kategorie; mini = Balken
   function board(el, o = {}) {
     const mode = o.mode || 'full';
-    const ts = S.visibleTasks().filter(t => t.status);
+    const ts = S.boardTasks();
     const inKat = k => ts.filter(t => S.kat(t.status) === k);
     if (mode === 'mini') {
       const max = Math.max(1, ...S.KATEGORIEN.map(k => inKat(k.id).length));
@@ -169,12 +169,13 @@
     const w = 100 / e.n, own = e.kind === 'own';
     const attrs = own ? `draggable="true" data-booking="${e.id}"${e.taskId ? ` data-task="${e.taskId}"` : ''}` : '';
     const showTime = mode === 'full' && (e.e - e.s) >= 45;
-    return `<div class="ev ${e.kind} ${e.done ? 'done' : ''} ${e.frei ? 'frei' : ''}" ${attrs} style="top:${top}%;height:${h}%;left:calc(${e.lane * w}% + 1px);width:calc(${w}% - 3px)" title="${esc(e.titel)}${e.aufgabe && e.aufgabe !== e.titel ? ' (Aufgabe: ' + esc(e.aufgabe) + ')' : ''} · ${D.hm(e.s)}–${D.hm(e.e)}${own ? '' : ' · ' + (e.kind === 'gcal' ? 'Google Calendar' : 'iCloud')}">${esc(e.titel)}${showTime ? `<small>${D.hm(e.s)}–${D.hm(e.e)}</small>` : ''}</div>`;
+    return `<div class="ev ${e.kind} ${e.done ? 'done' : ''} ${e.frei ? 'frei' : ''}" ${attrs} style="top:${top}%;height:${h}%;left:calc(${e.lane * w}% + 1px);width:calc(${w}% - 3px)" title="${esc(e.titel)}${e.aufgabe && e.aufgabe !== e.titel ? ' (Aufgabe: ' + esc(e.aufgabe) + ')' : ''} · ${D.hm(e.s)}–${D.hm(e.e)}${own ? '' : ' · ' + (e.kind === 'gcal' ? 'Google' : 'iCloud') + ' / ' + e.kalender + (e.belegt ? ' · belegt Kapazität' : ' · belegt keine Kapazität')}">${esc(e.titel)}${showTime ? `<small>${D.hm(e.s)}–${D.hm(e.e)}</small>` : ''}</div>`;
   }
   const resHtml = r => `<div class="resv ${r.done ? 'done' : ''} ${r.frei ? 'frei' : ''}" draggable="true" data-booking="${r.id}"${r.taskId ? ` data-task="${r.taskId}"` : ''} title="${r.frei ? 'Freie ' : ''}Reservierung: ${esc(r.titel)} · ${D.dauer(r.dauer)}"><b>${D.dauer(r.dauer).replace(' ', '')}</b><span>${esc(r.titel)}</span></div>`;
   function capHtml(datum) {
     const used = S.load(datum), cap = S.kapazitaet(datum), p = cap ? used / cap : (used ? 2 : 0);
-    const tip = `${D.dauer(used)} von ${cap ? D.dauer(cap) : '0 h'} Kapazität belegt${p > 1 ? ' – überbucht!' : ''}\nextern: ${D.dauer(S.loadExtern(datum))}`;
+    const ex = S.loadExtern(datum, true), info = S.loadExtern(datum, false);
+    const tip = `${D.dauer(used)} von ${cap ? D.dauer(cap) : '0 h'} Kapazität belegt${p > 1 ? ' – überbucht!' : ''}\n· eigene Buchungen: ${D.dauer(S.loadEigen(datum))}\n· externe Kalender (belegend): ${D.dauer(ex)}${info ? '\n(nicht belegend: ' + D.dauer(info) + ')' : ''}`;
     return `<div class="cap ${p > 1 ? 'overbooked' : p > .8 ? 'full' : ''} ${cap ? '' : 'nocap'}" title="${tip}"><i style="width:${Math.min(100, p * 100)}%"></i></div>`;
   }
   const frHtml = fs => fs.length ? `<span class="fr" style="color:var(--${(n => n < 0 ? 'over' : n === 0 ? 'today' : n <= 2 ? 'soon' : 'mute')(D.diff(S.HEUTE, fs[0].frist))})" title="Fällig:\n${esc(fs.map(t => t.titel).join('\n'))}">◆${fs.length}</span>` : '';
@@ -455,7 +456,7 @@
         <div class="fld-grid">
           ${f('Art', (b.start ? 'Termin' : 'Reservierung'))}
           ${f('Wann', `${D.WT[D.wd(b.datum)]} ${D.kurz(b.datum)}${b.start ? ' · ' + b.start : ''}`)}
-          ${f('Dauer', D.dauer(b.dauer))}
+          ${f('Dauer', `<span class="dur"><button data-dur="-15">−</button><b>${D.dauer(b.dauer)}</b><button data-dur="15">+</button></span><span class="durq">${[30, 60, 90, 120, 180, 240].map(m => `<button data-dur-set="${m}" class="${b.dauer === m ? 'on' : ''}">${D.dauer(m).replace(' ', '')}</button>`).join('')}</span>`)}
           ${f('Kapazität', `<label style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-belegt ${b.belegt ? 'checked' : ''}> belegt ${D.dauer(b.dauer)}</label>`)}
         </div>
         ${t ? `<div class="fld"><label>Gehört zu Aufgabe</label><div class="v"><a href="#" data-dact="task" style="color:var(--own)">${esc(t.titel)}</a> <span class="muted">· gebucht gesamt ${D.dauer(S.gebucht(t.id))}</span></div></div>`
@@ -464,6 +465,7 @@
       </div>
       <div class="df">${t ? '' : '<button class="btn primary" data-dact="totask">→ Aufgabe daraus machen</button>'}<span class="spacer"></span><button class="btn" data-dact="rmfree">Buchung löschen</button></div>`;
     drawer.querySelector('[data-belegt]').onchange = e => { b.belegt = e.target.checked; S.emit(); openBooking(bid); };
+    drawer.querySelectorAll('[data-dur],[data-dur-set]').forEach(x => x.onclick = () => { S.setDauer(bid, x.dataset.durSet ? Number(x.dataset.durSet) : b.dauer + Number(x.dataset.dur)); openBooking(bid); });
   }
   let pop;
   function closePop() { if (pop) { pop.remove(); pop = null; } }
@@ -491,6 +493,37 @@
     });
   }
   document.addEventListener('mousedown', e => { if (pop && !e.target.closest('.pop')) closePop(); });
+
+  // ---------- Einstellungen: externe Kalender, Standarddauer, Tageskapazität ----------
+  let setEl;
+  function settings(anchor) {
+    if (setEl) { setEl.remove(); setEl = null; return; }
+    setEl = document.createElement('div');
+    setEl.className = 'pop settings';
+    const r = anchor.getBoundingClientRect();
+    setEl.style.top = (r.bottom + 6) + 'px';
+    setEl.style.right = (innerWidth - r.right) + 'px';
+    const draw = () => {
+      setEl.innerHTML = `<h4>Externe Kalender <span class="muted">(aus macOS / EventKit)</span></h4>
+        <table><tr><th></th><th>sichtbar</th><th>belegt Kapazität</th></tr>
+        ${S.KALENDER.map(k => `<tr><td><span class="legend"><i style="background:var(--${k.quelle})"></i></span>${esc(k.name)} <span class="muted">· ${k.konto}</span></td><td><input type="checkbox" data-k="${k.id}" data-f="sichtbar" ${k.sichtbar ? 'checked' : ''}></td><td><input type="checkbox" data-k="${k.id}" data-f="belegt" ${k.belegt ? 'checked' : ''}></td></tr>`).join('')}</table>
+        <h4>Standarddauer neuer Buchungen</h4>
+        <div class="durq">${[30, 45, 60, 90, 120].map(m => `<button data-std="${m}" class="${S.STANDARDDAUER === m ? 'on' : ''}">${D.dauer(m).replace(' ', '')}</button>`).join('')}</div>
+        <h4>Tageskapazität</h4>
+        <div class="kapgrid">${D.WT.map((w, i) => `<label>${w}<input type="number" min="0" max="24" step="0.5" data-wt="${i}" value="${S.KAPAZITAET[i] / 60}"></label>`).join('')}</div>
+        <div class="muted" style="font-size:11px;margin-top:8px">In der App: Kapazität und Standarddauer gelten auf allen Geräten (Events in der Dropbox). Kalender-Auswahl ist gerätebezogen.</div>`;
+    };
+    draw();
+    document.body.appendChild(setEl);
+    setEl.addEventListener('change', e => {
+      const x = e.target;
+      if (x.dataset.k) S.kal(x.dataset.k)[x.dataset.f] = x.checked;
+      if (x.dataset.wt) S.KAPAZITAET[Number(x.dataset.wt)] = Math.round(Number(x.value) * 60);
+      S.emit();
+    });
+    setEl.addEventListener('click', e => { const b = e.target.closest('[data-std]'); if (b) { S.STANDARDDAUER = Number(b.dataset.std); draw(); toast('Standarddauer: ' + D.dauer(S.STANDARDDAUER)); } });
+  }
+  document.addEventListener('mousedown', e => { if (setEl && !e.target.closest('.settings, [data-settings]')) { setEl.remove(); setEl = null; } });
 
   // ---------- Toast ----------
   let toastEl, toastT;
@@ -602,7 +635,7 @@
     const old = booking ? S.booking(booking) : null;
     const place = (datum, start) => {
       if (old) { S.moveBooking(booking, datum, start); toast((start ? 'Termin' : 'Reservierung') + ' verschoben: ' + D.rel(datum) + (start ? ' ' + start : '')); }
-      else if (task) { S.addBooking(task, datum, start, 60); toast((start ? 'Termin' : 'Reservierung') + ' angelegt: ' + D.rel(datum) + (start ? ' ' + start : '') + ' · 1 h'); }
+      else if (task) { S.addBooking(task, datum, start); toast((start ? 'Termin' : 'Reservierung') + ' angelegt: ' + D.rel(datum) + (start ? ' ' + start : '') + ' · ' + D.dauer(S.STANDARDDAUER) + ' (änderbar)'); }
     };
     if (z.dataset.dropStatus || z.dataset.dropList) {
       // freie Buchung auf Board oder Liste gezogen → daraus wird eine Aufgabe
@@ -636,5 +669,5 @@
   // Tastatur-Helfer: true, wenn gerade getippt wird
   const typing = e => /INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || '') || e.metaKey || e.ctrlKey || e.altKey;
 
-  window.V = { openBooking, list, board, calendar, today, openDetail, closeDetail, toast, quickCapture, chipsFor, SYNTAX, typing, esc };
+  window.V = { settings, openBooking, list, board, calendar, today, openDetail, closeDetail, toast, quickCapture, chipsFor, SYNTAX, typing, esc };
 })();

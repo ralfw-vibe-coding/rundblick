@@ -49,6 +49,7 @@
     <div class="brand"><span class="logo"></span>Rundblick <small>Entwurf D · Raster</small></div>
     <div id="qc"></div>
     <div class="ws" id="ws"></div>
+    <button class="btn" data-settings id="setBtn" title="Kalender, Standarddauer, Kapazität">⚙︎ Einstellungen</button>
   </header>
   <div class="area" id="area"></div>
 </div>
@@ -270,6 +271,7 @@
   };
 
   const qcInput = V.quickCapture(document.getElementById('qc'));
+  document.getElementById('setBtn').onclick = e => V.settings(e.currentTarget);
   document.addEventListener('keydown', e => {
     if (V.typing(e)) return;
     if (/^[1-9]$/.test(e.key) && state.ws[Number(e.key) - 1]) { state.active = Number(e.key) - 1; maxId = null; build(); }

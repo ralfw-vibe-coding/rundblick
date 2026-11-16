@@ -82,7 +82,7 @@
 </nav>
 <main>
   <h1>Rundblick – Architekturideen</h1>
-  <div class="meta">Arbeitstitel · Stand 16.11.2026, Runde 2 (Entscheidungen eingearbeitet, siehe <a href="#offen">13</a>) · Electron-Desktop-App für Aufgaben, Board und Kalender mit Google Calendar und iCloud</div>
+  <div class="meta">Arbeitstitel · Stand 16.11.2026, Runde 3 (Entscheidungen eingearbeitet, siehe <a href="#offen">13</a>) · Electron-Desktop-App für Aufgaben, Board und Kalender mit Google Calendar und iCloud</div>
   <p class="lead">Rundblick verwaltet <b>eigene Daten</b> (Aufgaben und ihre Buchungen) in einem <b>Event Store</b> und blendet <b>fremde Daten</b> (Termine aus Google Calendar und iCloud) daneben ein. Die Architektur folgt den Vorgaben: <b>Client → Body → Domain/Provider</b>, strikt nach <b>CQS</b> getrennt. Jeder Pfeil zeigt nur auf ein <i>Interface</i>, nie auf eine Implementation.</p>
 
   <!-- ===================================================== -->
@@ -100,7 +100,7 @@
     <tr><td><b>Aufgabe</b></td><td>Etwas zu Tuendes. Pflichtfeld ist der <i>Titel</i>. Optional: Beschreibung, Ort, Verantwortliche/r, Tags, Frist, Wiedervorlage, Status.</td><td>Eine Aufgabe bleibt offen, bis sie <b>explizit abgeschlossen</b> wird.</td></tr>
     <tr><td><b>Status</b></td><td>Optionale Spalte auf dem Board. Spalten gibt es beliebig viele, z. B. Idee, Backlog, Bereit, In Arbeit, Blockiert, Erledigt, Abgebrochen.</td><td>Ohne Status keine Board-Karte. Die Spalten sind konfigurierbar.</td></tr>
     <tr><td><b>Kategorie</b></td><td>Jede Spalte gehört zu genau einer von drei Kategorien: <i>Nicht begonnen</i>, <i>Begonnen</i>, <i>Beendet</i>.</td><td>Feste Menge. Die Kategorie dient dem Überblick (z. B. „5 begonnen“) und der kompakten Board-Darstellung.</td></tr>
-    <tr><td><b>Abgeschlossen</b></td><td>Eigener Zustand der Aufgabe, unabhängig von Status und Kategorie.</td><td>Auch „Beendet / Erledigt“ schließt <i>nicht</i> ab. Abgeschlossene Aufgaben verschwinden aus Liste und Board.</td></tr>
+    <tr><td><b>Abgeschlossen</b></td><td>Eigener Zustand der Aufgabe, unabhängig von Status und Kategorie.</td><td>Auch „Beendet / Erledigt“ schließt <i>nicht</i> ab. Abgeschlossene Aufgaben verschwinden aus der Liste (Gruppe „Abgeschlossen“), <b>bleiben aber auf dem Board</b> in ihrer Spalte stehen, durchgestrichen und mit ↺ zum Wiederöffnen.</td></tr>
     <tr><td><b>Frist</b></td><td>Datum, bis zu dem die Aufgabe fällig ist.</td><td>Bestimmt die Gruppierung der Liste (überfällig, heute, Woche …).</td></tr>
     <tr><td><b>Wiedervorlage</b></td><td>Datum, bis zu dem die Aufgabe <i>unsichtbar</i> ist.</td><td>Wird beim Abfragen gegen „heute“ ausgewertet. Beim Wiederauftauchen entsteht <i>kein</i> Event.</td></tr>
     <tr><td><b>Buchung</b></td><td>Ein Eintrag im Kalender mit <i>eigenem Titel und eigener Beschreibung</i>, Datum und Dauer, optional Startzeit. Sie kann zu einer Aufgabe gehören.</td><td>„Eine Buchung ist eine Aufgabe mit ein paar Angaben zum Termin.“ Eine Aufgabe kann beliebig viele Buchungen haben. Beim Anlegen aus einer Aufgabe wird deren Titel übernommen.</td></tr>
@@ -109,8 +109,9 @@
     <tr><td><b>Termin</b></td><td>Buchung <i>mit</i> Startzeit.</td><td>Wird aus einer Reservierung zum Termin, sobald man eine Uhrzeit setzt, und umgekehrt.</td></tr>
     <tr><td><b>Externer Termin</b></td><td>Eintrag aus Google Calendar oder iCloud.</td><td>Gehört <i>nicht</i> zum Domain state. Er ist ein Cache und wird nur lesend eingeblendet.</td></tr>
     <tr><td><b>Tageskapazität</b></td><td>Planbare Zeit pro Wochentag (z. B. Mo–Do 6 h, Fr 5 h, Sa/So 0).</td><td>Wird in den Einstellungen festgelegt, gilt aber als Domain state (siehe 8.2), damit sie auf allen Geräten gleich ist.</td></tr>
-    <tr><td><b>Belegung</b></td><td>Eine Buchung <i>kann</i> mit ihrer Dauer Kapazität belegen (Schalter pro Buchung, Standard: ja).</td><td>Beispiel für „nein“: ein Arzttermin am Abend.</td></tr>
-    <tr><td><b>Auslastung</b></td><td>Belegte Minuten eines Tages im Verhältnis zu seiner Tageskapazität.</td><td>Abgeleitet. Erscheint als Balken im Reservierungsband und in der Timeline, rot bei Überbuchung. Externe Termine werden zur Information angezeigt, belegen aber keine Planungskapazität.</td></tr>
+    <tr><td><b>Belegung</b></td><td>Eine Buchung <i>kann</i> mit ihrer Dauer Kapazität belegen (Schalter pro Buchung, Standard: ja). Externe Termine belegen Kapazität, wenn ihr <b>Kalender</b> so eingestellt ist (z. B. „Arbeit“ ja, „Familie“ nein).</td><td>Beispiel für „nein“: ein Arzttermin am Abend.</td></tr>
+    <tr><td><b>Standarddauer</b></td><td>Dauer, die eine neue Buchung bekommt, wenn keine angegeben ist (Einstellung, z. B. 1 h).</td><td>Die Dauer jeder Buchung lässt sich danach ändern. Es gibt <i>keine</i> Aufwandsschätzung pro Aufgabe.</td></tr>
+    <tr><td><b>Auslastung</b></td><td>Belegte Minuten eines Tages im Verhältnis zu seiner Tageskapazität.</td><td>Abgeleitet. Erscheint als Balken im Reservierungsband und in der Timeline, rot bei Überbuchung. Externe Termine zählen nur mit, wenn ihr Kalender Kapazität belegt.</td></tr>
     <tr><td><b>Gebuchte Zeit einer Aufgabe</b></td><td>Summe der belegenden Buchungen einer Aufgabe.</td><td>Abgeleitet. Steht als „2,5h“ neben dem Buchungssymbol in Liste und Board.</td></tr>
   </table>
 
@@ -229,7 +230,8 @@
   tageskapazitaetFestlegen(c: { wochentag: 1|2|3|4|5|6|7; minuten: Minuten }): Promise&lt;CommandStatus&gt;;
   <span class="c">// ---- Commands: externe Kalender (Application state, z. T. Domain state)</span>
   kalenderZugriffAnfragen(): Promise&lt;CommandStatus&gt;;   <span class="c">// EventKit: macOS fragt einmal um Erlaubnis</span>
-  kalenderAuswaehlen(c: { kalenderIds: string[] }): Promise&lt;CommandStatus&gt;;   <span class="c">// welche macOS-Kalender eingeblendet werden</span>
+  kalenderEinstellen(c: { kalenderId: string; sichtbar?: boolean; belegtKapazitaet?: boolean }): Promise&lt;CommandStatus&gt;;
+  standarddauerFestlegen(c: { minuten: Minuten }): Promise&lt;CommandStatus&gt;;
   synchronisieren(): Promise&lt;CommandStatus&gt;;
   buchungVeroeffentlichen(c: { buchungId: Id; zielKalender: KalenderRef }): Promise&lt;CommandStatus&gt;;
   einstellungMerken(c: { schluessel: string; wert: unknown }): Promise&lt;CommandStatus&gt;;
@@ -256,7 +258,7 @@
   extern: { konto; kalender; farbe; titel; start; ende; ganztaegig }[];   <span class="c">// aus EventKit: Konto = iCloud, Google …</span>
   fristen: { aufgabeId; titel; dringlichkeit: <span class="s">'ueberfaellig'</span>|<span class="s">'heute'</span>|<span class="s">'bald'</span>|<span class="s">'spaeter'</span> }[];
   wiedervorlagen: { aufgabeId; titel }[];
-  auslastung: { belegt: Minuten; kapazitaet: Minuten; extern: Minuten };
+  auslastung: { belegt: Minuten; davonEigene: Minuten; davonExtern: Minuten; kapazitaet: Minuten; externNichtBelegend: Minuten };
 };</pre>
 
   <h3>Verarbeitung im Body (Beispiel)</h3>
@@ -403,6 +405,7 @@
     <tr><td><code>BuchungStorniert</code></td><td>buchungId</td><td>buchung (+ aufgabe)</td></tr>
     <tr><td><code>StatusspalteAngelegt</code> / <code>…Umbenannt</code> / <code>StatusspaltenSortiert</code> / <code>StatusspalteEntfernt</code></td><td>statusId, name, <b>kategorie</b>, position / reihenfolge[]</td><td>board</td></tr>
     <tr><td><code>TageskapazitaetFestgelegt</code></td><td>wochentag (1 = Mo … 7 = So), minuten</td><td>kapazitaet</td></tr>
+    <tr><td><code>StandarddauerFestgelegt</code></td><td>minuten</td><td>einstellung</td></tr>
     <tr><td><code>BuchungVeroeffentlicht</code></td><td>buchungId, kalenderId (EventKit), externeId</td><td>buchung, extern</td></tr>
     <tr><td><code>VeroeffentlichungZurueckgezogen</code></td><td>buchungId, externeId</td><td>buchung, extern</td></tr>
   </table>
@@ -412,7 +415,7 @@
   <table>
     <tr><th>Was</th><th>Wo</th><th>Struktur</th></tr>
     <tr><td>Externe Termine</td><td><code>kalendercache.sqlite</code> (lokal, nicht in der Dropbox)</td><td><code>termin(quelle, kalenderId, externeId PK, titel, start, ende, ganztaegig, ort, aktualisiert)</code>, <code>syncstand(kalenderId PK, token, zuletzt)</code></td></tr>
-    <tr><td>Sichtbare Kalender</td><td><code>geraet.json</code> (lokal)</td><td><code>{ eingeblendet: [kalenderId …] }</code>. EventKit-IDs sind gerätebezogen, deshalb lokal.</td></tr>
+    <tr><td>Externe Kalender</td><td><code>geraet.json</code> (lokal)</td><td><code>{ kalender: [{ kalenderId, sichtbar, belegtKapazitaet }] }</code>. EventKit-IDs sind gerätebezogen, deshalb lokal. Das iPhone hat später seine eigene Zuordnung.</td></tr>
     <tr><td>Geheimnisse</td><td>Keychain via safeStorage</td><td>Mit EventKit vorerst keine. Erst nötig, wenn Google/CalDAV direkt angebunden werden.</td></tr>
     <tr><td>UI-Zustand</td><td><code>geraet.json</code> (lokal)</td><td>Arbeitsbereiche (Raster-Bäume), Zellzustand, Zoom, Arbeitszeitfenster der Ansicht</td></tr>
   </table>
@@ -444,7 +447,7 @@
   <div class="note"><b>Entschieden: EventKit zuerst.</b> Ein kleiner Swift-Helfer liest über EventKit alle in macOS eingerichteten Kalender (iCloud, Google …). macOS fragt einmal nach der Erlaubnis. Es gibt keine eigene Anmeldung, kein OAuth und kein CalDAV. Für die spätere iPhone-App ist das ein Vorteil, denn EventKit gibt es auf iOS genauso.</div>
   <h3>Grundsatz</h3>
   <ol>
-    <li><b>Lesen als Overlay.</b> Externe Termine erscheinen in allen Kalendersichten. Bei der Auslastung werden sie nur zur Information angezeigt und belegen keine Kapazität (siehe offene Frage 3). Sie werden <i>nicht</i> zu Events, weil sie fremder Zustand sind. Sie liegen im Cache.</li>
+    <li><b>Lesen als Overlay.</b> Externe Termine erscheinen in allen Kalendersichten. Pro externem Kalender ist einstellbar, ob er sichtbar ist und ob seine Termine Kapazität belegen. Sie werden <i>nicht</i> zu Events, weil sie fremder Zustand sind. Sie liegen im Cache.</li>
     <li><b>Veröffentlichen</b> (optional, Phase 2): Eigene Buchungen werden per EventKit in einen eigenen Kalender „Rundblick“ geschrieben (z. B. in iCloud), damit andere die Belegung sehen. Termine werden normale Events. Reservierungen werden ganztägige Einträge mit „frei“-Transparenz und dem Titel <code>▭ 2 h · Angebot Hüttner</code>. Die Verknüpfung speichert das Event <code>BuchungVeroeffentlicht</code>.</li>
     <li><b>Rückkanal</b> (optional, Phase 3): Wird ein veröffentlichter Termin extern verschoben, erzeugt der Sync ein <code>BuchungVerschoben</code> mit <code>meta.quelle = "sync"</code>. Für alle anderen externen Änderungen bleibt Rundblick der Master.</li>
     <li><b>Aus externem Termin eine Aufgabe oder Buchung machen</b>: <code>aufgabeErfassen</code> bzw. <code>buchungEintragen</code> mit vorbelegtem Titel und Termin plus einem Verweis auf das Original.</li>
@@ -550,12 +553,16 @@
     <li>iPhone-App mit Zugriff auf denselben Dropbox-Ordner.</li>
     <li>Direkte Anbindung von Google und CalDAV ohne macOS-Kalender.</li>
   </ul>
-  <h3>Noch offen</h3>
-  <div class="dec"><div class="n">1</div><div><p><b>Abgeschlossene Aufgaben auf dem Board:</b> sofort ausblenden oder in ihrer „Beendet“-Spalte stehen lassen, bis man aufräumt?</p><p class="rec">Vorschlag: sofort ausblenden (so in den Entwürfen); eine Ansichtsoption „abgeschlossene zeigen“.</p></div></div>
-  <div class="dec"><div class="n">2</div><div><p><b>Aufwandsschätzung:</b> Soll eine Aufgabe einen geschätzten Aufwand bekommen, damit „gebucht 4 h von geschätzt 6 h“ sichtbar wird?</p><p class="rec">Passt gut zur Kapazitätsplanung, wäre ein optionales Feld <code>aufwand</code>.</p></div></div>
-  <div class="dec"><div class="n">3</div><div><p><b>Externe Termine und Kapazität:</b> Sollen Termine aus iCloud oder Google auch Kapazität belegen (pro Kalender einstellbar, z. B. „Arbeit“ ja, „Familie“ nein)?</p><p class="rec">In den Entwürfen belegen sie nichts und werden nur angezeigt.</p></div></div>
-  <div class="dec"><div class="n">4</div><div><p><b>Kapazität für einzelne Tage</b> (Urlaub, Workshop-Tag): Reicht der Wochentag, oder braucht es Ausnahmen pro Datum?</p><p class="rec">Vorschlag: <code>TageskapazitaetAusnahme</code> {datum, minuten} als späteres Event.</p></div></div>
-  <div class="dec"><div class="n">5</div><div><p><b>Name der App:</b> Bleibt es bei „Rundblick“?</p></div></div>
+  <h3>Entschieden in Runde 3</h3>
+  <table>
+    <tr><th>Frage</th><th>Entscheidung</th><th>Folge im Design</th></tr>
+    <tr><td>Abgeschlossene Aufgaben auf dem Board</td><td><b>Bleiben</b> in ihrer Spalte stehen</td><td>Query <code>board</code> liefert auch abgeschlossene (Flag <code>abgeschlossen</code>); Darstellung durchgestrichen mit ↺</td></tr>
+    <tr><td>Aufwandsschätzung</td><td><b>Keine</b>. Eine Buchung bekommt eine Standarddauer, die man ändern kann.</td><td><code>StandarddauerFestgelegt</code>; <code>buchungsdauerAendern</code>; Dauer-Knöpfe in der Buchung</td></tr>
+    <tr><td>Externe Termine und Kapazität</td><td><b>Pro externem Kalender</b> einstellbar</td><td><code>kalenderEinstellen({ belegtKapazitaet })</code>; Auslastung = eigene belegende Buchungen + Termine belegender Kalender</td></tr>
+    <tr><td>Kapazitätsausnahmen pro Datum</td><td><b>Nein</b>, der Wochentag reicht</td><td>nur <code>TageskapazitaetFestgelegt</code></td></tr>
+    <tr><td>Name</td><td>„Rundblick“</td><td>siehe Rückfrage im Chat (Schreibweise)</td></tr>
+  </table>
+  <p class="muted">Derzeit keine offenen fachlichen Fragen. Bereit für Schritt 1 der Schrittfolge.</p>
 
   <!-- ===================================================== -->
   <h2 id="plan">14 Schrittfolge</h2>

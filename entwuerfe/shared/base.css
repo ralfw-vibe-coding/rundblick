@@ -309,3 +309,21 @@ kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ff
 .list.drop-hint, .list.over { outline: 2px dashed var(--own); outline-offset: -3px; }
 .bkh { color: var(--mute); margin-left: 3px; font-weight: 500; }
 .cap.nocap { background: repeating-linear-gradient(90deg, #ebe8e2 0 3px, transparent 3px 6px); }
+/* Runde 3: abgeschlossene Karten, Dauer ändern, Einstellungen */
+.card.closed { opacity: .62; }
+.card.closed .t { text-decoration: line-through; }
+.closed-badge { font-size: 11px; color: var(--st-fertig); white-space: nowrap; }
+.dur { display: inline-flex; align-items: center; gap: 6px; }
+.dur button, .durq button { border: 1px solid var(--line2); background: #fff; border-radius: 5px; padding: 0 7px; font-size: 12px; }
+.durq { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.durq button.on { background: var(--own); border-color: var(--own); color: #fff; }
+.pop.settings { width: 360px; }
+.settings h4 { margin: 10px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); }
+.settings h4:first-child { margin-top: 0; }
+.settings table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.settings th { font-weight: 500; color: var(--mute); font-size: 11px; text-align: center; }
+.settings td { padding: 3px 0; }
+.settings td + td { text-align: center; }
+.kapgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.kapgrid label { display: flex; flex-direction: column; font-size: 11px; color: var(--mute); text-align: center; }
+.kapgrid input { width: 100%; border: 1px solid var(--line2); border-radius: 5px; padding: 2px 3px; text-align: center; }
