@@ -66,6 +66,7 @@ export function board(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: Spal
   const map = new Map(spalten.map(s => [s.id, s]));
   const karten = aufgaben.filter(a => a.status && map.has(a.status) && !istZurueckgestellt(a, heute)).map(a => zeile(a, buchungen, map, heute));
   return {
+    heute,
     kategorien: KATEGORIEN.map(k => {
       const sp = spalten.filter(s => s.kategorie === k.id).map(s => ({
         id: s.id, name: s.name,

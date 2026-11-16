@@ -82,7 +82,7 @@ describe('Liste und Board', () => {
 
   it('abgeschlossene Aufgaben bleiben auf dem Board, verschwinden aber aus der Liste', async () => {
     const r = await body.aufgabeErfassen({ titel: 'Fertig', status: 'erledigt' });
-    await body.aufgabeAbschliessen({ aufgabeId: (r as { ids: { aufgabeId: string } }).ids.aufgabeId });
+    await body.aufgabeAbschliessen({ aufgabeId: (r as unknown as { ids: { aufgabeId: string } }).ids.aufgabeId });
     const b = await body.board();
     const erledigt = b.kategorien.find(k => k.id === 'beendet')!.spalten.find(s => s.id === 'erledigt')!;
     expect(erledigt.karten.map(k => [k.titel, k.abgeschlossen])).toEqual([['Fertig', true]]);
@@ -116,7 +116,7 @@ describe('Zeitraum und Kapazität', () => {
 
   it('nicht belegende Buchung zählt nicht zur Auslastung; Dauer ist änderbar', async () => {
     const r = await body.buchungEintragen({ titel: 'Zahnarzt', datum: '2026-11-18', start: '08:30' });
-    const id = (r as { ids: { buchungId: string } }).ids.buchungId;
+    const id = (r as unknown as { ids: { buchungId: string } }).ids.buchungId;
     await body.buchungAendern({ buchungId: id, belegt: false, dauer: 45 });
     const b = await body.buchung({ buchungId: id });
     expect(b).toMatchObject({ dauer: 45, belegt: false, tag: { eigene: 0 } });
@@ -132,7 +132,7 @@ describe('Zeitraum und Kapazität', () => {
 
   it('aus Buchung wird Aufgabe', async () => {
     const r = await body.buchungEintragen({ titel: 'Belege', datum: '2026-11-18' });
-    const id = (r as { ids: { buchungId: string } }).ids.buchungId;
+    const id = (r as unknown as { ids: { buchungId: string } }).ids.buchungId;
     const a = await body.aufgabeAusBuchung({ buchungId: id, status: 'backlog' });
     expect(a.ok).toBe(true);
     expect((await body.board()).kategorien[0]!.spalten.find(s => s.id === 'backlog')!.karten.map(k => k.titel)).toEqual(['Belege']);

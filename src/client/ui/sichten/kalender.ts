@@ -1,0 +1,282 @@
+// Sicht: Kalender – Tag, 3 Tage, Woche, Monat, 3 Monate und Timeline.
+// Daten kommen aus der Query `zeitraum`; hier steckt nur Darstellungslogik (Layout, Pixel ↔ Zeit, Zoom).
+import {
+  dauerText, differenz, kurz, kw, MON, MON_LANG, monatsErster, montag, plusMonate, plusTage, tagImMonat, uhrzeit, WT, WT_LANG, wochentag, jahr, monat,
+} from '../../../basis/datum';
+import type { Bereich, BuchungDto, ExternDto, Tag, Zeitraum } from '../../../body/interface';
+import { body } from '../body';
+import { kapazitaetsBalken } from '../bausteine';
+import { esc } from '../dom';
+import type { Dichte, Sicht } from './sicht';
+
+export type KalAnsicht = 'tag' | 'tage3' | 'woche' | 'monat' | 'monate3' | 'timeline';
+export type KalZustand = { ansicht: KalAnsicht; anker: string | null; pph: number };
+
+export const H0 = 7, H1 = 21, SPAN = H1 - H0, SPANMIN = SPAN * 60;
+const pct = (min: number) => ((min - H0 * 60) / SPANMIN) * 100;
+const NAMEN: Record<KalAnsicht, string> = { tag: 'Tag', tage3: '3 Tage', woche: 'Woche', monat: 'Monat', monate3: '3 Monate', timeline: 'Timeline' };
+
+type Ev = { kind: 'own' | 'extern'; s: number; e: number; lane: number; n: number; titel: string; b?: BuchungDto & { s: number; e: number }; x?: ExternDto };
+
+export class KalenderSicht implements Sicht {
+  readonly bereiche: Bereich[] = ['kalender', 'aufgaben'];
+  private heute = '';
+  private scrollX: number | null = null;
+  private el: HTMLElement | null = null;
+  private dichte: Dichte = 'full';
+
+  constructor(private z: KalZustand, private readonly ansichten: KalAnsicht[]) {}
+  zustand() { return this.z; }
+
+  /** Zeitbereich, den die aktuelle Ansicht braucht */
+  private bereich(anker: string): [string, string] {
+    switch (this.z.ansicht) {
+      case 'tag': return [anker, anker];
+      case 'tage3': return [anker, plusTage(anker, 2)];
+      case 'woche': { const m = montag(anker); return [m, plusTage(m, 6)]; }
+      case 'monat': { const s = montag(monatsErster(anker)); return [s, plusTage(s, 41)]; }
+      case 'monate3': { const s = montag(monatsErster(anker)); return [s, plusTage(montag(plusMonate(anker, 2)), 41)]; }
+      case 'timeline': { const s = plusTage(montag(anker), -7); return [s, plusTage(s, 55)]; }
+    }
+  }
+
+  async render(el: HTMLElement, dichte: Dichte): Promise<void> {
+    this.el = el; this.dichte = dichte;
+    if (!this.heute) this.heute = (await body.zeitraum({ von: '2000-01-01', bis: '2000-01-01' })).heute;
+    const anker = this.z.anker ?? this.heute;
+    if (dichte === 'mini') {
+      const z = await body.zeitraum({ von: this.heute, bis: this.heute });
+      el.innerHTML = agendaMini(z);
+      return;
+    }
+    const [von, bis] = this.bereich(anker);
+    const z = await body.zeitraum({ von, bis });
+    this.heute = z.heute;
+    let inhalt = '';
+    switch (this.z.ansicht) {
+      case 'tag': inhalt = `<div style="display:flex;flex:1;min-height:0"><div style="flex:1;min-width:0;display:flex;flex-direction:column">${woche(z, z.tage, dichte)}</div>${dichte === 'full' ? tagSeite(z.tage[0]!) : ''}</div>`; break;
+      case 'tage3': case 'woche': inhalt = woche(z, z.tage, dichte); break;
+      case 'monat': inhalt = monatsRaster(z, z.tage, anker, dichte); break;
+      case 'monate3': inhalt = `<div class="months">${[0, 1, 2].map(i => { const m = plusMonate(anker, i); const s = montag(monatsErster(m)); const t = z.tage.filter(x => x.datum >= s && x.datum <= plusTage(s, 41)); return `<div class="mm"><div class="mm-h">${MON_LANG[monat(m)]} ${jahr(m)}</div>${monatsRaster(z, t, m, 'compact')}</div>`; }).join('')}</div>`; break;
+      case 'timeline': inhalt = timeline(z, this.z.pph); break;
+    }
+    el.innerHTML = `<div class="cal ${dichte}">
+      <div class="cal-tb">
+        ${this.ansichten.length > 1 ? `<div class="seg">${this.ansichten.map(v => `<button data-cal-view="${v}" class="${this.z.ansicht === v ? 'on' : ''}">${NAMEN[v]}</button>`).join('')}</div>` : ''}
+        <div class="nav"><button data-cal-nav="-1" title="zurück">‹</button><button data-cal-nav="0">Heute</button><button data-cal-nav="1" title="vor">›</button></div>
+        ${this.z.ansicht !== 'timeline' ? `<span class="title">${titel(this.z.ansicht, anker)}</span>`
+          : `<span class="zoom">Zoom <input type="range" min="2" max="48" value="${this.z.pph}" data-cal-zoom /> <span>${this.z.pph < 6 ? 'Wochen' : this.z.pph < 20 ? 'Tage' : 'Stunden'}</span></span>`}
+        <span class="spacer"></span>
+        ${dichte === 'full' ? `<span class="legend"><span><i style="background:var(--own)"></i>Termin</span><span><i style="border:1.5px dashed var(--own)"></i>Reservierung</span><span><i style="background:var(--free)"></i>ohne Aufgabe</span><span><i style="background:#9ca3af"></i>extern</span></span>` : ''}
+      </div>
+      <div class="cal-b">${inhalt}</div></div>`;
+    this.binden(el, anker);
+  }
+
+  private binden(el: HTMLElement, anker: string): void {
+    el.onclick = e => {
+      const t = e.target as HTMLElement;
+      const v = t.closest<HTMLElement>('[data-cal-view]'), n = t.closest<HTMLElement>('[data-cal-nav]');
+      if (v) { this.z.ansicht = v.dataset.calView as KalAnsicht; this.scrollX = null; void this.neu(); }
+      if (n) {
+        const k = Number(n.dataset.calNav);
+        if (k === 0) { this.z.anker = null; this.scrollX = null; }
+        else {
+          const a = this.z.ansicht;
+          this.z.anker = a === 'tag' ? plusTage(anker, k) : a === 'tage3' ? plusTage(anker, 3 * k) : a === 'woche' ? plusTage(anker, 7 * k)
+            : a === 'timeline' ? plusTage(anker, 14 * k) : plusMonate(anker, k);
+          if (a === 'timeline') this.scrollX = null;
+        }
+        void this.neu();
+      }
+    };
+    el.ondblclick = e => {
+      const c = (e.target as HTMLElement).closest<HTMLElement>('.mc[data-day]');
+      if (c && this.ansichten.includes('tag')) { this.z.ansicht = 'tag'; this.z.anker = c.dataset.day!; void this.neu(); }
+    };
+    if (this.z.ansicht === 'woche' || this.z.ansicht === 'tag' || this.z.ansicht === 'tage3') {
+      const sc = el.querySelector<HTMLElement>('.wk-scroll');
+      if (sc && this.dichte === 'full') sc.scrollTop = ((8 - H0) / SPAN) * sc.scrollHeight - 10;
+    }
+    if (this.z.ansicht === 'timeline') {
+      const sc = el.querySelector<HTMLElement>('.tl-scroll')!;
+      const start = plusTage(montag(anker), -7), dayW = SPAN * this.z.pph;
+      sc.scrollLeft = this.scrollX ?? Math.max(0, (differenz(start, this.heute) - 1) * dayW);
+      sc.onscroll = () => { this.scrollX = sc.scrollLeft; };
+      const zoom = (pph: number, cx: number) => {
+        pph = Math.max(2, Math.min(48, Math.round(pph)));
+        if (pph === this.z.pph) return;
+        const t = (sc.scrollLeft + cx) / (SPAN * this.z.pph);
+        this.z.pph = pph;
+        this.scrollX = t * SPAN * pph - cx;
+        void this.neu();
+      };
+      const r = el.querySelector<HTMLInputElement>('[data-cal-zoom]')!;
+      r.oninput = () => zoom(Number(r.value), sc.clientWidth / 2);
+      sc.onwheel = ev => {
+        if (!(ev.ctrlKey || ev.metaKey)) return;
+        ev.preventDefault();
+        zoom(this.z.pph * Math.exp(-ev.deltaY * 0.01), ev.clientX - sc.getBoundingClientRect().left);
+      };
+      (el as HTMLElement & { _tl?: unknown })._tl = { start, pph: this.z.pph };
+    }
+  }
+
+  private async neu(): Promise<void> { if (this.el) await this.render(this.el, this.dichte); }
+}
+
+function titel(a: KalAnsicht, anker: string): string {
+  if (a === 'tag') return `${WT_LANG[wochentag(anker)]}, ${tagImMonat(anker)}. ${MON_LANG[monat(anker)]}`;
+  if (a === 'woche') { const m = montag(anker); return `KW ${kw(m)} · ${kurz(m)}–${kurz(plusTage(m, 6))}`; }
+  if (a === 'tage3') return `${WT[wochentag(anker)]} ${kurz(anker)} – ${WT[wochentag(plusTage(anker, 2))]} ${kurz(plusTage(anker, 2))}`;
+  if (a === 'monate3') { const b = plusMonate(anker, 2); return `${MON[monat(anker)]} – ${MON[monat(b)]} ${jahr(b)}`; }
+  return `${MON_LANG[monat(anker)]} ${jahr(anker)}`;
+}
+
+// ---------- Bausteine ----------
+function anordnen(evs: Ev[]): Ev[] {
+  evs.sort((a, b) => a.s - b.s || b.e - a.e);
+  const gruppen: Ev[][] = []; let cur: Ev[] = [], ende = -1;
+  for (const e of evs) { if (cur.length && e.s >= ende) { gruppen.push(cur); cur = []; } cur.push(e); ende = Math.max(ende, e.e); }
+  if (cur.length) gruppen.push(cur);
+  for (const g of gruppen) {
+    const lanes: number[] = [];
+    for (const e of g) { let i = lanes.findIndex(x => x <= e.s); if (i < 0) { i = lanes.length; lanes.push(0); } lanes[i] = e.e; e.lane = i; }
+    g.forEach(e => { e.n = lanes.length; });
+  }
+  return evs;
+}
+
+function ereignisse(t: Tag): Ev[] {
+  return anordnen([
+    ...t.termine.map(b => ({ kind: 'own' as const, s: b.s, e: b.e, lane: 0, n: 1, titel: b.titel, b })),
+    ...t.extern.filter(x => x.start !== null).map(x => ({ kind: 'extern' as const, s: x.start!, e: Math.max(x.ende!, x.start! + 15), lane: 0, n: 1, titel: x.titel, x })),
+  ]);
+}
+
+function evHtml(e: Ev, dichte: Dichte): string {
+  const top = Math.max(0, pct(e.s)), h = Math.max(2.2, pct(e.e) - pct(e.s));
+  const w = 100 / e.n;
+  const pos = `top:${top}%;height:${h}%;left:calc(${e.lane * w}% + 1px);width:calc(${w}% - 3px)`;
+  const zeit = dichte === 'full' && e.e - e.s >= 45 ? `<small>${uhrzeit(e.s)}–${uhrzeit(e.e)}</small>` : '';
+  if (e.b) {
+    const b = e.b;
+    const tip = `${b.titel}${b.aufgabentitel && b.aufgabentitel !== b.titel ? ` (Aufgabe: ${b.aufgabentitel})` : ''} · ${uhrzeit(b.s)}–${uhrzeit(b.e)}${b.belegt ? '' : ' · belegt keine Kapazität'}`;
+    return `<div class="ev own ${b.aufgabeId ? '' : 'frei'} ${b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="${pos}" title="${esc(tip)}">${esc(b.titel)}${zeit}</div>`;
+  }
+  const x = e.x!;
+  return `<div class="ev extern ${x.belegt ? 'belegt' : ''}" style="${pos};--kf:${x.farbe}" title="${esc(`${x.titel} · ${uhrzeit(e.s)}–${uhrzeit(e.e)} · ${x.konto} / ${x.kalender}${x.belegt ? ' · belegt Kapazität' : ''}${x.ort ? ' · ' + x.ort : ''}`)}">${esc(x.titel)}${zeit}</div>`;
+}
+
+export const resHtml = (r: BuchungDto) =>
+  `<div class="resv ${r.aufgabeId ? '' : 'frei'} ${r.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} title="${esc(`${r.aufgabeId ? '' : 'Freie '}Reservierung: ${r.titel} · ${dauerText(r.dauer)}${r.belegt ? '' : ' · belegt keine Kapazität'}`)}"><b>${dauerText(r.dauer).replace(' ', '')}</b><span>${esc(r.titel)}</span></div>`;
+
+const ganztags = (t: Tag) => t.extern.filter(x => x.start === null).map(x => `<div class="ext-ganz" style="background:${x.farbe}" title="${esc(`${x.titel} · ganztägig · ${x.kalender}`)}">${esc(x.titel)}</div>`).join('');
+
+function fristMarke(t: Tag): string {
+  if (!t.fristen.length) return '';
+  const d = t.fristen[0]!.dringlichkeit;
+  const farbe = d === 'ueberfaellig' ? 'var(--over)' : d === 'heute' ? 'var(--today)' : d === 'bald' ? 'var(--soon)' : 'var(--mute)';
+  return `<span class="fr" style="color:${farbe}" title="${esc('Fällig:\n' + t.fristen.map(f => f.titel).join('\n'))}">◆${t.fristen.length}</span>`;
+}
+
+function woche(z: Zeitraum, tage: Tag[], dichte: Dichte): string {
+  const n = tage.length;
+  const kopf = tage.map(t => `<div class="dh ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-day="${t.datum}"><span class="wd">${n === 1 ? WT_LANG[wochentag(t.datum)] : WT[wochentag(t.datum)]}</span><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>`).join('');
+  const band = tage.map(t => `<div class="rb" data-drop-res="${t.datum}">${ganztags(t)}${t.reservierungen.map(resHtml).join('')}${kapazitaetsBalken(t.auslastung)}</div>`).join('');
+  let stunden = '';
+  for (let h = H0 + 1; h < H1; h++) stunden += `<span style="top:${((h - H0) / SPAN) * 100}%">${h}</span>`;
+  const spalten = tage.map(t => {
+    const jetzt = t.datum === z.heute && z.jetzt >= H0 * 60 && z.jetzt <= H1 * 60 ? `<div class="nowline" style="top:${pct(z.jetzt)}%"></div>` : '';
+    return `<div class="dcol ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-day="${t.datum}">${ereignisse(t).map(e => evHtml(e, dichte)).join('')}${jetzt}</div>`;
+  }).join('');
+  return `<div class="wk ${dichte}" style="--n:${n}">
+    <div class="wk-row wk-h"><div></div>${kopf}</div>
+    <div class="wk-row wk-res"><div class="lbl">Reser&shy;vie&shy;rung</div>${band}</div>
+    <div class="wk-scroll"><div class="wk-grid"><div class="wk-row"><div class="hours">${stunden}</div>${spalten}</div></div></div>
+  </div>`;
+}
+
+function tagSeite(t: Tag): string {
+  const ev = ereignisse(t);
+  return `<div class="day-side">
+    <div><h4>Fällig</h4>${t.fristen.length ? t.fristen.map(f => `<div class="row" data-task="${f.aufgabeId}"><div class="main"><div class="t">◆ ${esc(f.titel)}</div></div></div>`).join('') : '<div class="muted">nichts</div>'}</div>
+    <div><h4>Reservierungen</h4>${t.reservierungen.length ? `<div style="display:flex;flex-direction:column;gap:4px">${t.reservierungen.map(resHtml).join('')}</div>` : '<div class="muted">keine</div>'}</div>
+    <div><h4>Termine</h4>${ev.map(e => `<div style="font-size:12px;padding:2px 0" ${e.b ? `data-booking="${e.b.id}"` : ''}><span class="muted">${uhrzeit(e.s)}</span> ${esc(e.titel)}${e.x ? ` <span class="legend"><i style="background:${e.x.farbe}"></i></span>` : ''}</div>`).join('') || '<div class="muted">keine</div>'}</div>
+    ${t.wiedervorlagen.length ? `<div><h4>Taucht wieder auf</h4>${t.wiedervorlagen.map(w => `<div data-task="${w.aufgabeId}" style="font-size:12px">↩ ${esc(w.titel)}</div>`).join('')}</div>` : ''}
+    <div><h4>Auslastung</h4>${dauerText(t.auslastung.belegt)} von ${dauerText(t.auslastung.kapazitaet)}${kapazitaetsBalken(t.auslastung, true)}</div>
+  </div>`;
+}
+
+function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte): string {
+  const m = monat(anker);
+  const zellen = tage.slice(0, 42).map(t => {
+    const balken = ereignisse(t).map(e => {
+      const stil = `top:${Math.max(0, pct(e.s))}%;height:${Math.max(3, pct(e.e) - pct(e.s))}%`;
+      return e.b
+        ? `<i class="own ${e.b.aufgabeId ? '' : 'frei'}" style="${stil}" title="${esc(uhrzeit(e.s) + ' ' + e.titel)}" data-booking="${e.b.id}"${e.b.aufgabeId ? ` data-task="${e.b.aufgabeId}"` : ''}>${dichte === 'full' ? esc(e.titel) : ''}</i>`
+        : `<i class="extern" style="${stil};--kf:${e.x!.farbe}" title="${esc(uhrzeit(e.s) + ' ' + e.titel + ' · ' + e.x!.kalender)}">${dichte === 'full' ? esc(e.titel) : ''}</i>`;
+    }).join('');
+    const max = dichte === 'full' ? 3 : 2;
+    const res = t.reservierungen.slice(0, max).map(resHtml).join('') + (t.reservierungen.length > max ? `<div class="more">+${t.reservierungen.length - max}</div>` : '');
+    const anders = monat(t.datum) !== m;
+    return `<div class="mc ${anders ? 'other' : ''} ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-res="${t.datum}" data-day="${t.datum}" title="Doppelklick: Tagesansicht">
+      <div class="mh"><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>
+      <div class="mb"><div class="mstrip">${balken}</div><div class="mres">${res}</div></div>${kapazitaetsBalken(t.auslastung)}</div>`;
+  }).join('');
+  return `<div class="mo ${dichte}"><div class="mo-h">${WT.map(w => `<div>${w}</div>`).join('')}</div><div class="mo-g">${zellen}</div></div>`;
+}
+
+function timeline(z: Zeitraum, pph: number): string {
+  const dayW = SPAN * pph, N = z.tage.length, start = z.tage[0]!.datum;
+  const x = (i: number, min: number) => i * dayW + ((min - H0 * 60) / 60) * pph;
+  let oben = '', tage = '', std = '', hg = '';
+  const bahn = { fristen: '', termine: '', res: '', ext: '', wv: '', last: '' };
+  let maxF = 1, maxExt = 1;
+  z.tage.forEach((t, i) => {
+    const wd = wochentag(t.datum), links = i * dayW;
+    if (wd === 0) oben += `<span style="left:${links}px">KW ${kw(t.datum)} · ${kurz(t.datum)}</span>`;
+    if (wd > 4) hg += `<div class="we" style="left:${links}px;width:${dayW}px"></div>`;
+    hg += `<div class="dl" style="left:${links}px"></div>`;
+    if (dayW >= 34) tage += `<span class="${t.datum === z.heute ? 'today' : ''}" style="left:${links}px;width:${dayW}px">${dayW >= 80 ? WT[wd] + ' ' : ''}${tagImMonat(t.datum)}${dayW >= 80 ? '.' + (monat(t.datum) + 1) + '.' : ''}</span>`;
+    if (pph >= 22) for (let h = H0 + 1; h < H1; h += pph >= 40 ? 1 : 2) std += `<span style="left:${links + (h - H0) * pph}px">${h}</span>`;
+    for (const b of t.termine) bahn.termine += `<div class="tl-it own ${b.aufgabeId ? '' : 'frei'}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="left:${x(i, b.s)}px;width:${Math.max(6, (b.dauer / 60) * pph - 2)}px;top:6px" title="${esc(`${b.titel} · ${b.start}`)}">${esc(b.titel)}</div>`;
+    let off = H0 * 60;
+    for (const r of t.reservierungen) { bahn.res += `<div class="tl-it resv ${r.aufgabeId ? '' : 'frei'}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} style="left:${x(i, off)}px;width:${Math.max(6, (r.dauer / 60) * pph - 2)}px;top:6px" title="${esc(`Reservierung ${dauerText(r.dauer)}: ${r.titel}`)}"><b>${dauerText(r.dauer).replace(' ', '')}</b> ${esc(r.titel)}</div>`; off += r.dauer; }
+    const ext = anordnen(t.extern.filter(e => e.start !== null).map(e => ({ kind: 'extern' as const, s: e.start!, e: Math.max(e.ende!, e.start! + 15), lane: 0, n: 1, titel: e.titel, x: e })));
+    ext.forEach(e => { maxExt = Math.max(maxExt, e.lane + 1); bahn.ext += `<div class="tl-it extern" style="left:${x(i, e.s)}px;width:${Math.max(6, ((e.e - e.s) / 60) * pph - 2)}px;top:${4 + e.lane * 24}px;--kf:${e.x!.farbe}" title="${esc(`${e.titel} · ${uhrzeit(e.s)} · ${e.x!.kalender}`)}">${esc(e.titel)}</div>`; });
+    maxF = Math.max(maxF, t.fristen.length);
+    t.fristen.forEach((f, k) => { const cls = f.dringlichkeit === 'ueberfaellig' ? '' : f.dringlichkeit === 'heute' || f.dringlichkeit === 'bald' ? 'soon' : 'later'; bahn.fristen += `<div class="tl-mark ${cls}" data-task="${f.aufgabeId}" style="left:${x(i, H1 * 60) - 4}px;top:${4 + k * 18}px;flex-direction:row-reverse" title="${esc('Frist: ' + f.titel)}"><span class="dia"></span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(f.titel)}</span>` : ''}</div>`; });
+    t.wiedervorlagen.forEach((w, k) => { bahn.wv += `<div class="tl-mark wv" data-task="${w.aufgabeId}" style="left:${x(i, H0 * 60) + 6}px;top:${5 + k * 18}px" title="${esc('Wiedervorlage: ' + w.titel)}"><span class="dia"></span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(w.titel)}</span>` : ''}</div>`; });
+    const a = t.auslastung, p = a.kapazitaet ? a.belegt / a.kapazitaet : a.belegt ? 2 : 0;
+    bahn.last += `<div title="${esc(`${dauerText(a.belegt)} von ${dauerText(a.kapazitaet)}`)}" style="position:absolute;left:${links + 3}px;width:${dayW - 6}px;bottom:3px;height:${(Math.min(1.15, p) / 1.15) * 30}px;border-radius:3px 3px 0 0;background:${p > 1 ? 'var(--over)' : p > 0.8 ? 'var(--soon)' : '#c9c5bd'};opacity:.75"></div>`
+      + (dayW >= 60 && (a.belegt || a.kapazitaet) ? `<span style="position:absolute;left:${links + 6}px;top:3px;font-size:10px;color:${p > 1 ? 'var(--over)' : 'var(--mute)'}">${dauerText(a.belegt).replace(' ', '')} / ${dauerText(a.kapazitaet).replace(' ', '')}</span>` : '');
+  });
+  const iHeute = differenz(start, z.heute);
+  const jetzt = iHeute >= 0 && iHeute < N ? `<div class="tl-now" style="left:${x(iHeute, Math.min(Math.max(z.jetzt, H0 * 60), H1 * 60))}px"></div>` : '';
+  const spur = (k: keyof typeof bahn, label: string, h: number, drop?: string) => `<div class="tl-lane" style="height:${h}px" ${drop ? `data-drop-tl="${drop}"` : ''}><span class="ll">${label}</span>${bahn[k]}</div>`;
+  return `<div class="tl"><div class="tl-scroll"><div class="tl-inner" style="width:${N * dayW}px">
+    <div class="tl-head"><div class="r top">${oben}</div>${tage ? `<div class="r">${tage}</div>` : ''}${std ? `<div class="r hrs">${std}</div>` : ''}</div>
+    <div style="position:relative"><div class="tl-bg">${hg}</div>
+      ${spur('fristen', 'Fristen', 8 + maxF * 18)}
+      ${spur('termine', 'Termine', 34, 'termin')}
+      ${spur('res', 'Reservierungen', 34, 'res')}
+      ${spur('ext', 'Extern', 10 + maxExt * 24)}
+      ${spur('wv', 'Wiedervorlage', 26)}
+      ${spur('last', 'Auslastung', 50)}
+      ${jetzt}
+    </div></div></div></div>`;
+}
+
+function agendaMini(z: Zeitraum): string {
+  const t = z.tage[0]!;
+  const ev = ereignisse(t);
+  const naechstes = ev.find(e => e.e > z.jetzt);
+  return `<div class="mini">
+    <div class="kpi"><b>${WT[wochentag(t.datum)]} ${tagImMonat(t.datum)}.</b> <span class="muted">KW ${kw(t.datum)}</span></div>
+    ${naechstes ? `<div class="muted" style="font-size:12px">Als Nächstes · ${uhrzeit(naechstes.s)}<br><b style="color:var(--ink)">${esc(naechstes.titel)}</b></div>` : ''}
+    <div class="peek">${ev.map(e => `<div style="${e.e <= z.jetzt ? 'opacity:.45' : ''}" ${e.b ? `data-booking="${e.b.id}"` : ''}><span class="legend"><i style="background:${e.x ? e.x.farbe : 'var(--own)'}"></i></span>${uhrzeit(e.s)} ${esc(e.titel)}</div>`).join('')}</div>
+    <div class="peek">${t.reservierungen.map(resHtml).join('')}</div>
+    ${kapazitaetsBalken(t.auslastung)}
+  </div>`;
+}

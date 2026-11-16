@@ -28,6 +28,7 @@ export type Aufgabenliste = {
 };
 
 export type Board = {
+  heute: Datum;
   kategorien: { id: KategorieId; name: string; anzahl: number; spalten: { id: Id; name: string; karten: AufgabeZeile[] }[] }[];
 };
 
