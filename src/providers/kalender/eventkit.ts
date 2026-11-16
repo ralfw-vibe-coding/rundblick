@@ -8,7 +8,7 @@ import type { Kalenderquelle } from './interface';
 
 type Offen = { ok: (d: unknown) => void; nein: (e: Error) => void; timer: ReturnType<typeof setTimeout> };
 
-export function eventKitKalender(helferPfad: string): Kalenderquelle & { beenden(): void } {
+export function eventKitKalender(helferPfad: string, zeitlimit = { anfrage: 15_000, termine: 60_000, zugriff: 10 * 60_000 }): Kalenderquelle & { beenden(): void } {
   let proc: ChildProcessWithoutNullStreams | null = null;
   let naechste = 1;
   const offen = new Map<number, Offen>();
@@ -37,13 +37,13 @@ export function eventKitKalender(helferPfad: string): Kalenderquelle & { beenden
     return p;
   }
 
-  function frage<T>(op: string, extra: Record<string, unknown> = {}, ms = 15000): Promise<T> {
+  function frage<T>(op: string, extra: Record<string, unknown> = {}, ms = zeitlimit.anfrage): Promise<T> {
     const p = starten();
     if (!p) return Promise.reject(new Error('Kalender-Helfer nicht gefunden'));
     const id = naechste++;
     return new Promise<T>((ok, nein) => {
       // Die Erlaubnis-Anfrage wartet auf den Menschen – dafür länger warten
-      const timer = setTimeout(() => { offen.delete(id); nein(new Error('Kalender-Helfer antwortet nicht')); }, op === 'zugriff' ? 10 * 60_000 : ms);
+      const timer = setTimeout(() => { offen.delete(id); nein(new Error('Kalender-Helfer antwortet nicht')); }, op === 'zugriff' ? zeitlimit.zugriff : ms);
       offen.set(id, { ok: d => ok(d as T), nein, timer });
       p.stdin.write(JSON.stringify({ id, op, ...extra }) + '\n');
     });
@@ -55,7 +55,7 @@ export function eventKitKalender(helferPfad: string): Kalenderquelle & { beenden
       try { return await frage<KalenderZugriff>('zugriff'); } catch { return 'nichtVerfuegbar'; }
     },
     kalender: () => frage<KalenderInfo[]>('kalender'),
-    termine: (von, bis) => frage<ExternerTermin[]>('termine', { von, bis }, 60000),
+    termine: (von, bis) => frage<ExternerTermin[]>('termine', { von, bis }, zeitlimit.termine),
     beiAenderung: cb => { abos.add(cb); return () => { abos.delete(cb); }; },
     beenden: () => { proc?.kill(); proc = null; },
   };

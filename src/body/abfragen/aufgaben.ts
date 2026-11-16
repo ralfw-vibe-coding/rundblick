@@ -56,7 +56,7 @@ export function liste(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: Map<
   return {
     heute, offen: offen.length,
     gruppen: (Object.keys(g) as ListenGruppe['art'][]).map(art => ({ art, name: namen[art], aufgaben: g[art] })),
-    zurueckgestellt: passend.filter(a => !a.abgeschlossen && istZurueckgestellt(a, heute)).map(z).sort((x, y) => (x.wiedervorlage ?? '').localeCompare(y.wiedervorlage ?? '')),
+    zurueckgestellt: passend.filter(a => !a.abgeschlossen && istZurueckgestellt(a, heute)).map(z).sort((x, y) => x.wiedervorlage!.localeCompare(y.wiedervorlage!)),
     abgeschlossen: passend.filter(a => a.abgeschlossen).map(z).sort((x, y) => x.titel.localeCompare(y.titel, 'de')),
   };
 }
