@@ -25,7 +25,7 @@
   td, th { text-align: left; padding: 7px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); background: var(--panel2); }
   code { background: var(--bg); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
-  .legend-big { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .legend-big { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .lg { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
   .lg .sample { height: 34px; margin-bottom: 8px; position: relative; }
   .rec { background: #fff; border-left: 4px solid var(--own); padding: 14px 18px; border-radius: 0 10px 10px 0; line-height: 1.6; color: var(--ink2); }
@@ -36,7 +36,19 @@
   <h1><span class="brand"><span class="logo" style="width:26px;height:26px"></span></span>Rundblick – Entwürfe</h1>
   <p class="lead">Arbeitstitel für die Aufgaben-Kalender-App. Ziel: <b>Überblick ist King</b>. Liste, Board und Kalender sollen gleichzeitig sichtbar sein, eine Sicht lässt sich schnell nach vorn holen, und eine neue Aufgabe ist in zwei Sekunden erfasst. Die drei Entwürfe sind klickbare Attrappen mit denselben Beispieldaten. Alles läuft im Speicher, nichts wird gespeichert.</p>
 
-  <div class="drafts">
+  <a class="d" href="d-raster.html" style="display:grid;grid-template-columns:1.25fr 1fr;margin-top:28px">
+    <div class="thumb" style="height:300px;border-bottom:0;border-right:1px solid var(--line)"><iframe src="d-raster.html" loading="lazy" tabindex="-1" style="transform:scale(.42)"></iframe></div>
+    <div class="c" style="padding:20px 22px"><h3 style="font-size:18px">D · Raster <span class="chip" style="background:var(--own);color:#fff;vertical-align:2px">neu · Favorit</span></h3>
+      <p>Das Fenster ist frei in Zellen teilbar, nebeneinander und untereinander. In jede Zelle legst du die Sicht, die du willst, auch dieselbe mehrfach: Aufgabenliste, Kanban-Board, Tageskalender, Mehrtageskalender (3 Tage, Woche, Monat, 3 Monate) oder Timeline.</p>
+      <ul>
+        <li>Jede Sicht passt ihre <b>Dichte an die Zellgröße</b> an: voll, kompakt oder als Mini-Zusammenfassung.</li>
+        <li>Layouts werden als <b>Arbeitsbereiche</b> gespeichert („Überblick“, „Heute“, „Planen“, „Board“) und lassen sich mit <kbd>1</kbd>–<kbd>9</kbd> umschalten.</li>
+        <li>Trenner ziehen zum Anpassen. Ein Doppelklick auf den Zellkopf maximiert die Zelle, <kbd>Esc</kbd> stellt sie wieder her.</li>
+        <li>Damit gehen A, B und C in D auf: Jeder der drei Entwürfe ist nur ein Arbeitsbereich.</li>
+      </ul></div></a>
+
+  <h2 style="margin-top:30px">Frühere Entwürfe (feste Layouts)</h2>
+  <div class="drafts" style="margin-top:10px">
     <a class="d" href="a-triptychon.html">
       <div class="thumb"><iframe src="a-triptychon.html" loading="lazy" tabindex="-1"></iframe></div>
       <div class="c"><h3>A · Triptychon</h3>
@@ -57,12 +69,13 @@
       </div></a>
   </div>
 
-  <div class="rec"><b>Meine Empfehlung:</b> <b>A</b> als Grundgerüst, dazu zwei Bausteine aus den anderen Entwürfen: die <b>Spotlight-Erfassung aus B</b> (globaler Hotkey, auch wenn die App im Hintergrund ist) und die <b>Timeline aus C</b> als vierte Kalendersicht mit Hover-Verknüpfung. Die „Heute“-Kachel aus B wird zur Mini-Zusammenfassung des Kalenders in A. So bleibt immer alles im Blick, und gearbeitet wird mit einem einzigen Tastendruck in einer Sicht.</div>
+  <div class="rec"><b>Stand jetzt:</b> <b>D (Raster)</b> ist das Grundgerüst. Dazu kommen die <b>Spotlight-Erfassung aus B</b> (globaler Hotkey, auch wenn die App im Hintergrund ist) und die <b>Hover-Verknüpfung aus C</b>: Fährt man über eine Aufgabe, leuchten ihre Buchungen in allen Zellen auf.</div>
 
   <h2>Bildsprache im Kalender</h2>
   <div class="legend-big">
     <div class="lg"><div class="sample"><div class="ev own" style="inset:2px 30% 2px 0">Call Codelution<small>14:00–15:00</small></div></div><b>Termin</b><br><span class="muted">Buchung mit Datum, Uhrzeit und Dauer. Ausgefüllter Block im Zeitraster.</span></div>
     <div class="lg"><div class="sample"><div class="resv" style="margin-top:6px"><b>2h</b><span>Angebot Hüttner</span></div></div><b>Reservierung</b><br><span class="muted">Buchung mit Datum und Dauer, aber ohne Uhrzeit. Gestrichelt im Reservierungsband über dem Raster. Der Balken darunter zeigt, wie voll der Tag ist.</span></div>
+    <div class="lg"><div class="sample"><div class="ev own frei" style="inset:2px 50% 2px 0">Zahnarzt</div><div class="resv frei" style="position:absolute;left:52%;right:0;top:6px"><b>1h</b><span>Belege</span></div></div><b>Buchung ohne Aufgabe</b><br><span class="muted">Schiefergrau. Eigener Titel und eigene Beschreibung. Doppelklick ins Band oder Raster trägt eine ein. Später wird daraus per Knopf oder durch Ziehen auf Liste oder Board eine Aufgabe.</span></div>
     <div class="lg"><div class="sample"><div class="ev gcal" style="inset:2px 50% 2px 0">Jour fixe</div><div class="ev icloud" style="inset:2px 0 2px 52%">Yoga</div></div><b>Extern</b><br><span class="muted">Google Calendar (blau) und iCloud (orange). Nur lesbar eingeblendet, hell gefüllt.</span></div>
     <div class="lg"><div class="sample" style="display:flex;gap:14px;align-items:center"><span class="due over">◆ Frist</span><span class="chip wv">↩ Wiedervorlage</span></div><b>Frist &amp; Wiedervorlage</b><br><span class="muted">Fristen sind Rauten (rot = überfällig, orange = heute). Bis zur Wiedervorlage ist eine Aufgabe unsichtbar. Dann taucht sie wieder auf.</span></div>
   </div>
@@ -79,6 +92,7 @@
     <tr><td><code>=status</code></td><td>Status. Damit landet die Aufgabe auch auf dem Board.</td><td><code>=inarbeit</code> · <code>=bereit</code> · <code>=wartet</code></td></tr>
     <tr><td><code>&gt;datum dauer</code></td><td>Buchung als <b>Reservierung</b></td><td><code>&gt;do 2h</code></td></tr>
     <tr><td><code>&gt;datum hh:mm dauer</code></td><td>Buchung als <b>Termin</b></td><td><code>&gt;morgen 14:00 45m</code></td></tr>
+    <tr><td>Zeile beginnt mit <code>&gt;</code></td><td><b>Nur eine Buchung</b>, keine Aufgabe</td><td><code>&gt;fr 17:00 45m Friseur</code></td></tr>
   </table>
   <p class="muted">Datumsangaben: <code>heute</code> <code>morgen</code> <code>üm</code> <code>mo</code>…<code>so</code> <code>+3</code> <code>+2w</code> <code>24.12.</code> <code>24.12.27</code>. Schon beim Tippen zeigt eine Vorschau als Chips, was erkannt wurde.</p>
 
@@ -87,6 +101,8 @@
     <li><b>Ziehen ist Planen.</b> Aufgabe aufs Reservierungsband ziehen ergibt eine Reservierung, ins Zeitraster einen Termin (auf 15 Minuten gerastert). Aufs Board ziehen setzt den Status. Buchungen lassen sich verschieben, und vom Raster aufs Band gezogen wird aus einem Termin eine Reservierung.</li>
     <li><b>Abschließen ist explizit.</b> Das geht über den Kreis in der Liste, den Knopf in der Spalte „Fertig“ oder die Detailansicht. Buchungen schließen eine Aufgabe nie ab.</li>
     <li><b>Ohne Status kein Board.</b> Das Board zeigt nur Aufgaben mit Status. Die Liste zeigt alle, gruppiert nach Frist.</li>
+    <li><b>Board-Spalten in drei Kategorien:</b> <i>Nicht begonnen</i> (Idee, Backlog, Bereit), <i>Begonnen</i> (In Arbeit, Blockiert), <i>Beendet</i> (Erledigt, Abgebrochen). Spalten gibt es beliebig viele, ihre Kategorie ist fest. In einer kleinen Zelle zeigt das Board nur die drei Kategorien. „Beendet“ ist <i>nicht</i> „abgeschlossen“: Abschließen bleibt ein eigener Zustand der Aufgabe.</li>
+    <li><b>Kapazität:</b> Jeder Wochentag hat eine Kapazität (im Entwurf Mo–Do 6 h, Fr 5 h, Wochenende 0). Jede Buchung kann mit ihrer Dauer Kapazität belegen; das lässt sich pro Buchung abschalten. Der Balken unter jedem Tag zeigt die Auslastung, rot heißt überbucht. Pro Aufgabe summieren sich die gebuchten Stunden (z. B. „2,5h“ neben dem Buchungssymbol).</li>
     <li><b>Zurückgestellt</b> (Wiedervorlage in der Zukunft) ist eingeklappt. Wichtig ist nur: Es gibt sie.</li>
     <li><b>Tastatur:</b> <kbd>N</kbd> neu, <kbd>0</kbd>–<kbd>4</kbd> Sichten, <kbd>T</kbd> <kbd>W</kbd> <kbd>M</kbd> <kbd>Z</kbd> Kalendersicht, <kbd>Esc</kbd> zurück. Ein Klick auf eine Aufgabe öffnet die Details.</li>
     <li>Architekturideen: <a href="../requirements/design.html">requirements/design.html</a></li>

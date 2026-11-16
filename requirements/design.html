@@ -76,13 +76,13 @@
   <a href="#ablaeufe">10 Abläufe</a>
   <a href="#struktur">11 Projektstruktur</a>
   <a href="#tests">12 Teststrategie</a>
-  <a href="#offen">13 Offene Fragen</a>
+  <a href="#offen">13 Entscheidungen &amp; Backlog</a>
   <a href="#plan">14 Schrittfolge</a>
   <br><a href="../entwuerfe/index.html">→ UI-Entwürfe</a>
 </nav>
 <main>
   <h1>Rundblick – Architekturideen</h1>
-  <div class="meta">Arbeitstitel · Entwurf vom 16.11.2026 · Electron-Desktop-App für Aufgaben, Board und Kalender mit Google Calendar und iCloud</div>
+  <div class="meta">Arbeitstitel · Stand 16.11.2026, Runde 2 (Entscheidungen eingearbeitet, siehe <a href="#offen">13</a>) · Electron-Desktop-App für Aufgaben, Board und Kalender mit Google Calendar und iCloud</div>
   <p class="lead">Rundblick verwaltet <b>eigene Daten</b> (Aufgaben und ihre Buchungen) in einem <b>Event Store</b> und blendet <b>fremde Daten</b> (Termine aus Google Calendar und iCloud) daneben ein. Die Architektur folgt den Vorgaben: <b>Client → Body → Domain/Provider</b>, strikt nach <b>CQS</b> getrennt. Jeder Pfeil zeigt nur auf ein <i>Interface</i>, nie auf eine Implementation.</p>
 
   <!-- ===================================================== -->
@@ -92,19 +92,26 @@
     <li>Ein Command meldet nur Erfolg oder Misserfolg zurück. Danach erfahren alle Clients per <b>Änderungsbenachrichtigung</b>, welche Bereiche betroffen sind, und fragen ihre Queries neu ab.</li>
     <li>Queries müssen <b>sehr schnell</b> sein (Ziel &lt; 5 ms). Deshalb liegen Projektionen im Speicher. Die Datenmenge einer Person (Zehntausende Events) passt bequem hinein.</li>
     <li>Erfassen muss ohne Kontextwechsel gehen. Dafür gibt es eine zweite Client-Oberfläche, das <b>Schnellerfassungsfenster</b> mit globalem Hotkey.</li>
+    <li>Die Oberfläche ist ein <b>frei teilbares Raster</b> (Entwurf D). Dieselbe Sicht kann mehrfach offen sein, zum Beispiel ein Tages- und ein Monatskalender. Queries sind deshalb parametrisiert (Zeitraum, Filter) und nicht an „die eine“ Kalendersicht gebunden.</li>
   </ul>
   <h3>Ubiquitous Language</h3>
   <table>
     <tr><th>Begriff</th><th>Bedeutung</th><th>Anmerkung</th></tr>
     <tr><td><b>Aufgabe</b></td><td>Etwas zu Tuendes. Pflichtfeld ist der <i>Titel</i>. Optional: Beschreibung, Ort, Verantwortliche/r, Tags, Frist, Wiedervorlage, Status.</td><td>Eine Aufgabe bleibt offen, bis sie <b>explizit abgeschlossen</b> wird.</td></tr>
-    <tr><td><b>Status</b></td><td>Optionale Spalte auf dem Board (z. B. Bereit, In Arbeit, Wartet, Fertig).</td><td>Ohne Status keine Board-Karte. Die Statusliste ist konfigurierbar.</td></tr>
+    <tr><td><b>Status</b></td><td>Optionale Spalte auf dem Board. Spalten gibt es beliebig viele, z. B. Idee, Backlog, Bereit, In Arbeit, Blockiert, Erledigt, Abgebrochen.</td><td>Ohne Status keine Board-Karte. Die Spalten sind konfigurierbar.</td></tr>
+    <tr><td><b>Kategorie</b></td><td>Jede Spalte gehört zu genau einer von drei Kategorien: <i>Nicht begonnen</i>, <i>Begonnen</i>, <i>Beendet</i>.</td><td>Feste Menge. Die Kategorie dient dem Überblick (z. B. „5 begonnen“) und der kompakten Board-Darstellung.</td></tr>
+    <tr><td><b>Abgeschlossen</b></td><td>Eigener Zustand der Aufgabe, unabhängig von Status und Kategorie.</td><td>Auch „Beendet / Erledigt“ schließt <i>nicht</i> ab. Abgeschlossene Aufgaben verschwinden aus Liste und Board.</td></tr>
     <tr><td><b>Frist</b></td><td>Datum, bis zu dem die Aufgabe fällig ist.</td><td>Bestimmt die Gruppierung der Liste (überfällig, heute, Woche …).</td></tr>
     <tr><td><b>Wiedervorlage</b></td><td>Datum, bis zu dem die Aufgabe <i>unsichtbar</i> ist.</td><td>Wird beim Abfragen gegen „heute“ ausgewertet. Beim Wiederauftauchen entsteht <i>kein</i> Event.</td></tr>
-    <tr><td><b>Buchung</b></td><td>Ein Eintrag im Kalender, der zu einer Aufgabe gehört: Datum + Dauer (+ optional Startzeit).</td><td>Eine Aufgabe kann beliebig viele Buchungen haben.</td></tr>
+    <tr><td><b>Buchung</b></td><td>Ein Eintrag im Kalender mit <i>eigenem Titel und eigener Beschreibung</i>, Datum und Dauer, optional Startzeit. Sie kann zu einer Aufgabe gehören.</td><td>„Eine Buchung ist eine Aufgabe mit ein paar Angaben zum Termin.“ Eine Aufgabe kann beliebig viele Buchungen haben. Beim Anlegen aus einer Aufgabe wird deren Titel übernommen.</td></tr>
+    <tr><td><b>Freie Buchung</b></td><td>Buchung <i>ohne</i> Aufgabe, direkt im Kalender eingetragen.</td><td>Es entsteht <i>keine</i> Aufgabe. Später kann man „aus der Buchung eine Aufgabe machen“: Titel und Beschreibung wandern mit, die Buchung bleibt und gehört dann zur Aufgabe.</td></tr>
     <tr><td><b>Reservierung</b></td><td>Buchung <i>ohne</i> Startzeit: „Am Do brauche ich 2 h dafür.“</td><td>Kein eigener Typ. Ob Reservierung oder Termin, ergibt sich daraus, ob eine Startzeit gesetzt ist.</td></tr>
     <tr><td><b>Termin</b></td><td>Buchung <i>mit</i> Startzeit.</td><td>Wird aus einer Reservierung zum Termin, sobald man eine Uhrzeit setzt, und umgekehrt.</td></tr>
     <tr><td><b>Externer Termin</b></td><td>Eintrag aus Google Calendar oder iCloud.</td><td>Gehört <i>nicht</i> zum Domain state. Er ist ein Cache und wird nur lesend eingeblendet.</td></tr>
-    <tr><td><b>Auslastung</b></td><td>Summe aus Terminen, externen Terminen und Reservierungen pro Tag im Verhältnis zur Tageskapazität.</td><td>Abgeleitet. Erscheint als Balken im Reservierungsband und in der Timeline.</td></tr>
+    <tr><td><b>Tageskapazität</b></td><td>Planbare Zeit pro Wochentag (z. B. Mo–Do 6 h, Fr 5 h, Sa/So 0).</td><td>Wird in den Einstellungen festgelegt, gilt aber als Domain state (siehe 8.2), damit sie auf allen Geräten gleich ist.</td></tr>
+    <tr><td><b>Belegung</b></td><td>Eine Buchung <i>kann</i> mit ihrer Dauer Kapazität belegen (Schalter pro Buchung, Standard: ja).</td><td>Beispiel für „nein“: ein Arzttermin am Abend.</td></tr>
+    <tr><td><b>Auslastung</b></td><td>Belegte Minuten eines Tages im Verhältnis zu seiner Tageskapazität.</td><td>Abgeleitet. Erscheint als Balken im Reservierungsband und in der Timeline, rot bei Überbuchung. Externe Termine werden zur Information angezeigt, belegen aber keine Planungskapazität.</td></tr>
+    <tr><td><b>Gebuchte Zeit einer Aufgabe</b></td><td>Summe der belegenden Buchungen einer Aufgabe.</td><td>Abgeleitet. Steht als „2,5h“ neben dem Buchungssymbol in Liste und Board.</td></tr>
   </table>
 
   <!-- ===================================================== -->
@@ -118,11 +125,11 @@
     <div class="arrow" style="grid-column:1/3">▼</div><div class="arrow" style="grid-column:3/4;margin-top:-22px">▼</div>
     <div class="box domain span2"><h4>Domain interface &nbsp;<span class="pill" style="background:var(--c-domain)">kennt nur den Domain state provider</span></h4>
       <p>Entscheidet über Commands und beantwortet Fragen zum eigenen Zustand. Für jeden Command baut sie sich aus dem Event Store ein <b>Kontextmodell</b>, prüft die Regeln und hängt neue Events an. Queries liest sie aus <b>Projektionen</b>, die laufend aus den Events nachgeführt werden.</p>
-      <ul><li>Aufgaben, Status, Buchungen, Board-Konfiguration, Verknüpfungen zu externen Kalendern</li></ul></div>
+      <ul><li>Aufgaben, Status, Buchungen (auch freie), Board-Spalten mit Kategorien, Tageskapazitäten, Verknüpfungen zu externen Kalendern</li></ul></div>
     <div class="box prov"><h4>Provider interfaces</h4>
-      <ul><li>Uhr · IdGenerator</li><li>Kalenderquelle (Google, iCloud, optional EventKit)</li><li>Externer Kalender-Cache</li><li>Geheimnisspeicher (Keychain)</li><li>Einstellungen · Benachrichtiger</li></ul></div>
+      <ul><li>Uhr · IdGenerator</li><li>Kalenderquelle: <b>EventKit</b> (zuerst), später Google/CalDAV</li><li>Externer Kalender-Cache</li><li>Geheimnisspeicher (Keychain)</li><li>Einstellungen · Benachrichtiger</li></ul></div>
     <div class="arrow" style="grid-column:1/3">▼</div>
-    <div class="box prov span2"><h4>Domain state provider: Event Store</h4><p>Append-only, Abfrage nach Event-Typen und Tags, bedingtes Anhängen (optimistische Konsistenz). Implementierung zunächst als JSONL-Datei.</p></div>
+    <div class="box prov span2"><h4>Domain state provider: Event Store</h4><p>Append-only, Abfrage nach Event-Typen und Tags, bedingtes Anhängen (optimistische Konsistenz). Implementierung als JSONL-Datei <b>in der Dropbox</b>.</p></div>
     <div class="box state"><h4>Application state</h4><p>Events (= Domain state) · Cache externer Termine + Sync-Tokens · Einstellungen · Geheimnisse im Schlüsselbund</p></div>
   </div>
 
@@ -143,7 +150,7 @@
   <h2 id="electron">3 Abbildung auf Electron</h2>
   <div class="proc">
     <div><h4>Renderer · Hauptfenster</h4>
-      <div class="inner" style="border-color:var(--c-client)"><b>Client (UI)</b><br>Svelte 5, Sichten, Drag &amp; Drop, Tastatur</div>
+      <div class="inner" style="border-color:var(--c-client)"><b>Client (UI)</b><br>Svelte 5, Raster aus Zellen, Sichten, Drag &amp; Drop, Tastatur</div>
       <div class="inner" style="border-color:var(--c-client)">ruft <code>window.rundblick.command / query</code> und abonniert <code>onChange</code></div></div>
     <div><h4>Renderer · Schnellerfassung</h4>
       <div class="inner" style="border-color:var(--c-client)"><b>Client (Spotlight)</b><br>rahmenloses Fenster, <kbd>⌥ Leertaste</kbd> global, Vorschau als Chips</div></div>
@@ -151,7 +158,7 @@
       <div class="inner" style="border-color:var(--c-client)"><b>Client-Adapter:</b> <code>ipcMain.handle</code>, globalShortcut, Tray, optional HTTP auf <code>127.0.0.1</code> mit Token</div>
       <div class="inner" style="border-color:var(--c-body)"><b>Body</b></div>
       <div class="inner" style="border-color:var(--c-domain)"><b>Domain</b> + Projektionen (im Speicher)</div>
-      <div class="inner" style="border-color:var(--c-prov)"><b>Provider:</b> JSONL Event Store, Keychain (safeStorage), Google REST, CalDAV, Notification</div></div>
+      <div class="inner" style="border-color:var(--c-prov)"><b>Provider:</b> JSONL Event Store (Dropbox-Ordner), Keychain (safeStorage), EventKit-Helfer (Swift), Notification</div></div>
   </div>
   <ul>
     <li><b>Preload/contextBridge</b> stellt nur drei Funktionen bereit: <code>command(name, payload)</code>, <code>query(name, payload)</code> und <code>onChange(cb)</code>. Die Typen kommen aus <code>body/interface.ts</code>. Der Renderer sieht also genau das Body interface und nichts sonst. Einstellungen: <code>contextIsolation</code> an, <code>sandbox</code> an, <code>nodeIntegration</code> aus.</li>
@@ -169,13 +176,26 @@
     <tr><td>Aufgabe aufs Reservierungsband ziehen</td><td><code>command.buchungAnlegen({ aufgabeId, datum, dauer: 60 })</code></td></tr>
     <tr><td>Aufgabe ins Zeitraster ziehen</td><td><code>command.buchungAnlegen({ aufgabeId, datum, start, dauer })</code></td></tr>
     <tr><td>Buchung verschieben / aufs Band ziehen</td><td><code>command.buchungVerschieben({ buchungId, datum, start | null })</code></td></tr>
-    <tr><td>Doppelklick ins Band oder Raster ohne Aufgabe</td><td><code>command.reservierungEintragen({ titel, datum, dauer, start? })</code></td></tr>
+    <tr><td>Doppelklick ins Band oder Raster</td><td><code>command.buchungEintragen({ titel, datum, dauer, start? })</code> (freie Buchung)</td></tr>
+    <tr><td>„→ Aufgabe daraus machen“ oder freie Buchung auf Liste/Board ziehen</td><td><code>command.aufgabeAusBuchung({ buchungId, status? })</code></td></tr>
+    <tr><td>Häkchen „belegt Kapazität“ in der Buchung</td><td><code>command.buchungAendern({ buchungId, belegt })</code></td></tr>
     <tr><td>Karte in eine andere Spalte ziehen</td><td><code>command.statusSetzen({ aufgabeId, status })</code></td></tr>
     <tr><td>Kreis abhaken</td><td><code>command.aufgabeAbschliessen({ aufgabeId })</code></td></tr>
     <tr><td>Sicht wird sichtbar oder ändert ihren Zeitraum</td><td><code>query.liste / board / zeitraum({ von, bis }) / ueberblick</code></td></tr>
     <tr><td>Benachrichtigung <code>geaendert(['kalender'])</code></td><td>nur die betroffenen sichtbaren Sichten fragen neu ab</td></tr>
   </table>
-  <p>UI-Zustand wie Fokus, Zoom, Kalendersicht oder Splitter-Position gehört <i>nicht</i> zum Domain state. Er wird über <code>command.einstellungMerken</code> im Einstellungs-Provider abgelegt, ganz ohne Events.</p>
+  <h3>Raster &amp; Arbeitsbereiche</h3>
+  <p>Das Hauptfenster ist ein Baum aus <b>Splits</b> (nebeneinander oder untereinander, mit Größenanteilen) und <b>Zellen</b>. Jede Zelle hat eine Sicht und deren eigenen Zustand:</p>
+<pre><span class="k">type</span> <span class="t">Knoten</span> = { t: <span class="s">'split'</span>; richtung: <span class="s">'nebeneinander'</span> | <span class="s">'untereinander'</span>; anteile: number[]; kinder: Knoten[] }
+           | { t: <span class="s">'zelle'</span>; id: string; sicht: Sicht | <span class="k">null</span>; zustand: SichtZustand };
+<span class="k">type</span> <span class="t">Sicht</span> = <span class="s">'aufgabenliste'</span> | <span class="s">'board'</span> | <span class="s">'tag'</span> | <span class="s">'mehrtage'</span> | <span class="s">'timeline'</span>;
+<span class="k">type</span> <span class="t">SichtZustand</span> = { bereich?: <span class="s">'3tage'</span> | <span class="s">'woche'</span> | <span class="s">'monat'</span> | <span class="s">'3monate'</span>; anker?: Datum; zoom?: number; filter?: string };
+<span class="k">type</span> <span class="t">Arbeitsbereich</span> = { name: string; wurzel: Knoten };   <span class="c">// z. B. „Überblick“, „Heute“, „Planen“, „Board“</span></pre>
+  <ul>
+    <li>Jede Sicht wählt ihre <b>Dichte</b> selbst nach der Zellgröße: voll, kompakt oder als Mini-Zusammenfassung. Das ist reine Darstellungslogik im Client.</li>
+    <li>Jede Zelle fragt ihre eigenen Queries ab (z. B. <code>zeitraum</code> für ihren Ausschnitt). Bei <code>geaendert(['kalender'])</code> fragen alle Kalenderzellen neu ab.</li>
+    <li>Arbeitsbereiche, Zellzustand und Splitter-Anteile sind <b>UI-Zustand pro Gerät</b>, kein Domain state. Sie werden über <code>command.einstellungMerken</code> lokal gespeichert, ohne Events. Das iPhone hat später eigene Layouts.</li>
+  </ul>
 
   <!-- ===================================================== -->
   <h2 id="body">5 Body interface</h2>
@@ -194,19 +214,22 @@
   aufgabeWiedereroeffnen(c: { aufgabeId: Id }): Promise&lt;CommandStatus&gt;;
   aufgabeVerwerfen(c: { aufgabeId: Id }): Promise&lt;CommandStatus&gt;;
   <span class="c">// ---- Commands: Buchungen</span>
-  buchungAnlegen(c: { aufgabeId: Id; datum: Datum; dauer: Minuten; start?: Uhrzeit }): Promise&lt;CommandStatus&gt;;
-  reservierungEintragen(c: { titel: string; datum: Datum; dauer: Minuten; start?: Uhrzeit }): Promise&lt;CommandStatus&gt;;
+  buchungAnlegen(c: { aufgabeId: Id; datum: Datum; dauer: Minuten; start?: Uhrzeit; titel?: string }): Promise&lt;CommandStatus&gt;;  <span class="c">// Titel: Standard = Aufgabentitel</span>
+  buchungEintragen(c: { titel: string; beschreibung?: string; datum: Datum; dauer: Minuten; start?: Uhrzeit }): Promise&lt;CommandStatus&gt;;  <span class="c">// freie Buchung</span>
+  buchungAendern(c: { buchungId: Id; titel?: string; beschreibung?: string; belegt?: boolean }): Promise&lt;CommandStatus&gt;;
+  aufgabeAusBuchung(c: { buchungId: Id; status?: StatusId }): Promise&lt;CommandStatus&gt;;
   buchungVerschieben(c: { buchungId: Id; datum: Datum; start: Uhrzeit | <span class="k">null</span> }): Promise&lt;CommandStatus&gt;;
   buchungsdauerAendern(c: { buchungId: Id; dauer: Minuten }): Promise&lt;CommandStatus&gt;;
   buchungStornieren(c: { buchungId: Id }): Promise&lt;CommandStatus&gt;;
   <span class="c">// ---- Commands: Board-Konfiguration</span>
-  statusspalteAnlegen(c: { name: string; position?: number }): Promise&lt;CommandStatus&gt;;
+  statusspalteAnlegen(c: { name: string; kategorie: <span class="s">'nichtBegonnen'</span> | <span class="s">'begonnen'</span> | <span class="s">'beendet'</span>; position?: number }): Promise&lt;CommandStatus&gt;;
   statusspalteUmbenennen(c: { statusId: StatusId; name: string }): Promise&lt;CommandStatus&gt;;
-  statusspaltenSortieren(c: { reihenfolge: StatusId[] }): Promise&lt;CommandStatus&gt;;
+  statusspaltenSortieren(c: { reihenfolge: StatusId[] }): Promise&lt;CommandStatus&gt;;  <span class="c">// nur innerhalb einer Kategorie</span>
+  <span class="c">// ---- Commands: Kapazität</span>
+  tageskapazitaetFestlegen(c: { wochentag: 1|2|3|4|5|6|7; minuten: Minuten }): Promise&lt;CommandStatus&gt;;
   <span class="c">// ---- Commands: externe Kalender (Application state, z. T. Domain state)</span>
-  kalenderVerbinden(c: { quelle: <span class="s">'google'</span> | <span class="s">'icloud'</span>; zugang: Zugang }): Promise&lt;CommandStatus&gt;;
-  kalenderTrennen(c: { verbindungId: Id }): Promise&lt;CommandStatus&gt;;
-  kalenderAuswaehlen(c: { verbindungId: Id; kalenderIds: string[] }): Promise&lt;CommandStatus&gt;;
+  kalenderZugriffAnfragen(): Promise&lt;CommandStatus&gt;;   <span class="c">// EventKit: macOS fragt einmal um Erlaubnis</span>
+  kalenderAuswaehlen(c: { kalenderIds: string[] }): Promise&lt;CommandStatus&gt;;   <span class="c">// welche macOS-Kalender eingeblendet werden</span>
   synchronisieren(): Promise&lt;CommandStatus&gt;;
   buchungVeroeffentlichen(c: { buchungId: Id; zielKalender: KalenderRef }): Promise&lt;CommandStatus&gt;;
   einstellungMerken(c: { schluessel: string; wert: unknown }): Promise&lt;CommandStatus&gt;;
@@ -219,7 +242,7 @@
   aufgabe(q: { aufgabeId: Id }): Promise&lt;AufgabeDetails | <span class="k">null</span>&gt;;
   ueberblick(): Promise&lt;Ueberblick&gt;;   <span class="c">// Zähler und Vorschau für eingeklappte Sichten und die Kachel „Heute“</span>
   vorschlaege(q: { art: <span class="s">'tag'</span> | <span class="s">'person'</span> | <span class="s">'ort'</span>; praefix: string }): Promise&lt;string[]&gt;;
-  verbindungen(): Promise&lt;Verbindung[]&gt;;
+  kalenderListe(): Promise&lt;KalenderInfo[]&gt;;   <span class="c">// alle in macOS eingerichteten Kalender mit Konto, Farbe, sichtbar?</span>
 
   <span class="c">// ---- Benachrichtigung (Push vom Body zum Client)</span>
   beiAenderung(cb: (bereiche: Bereich[]) =&gt; <span class="k">void</span>): Abmelden;
@@ -228,12 +251,12 @@
 <span class="k">type</span> <span class="t">Zeitraum</span> = { heute: Datum; jetzt: Uhrzeit; tage: <span class="t">Tag</span>[] };
 <span class="k">type</span> <span class="t">Tag</span> = {
   datum: Datum;
-  termine: { buchungId; aufgabeId; titel; start; ende; abgeschlossen }[];
-  reservierungen: { buchungId; aufgabeId; titel; dauer; abgeschlossen }[];
-  extern: { quelle: <span class="s">'google'</span>|<span class="s">'icloud'</span>; kalender; titel; start; ende; ganztaegig }[];
+  termine: { buchungId; aufgabeId?; titel; aufgabentitel?; start; ende; belegt; abgeschlossen }[];
+  reservierungen: { buchungId; aufgabeId?; titel; aufgabentitel?; dauer; belegt; abgeschlossen }[];
+  extern: { konto; kalender; farbe; titel; start; ende; ganztaegig }[];   <span class="c">// aus EventKit: Konto = iCloud, Google …</span>
   fristen: { aufgabeId; titel; dringlichkeit: <span class="s">'ueberfaellig'</span>|<span class="s">'heute'</span>|<span class="s">'bald'</span>|<span class="s">'spaeter'</span> }[];
   wiedervorlagen: { aufgabeId; titel }[];
-  auslastung: { gebucht: Minuten; kapazitaet: Minuten };
+  auslastung: { belegt: Minuten; kapazitaet: Minuten; extern: Minuten };
 };</pre>
 
   <h3>Verarbeitung im Body (Beispiel)</h3>
@@ -272,7 +295,7 @@
   <span class="c">// … weitere analog zum Body</span>
 
   <span class="c">// Queries (synchron aus Projektionen im Speicher)</span>
-  aufgaben(heute: Datum): AufgabenProjektion;
+  aufgaben(heute: Datum): AufgabenProjektion;   <span class="c">// inkl. gebuchter Zeit je Aufgabe</span>
   board(): BoardProjektion;
   kalender(von: Datum, bis: Datum, heute: Datum): EigeneKalenderdaten;
   aufgabe(id: Id): AufgabeDetails | <span class="k">null</span>;
@@ -299,7 +322,10 @@
     <tr><th>Regel</th><th>Kontext (Events per Tag)</th></tr>
     <tr><td>Titel ist Pflicht und nicht leer</td><td>– (Eingabeprüfung)</td></tr>
     <tr><td>Abgeschlossene oder verworfene Aufgaben bekommen keine neuen Buchungen, keinen Status, keine Änderungen</td><td><code>aufgabe:&lt;id&gt;</code></td></tr>
-    <tr><td>Abschließen erfolgt nur explizit. Buchungen in der Vergangenheit und die Spalte „Fertig“ schließen <i>nicht</i> ab.</td><td>–</td></tr>
+    <tr><td>Abschließen erfolgt nur explizit. Buchungen in der Vergangenheit und Spalten der Kategorie „Beendet“ schließen <i>nicht</i> ab.</td><td>–</td></tr>
+    <tr><td>Eine Buchung hat einen nicht leeren Titel. Eine Aufgabe kann man nur aus einer <i>freien</i> Buchung machen.</td><td><code>buchung:&lt;id&gt;</code></td></tr>
+    <tr><td>Jede Spalte hat genau eine Kategorie. Sortiert wird nur innerhalb der Kategorie, die Kategorien selbst stehen fest in der Reihenfolge nicht begonnen → begonnen → beendet.</td><td><code>board</code></td></tr>
+    <tr><td>Tageskapazität liegt zwischen 0 und 24 h</td><td>–</td></tr>
     <tr><td>Status muss eine existierende Spalte sein</td><td><code>board</code></td></tr>
     <tr><td>Spalte entfernen nur, wenn leer (oder Aufgaben werden statuslos)</td><td><code>board</code> + Status-Events</td></tr>
     <tr><td>Dauer &gt; 0. Start + Dauer darf über Mitternacht gehen? → <i>offen</i></td><td>–</td></tr>
@@ -335,9 +361,8 @@
     <tr><th>Provider</th><th>Implementierung (Vorschlag)</th><th>Bemerkung</th></tr>
     <tr><td>EventStore</td><td><code>eventstore-jsonl</code>: eine Zeile pro Event, <code>fsync</code> nach jedem Anhängen, Index der Tags im Speicher</td><td>Später als Alternative <code>eventstore-sqlite</code>. Für Tests gibt es eine In-Memory-Variante mit gemeinsamer Contract-Testsuite.</td></tr>
     <tr><td>Uhr / IdGenerator</td><td>System-Uhr, <code>ulid</code></td><td>Für Tests feste Uhr und deterministische IDs.</td></tr>
-    <tr><td>Kalenderquelle Google</td><td>Google Calendar REST v3, OAuth 2.0 „Installed App“ mit PKCE und Loopback-Redirect</td><td><code>events.list</code> mit <code>singleEvents=true</code> und <code>syncToken</code></td></tr>
-    <tr><td>Kalenderquelle iCloud</td><td>CalDAV (<code>tsdav</code>) + <code>ical.js</code>, Apple-ID + app-spezifisches Passwort</td><td>iCloud bietet kein OAuth. Serien werden über <code>expand</code> oder <code>ical.js</code> aufgelöst.</td></tr>
-    <tr><td>Kalenderquelle EventKit (Option)</td><td>kleines Swift-Hilfsprogramm, JSON über stdin/stdout</td><td>Liest <i>alle</i> in macOS eingerichteten Kalender (iCloud, Google, Exchange) ohne eigene Anmeldung. Siehe <a href="#extern">9</a>.</td></tr>
+    <tr><td><b>Kalenderquelle EventKit</b> (entschieden, zuerst)</td><td>kleines Swift-Hilfsprogramm, JSON über stdin/stdout</td><td>Liest <i>alle</i> in macOS eingerichteten Kalender (iCloud, Google, Exchange) ohne eigene Anmeldung. Siehe <a href="#extern">9</a>.</td></tr>
+    <tr><td>Kalenderquelle Google / iCloud direkt (später, optional)</td><td>Google Calendar REST v3 mit OAuth/PKCE · CalDAV (<code>tsdav</code> + <code>ical.js</code>) mit App-Passwort</td><td>Nur nötig, falls Rundblick einmal ohne macOS-Kalender laufen soll.</td></tr>
     <tr><td>KalenderCache</td><td>SQLite (<code>better-sqlite3</code>) oder JSON pro Kalender</td><td>Zeitraumabfragen über einen Index auf <code>start</code>.</td></tr>
     <tr><td>Geheimnisse</td><td>Electron <code>safeStorage</code> (Keychain-gestützt)</td><td>OAuth-Refresh-Token, iCloud-App-Passwort</td></tr>
   </table>
@@ -351,7 +376,7 @@
   <span class="s">"zeit"</span>: <span class="s">"2026-11-16T10:41:07.120+01:00"</span>,
   <span class="s">"tags"</span>: [<span class="s">"aufgabe:01JD…"</span>, <span class="s">"buchung:01JD…"</span>],
   <span class="s">"daten"</span>: { <span class="s">"buchungId"</span>: <span class="s">"01JD…"</span>, <span class="s">"aufgabeId"</span>: <span class="s">"01JD…"</span>, <span class="s">"datum"</span>: <span class="s">"2026-11-19"</span>, <span class="s">"dauer"</span>: 120 },
-  <span class="s">"meta"</span>: { <span class="s">"schema"</span>: 1, <span class="s">"quelle"</span>: <span class="s">"ui"</span> | <span class="s">"schnellerfassung"</span> | <span class="s">"api"</span> | <span class="s">"sync"</span>, <span class="s">"geraet"</span>: <span class="s">"mbp-ralf"</span> }
+  <span class="s">"meta"</span>: { <span class="s">"schema"</span>: 1, <span class="s">"quelle"</span>: <span class="s">"ui"</span> | <span class="s">"schnellerfassung"</span> | <span class="s">"api"</span> | <span class="s">"sync"</span>, <span class="s">"geraet"</span>: <span class="s">"mac-ralf"</span>, <span class="s">"hlc"</span>: <span class="s">"1795337267120:0"</span> }
 }</pre>
   <p>Die <b>Position</b> (laufende Nummer im Store) wird beim Speichern vergeben und gehört nicht zum Event. Bei Schemaänderungen werden Events nie umgeschrieben. Stattdessen gibt es <b>Upcaster</b> beim Lesen (<code>schema: 1 → 2</code>).</p>
 
@@ -369,12 +394,16 @@
     <tr><td><code>StatusGesetzt</code> / <code>StatusEntfernt</code></td><td>aufgabeId, status</td><td>aufgabe, board</td></tr>
     <tr><td><code>AufgabeAbgeschlossen</code> / <code>AufgabeWiedereroeffnet</code></td><td>aufgabeId</td><td>aufgabe</td></tr>
     <tr><td><code>AufgabeVerworfen</code></td><td>aufgabeId, grund?</td><td>aufgabe</td></tr>
-    <tr><td><code>BuchungAngelegt</code></td><td>buchungId, aufgabeId, datum, dauer, start?</td><td>aufgabe, buchung</td></tr>
-    <tr><td><code>BuchungVerschoben</code></td><td>buchungId, datum, start | null (<i>null macht sie zur Reservierung</i>)</td><td>aufgabe, buchung</td></tr>
-    <tr><td><code>BuchungsdauerGeaendert</code></td><td>buchungId, dauer</td><td>aufgabe, buchung</td></tr>
-    <tr><td><code>BuchungStorniert</code></td><td>buchungId</td><td>aufgabe, buchung</td></tr>
-    <tr><td><code>StatusspalteAngelegt</code> / <code>…Umbenannt</code> / <code>StatusspaltenSortiert</code> / <code>StatusspalteEntfernt</code></td><td>statusId, name, position / reihenfolge[]</td><td>board</td></tr>
-    <tr><td><code>BuchungVeroeffentlicht</code></td><td>buchungId, quelle, kalenderId, externeId</td><td>buchung, extern</td></tr>
+    <tr><td><code>BuchungAngelegt</code></td><td>buchungId, aufgabeId?, titel, beschreibung?, datum, dauer, start?, belegt <i>(ohne aufgabeId = freie Buchung)</i></td><td>buchung (+ aufgabe)</td></tr>
+    <tr><td><code>BuchungUmbenannt</code> / <code>BuchungsbeschreibungGeaendert</code></td><td>buchungId, titel / beschreibung</td><td>buchung (+ aufgabe)</td></tr>
+    <tr><td><code>BuchungsbelegungGeaendert</code></td><td>buchungId, belegt</td><td>buchung (+ aufgabe)</td></tr>
+    <tr><td><code>AufgabeAusBuchungErstellt</code></td><td>aufgabeId, buchungId, titel, beschreibung, status? <i>(ersetzt hier AufgabeErfasst und ordnet die Buchung zu)</i></td><td>aufgabe, buchung</td></tr>
+    <tr><td><code>BuchungVerschoben</code></td><td>buchungId, datum, start | null (<i>null macht sie zur Reservierung</i>)</td><td>buchung (+ aufgabe)</td></tr>
+    <tr><td><code>BuchungsdauerGeaendert</code></td><td>buchungId, dauer</td><td>buchung (+ aufgabe)</td></tr>
+    <tr><td><code>BuchungStorniert</code></td><td>buchungId</td><td>buchung (+ aufgabe)</td></tr>
+    <tr><td><code>StatusspalteAngelegt</code> / <code>…Umbenannt</code> / <code>StatusspaltenSortiert</code> / <code>StatusspalteEntfernt</code></td><td>statusId, name, <b>kategorie</b>, position / reihenfolge[]</td><td>board</td></tr>
+    <tr><td><code>TageskapazitaetFestgelegt</code></td><td>wochentag (1 = Mo … 7 = So), minuten</td><td>kapazitaet</td></tr>
+    <tr><td><code>BuchungVeroeffentlicht</code></td><td>buchungId, kalenderId (EventKit), externeId</td><td>buchung, extern</td></tr>
     <tr><td><code>VeroeffentlichungZurueckgezogen</code></td><td>buchungId, externeId</td><td>buchung, extern</td></tr>
   </table>
   <div class="note"><b>Feingranular statt <code>AufgabeGeaendert</code>.</b> Jedes Event hat eine fachliche Bedeutung („Frist gesetzt“). So lassen sich später Fragen beantworten wie „Wie oft wurde diese Frist verschoben?“ oder „Wie lange stand die Karte in ‚Wartet‘?“. Das nützt dem Überblick, zum Beispiel für eine Durchlaufzeit-Anzeige auf dem Board. Ein Command wie <code>aufgabeAendern</code> erzeugt einfach mehrere Events in <i>einem</i> atomaren Anhängen.</div>
@@ -382,31 +411,53 @@
   <h3>8.3 Weiterer Application state (kein Domain state)</h3>
   <table>
     <tr><th>Was</th><th>Wo</th><th>Struktur</th></tr>
-    <tr><td>Externe Termine</td><td><code>kalendercache.sqlite</code></td><td><code>termin(quelle, kalenderId, externeId PK, titel, start, ende, ganztaegig, ort, aktualisiert)</code>, <code>syncstand(kalenderId PK, token, zuletzt)</code></td></tr>
-    <tr><td>Verbindungen</td><td><code>einstellungen.json</code></td><td><code>{ id, quelle, konto, kalender: [{ id, name, farbe, sichtbar }] }</code></td></tr>
-    <tr><td>Geheimnisse</td><td>Keychain via safeStorage</td><td>Refresh-Token, App-Passwörter. Nie im Klartext auf der Platte.</td></tr>
-    <tr><td>UI-Zustand</td><td><code>einstellungen.json</code></td><td>Fokus-Sicht, Kalendersicht, Zoom, Splitter, Tageskapazität, Arbeitszeitfenster</td></tr>
+    <tr><td>Externe Termine</td><td><code>kalendercache.sqlite</code> (lokal, nicht in der Dropbox)</td><td><code>termin(quelle, kalenderId, externeId PK, titel, start, ende, ganztaegig, ort, aktualisiert)</code>, <code>syncstand(kalenderId PK, token, zuletzt)</code></td></tr>
+    <tr><td>Sichtbare Kalender</td><td><code>geraet.json</code> (lokal)</td><td><code>{ eingeblendet: [kalenderId …] }</code>. EventKit-IDs sind gerätebezogen, deshalb lokal.</td></tr>
+    <tr><td>Geheimnisse</td><td>Keychain via safeStorage</td><td>Mit EventKit vorerst keine. Erst nötig, wenn Google/CalDAV direkt angebunden werden.</td></tr>
+    <tr><td>UI-Zustand</td><td><code>geraet.json</code> (lokal)</td><td>Arbeitsbereiche (Raster-Bäume), Zellzustand, Zoom, Arbeitszeitfenster der Ansicht</td></tr>
   </table>
-  <h3>8.4 Speicherort &amp; mehrere Rechner</h3>
-  <p>Am Anfang liegt alles unter <code>~/Library/Application Support/Rundblick/</code>. Soll der Bestand über Dropbox oder iCloud Drive auf mehreren Macs verfügbar sein, bietet sich eine <b>Event-Datei pro Gerät</b> an (<code>events/&lt;geraet&gt;.jsonl</code>). Jedes Gerät schreibt nur in seine eigene Datei, deshalb gibt es keine Schreibkonflikte im Dateisystem. Gelesen wird die Vereinigung aller Dateien, sortiert nach Zeitstempel (Hybrid Logical Clock) und dann nach ID. Fachliche Konflikte (zwei Geräte verschieben dieselbe Buchung) löst die Regel „letztes Event gewinnt“, was für eine Ein-Personen-App ausreicht. Der Cache externer Termine bleibt pro Gerät lokal.</p>
+  <h3>8.4 Speicherort: Dropbox</h3>
+  <p><b>Entschieden:</b> Der Domain state liegt in der Dropbox, zum Beispiel unter <code>~/Dropbox/Apps/Rundblick/</code>. Lokal unter <code>~/Library/Application Support/Rundblick/</code> liegen nur gerätebezogene Dinge: Kalender-Cache, sichtbare Kalender, Layouts.</p>
+<pre>Dropbox/Apps/Rundblick/
+├─ events/
+│  ├─ mac-ralf.jsonl        <span class="c">// jetzt: ein Gerät, eine Datei</span>
+│  └─ iphone-ralf.jsonl     <span class="c">// später: die iPhone-App schreibt ihre eigene Datei</span>
+└─ snapshots/               <span class="c">// optional, beschleunigt den Start; jederzeit löschbar</span></pre>
+  <p>Heute arbeitest du allein auf einem Mac. Trotzdem empfehle ich <b>von Anfang an eine Event-Datei pro Gerät</b>. Das kostet fast nichts (ein Ordner statt einer Datei) und erspart später eine Migration:</p>
+  <ul>
+    <li>Dropbox kann gleichzeitige Änderungen <i>derselben</i> Datei nicht zusammenführen. Daraus entstehen „Konfliktkopien“. Schreibt jedes Gerät nur in seine eigene Datei, kann das nicht passieren.</li>
+    <li>Jedes Gerät <i>liest</i> alle Dateien und mischt die Events zu einem Strom. Damit die Reihenfolge auf allen Geräten gleich ist, braucht jedes Event einen Zeitstempel, der geräteübergreifend vergleichbar ist. Dafür ist die Hybrid Logical Clock da.</li>
+    <li>Die Mac-App beobachtet den Ordner (<code>fs.watch</code>). Kommen neue Zeilen von einem anderen Gerät an, werden die Projektionen nachgeführt, und die Clients bekommen <code>geaendert(…)</code>.</li>
+    <li>Das bedingte Anhängen (Konsistenzprüfung) gilt nur lokal. Konkurrierende Änderungen zweier Geräte (beide verschieben dieselbe Buchung) löst die Regel „späteres Event gewinnt“. Für eine Ein-Personen-App reicht das.</li>
+  </ul>
+  <h3>8.5 Was ist eine Hybrid Logical Clock (HLC)?</h3>
+  <p>Ein Zeitstempel, der <b>wie eine Uhrzeit aussieht, aber nie rückwärts läuft</b> und geräteübergreifend eine eindeutige Reihenfolge ergibt. Er besteht aus zwei Teilen: <code>(physische Zeit in ms, Zähler)</code>, dazu als Gleichstand-Entscheider die Geräte-ID.</p>
+  <ul>
+    <li><b>Problem:</b> Die Uhren von Mac und iPhone gehen nie exakt gleich. Geht das iPhone 30 Sekunden nach, bekommt ein Event, das es <i>nach</i> einem Mac-Event geschrieben hat, eventuell einen <i>früheren</i> Zeitstempel. Nach der Wanduhr sortiert, stünden die Events dann in falscher Reihenfolge.</li>
+    <li><b>Lösung:</b> Jedes Gerät merkt sich den größten Zeitstempel, den es je gesehen hat, eigene wie fremde. Ein neues Event bekommt <code>max(jetzt, größter gesehener)</code>. Ist das nicht größer als der bisherige Höchstwert, zählt der Zähler hoch. Dadurch liegt alles, was ein Gerät <i>nach</i> dem Lesen eines fremden Events schreibt, garantiert dahinter.</li>
+    <li><b>Ergebnis:</b> Die Werte bleiben nahe an der echten Uhrzeit und sind deshalb lesbar und zum Anzeigen brauchbar. Sie sind trotzdem streng monoton und kausal korrekt, und alle Geräte sortieren identisch nach <code>(hlc, geraet, id)</code>.</li>
+    <li><b>Für jetzt:</b> Mit nur einem Gerät ist die HLC praktisch die Uhrzeit. Ins Event-Format (<code>meta.hlc</code>, <code>meta.geraet</code>) gehört sie trotzdem von Anfang an, damit eine spätere iPhone-App ohne Umschreiben dazukommen kann.</li>
+  </ul>
 
   <!-- ===================================================== -->
   <h2 id="extern">9 Google Calendar &amp; iCloud</h2>
+  <div class="note"><b>Entschieden: EventKit zuerst.</b> Ein kleiner Swift-Helfer liest über EventKit alle in macOS eingerichteten Kalender (iCloud, Google …). macOS fragt einmal nach der Erlaubnis. Es gibt keine eigene Anmeldung, kein OAuth und kein CalDAV. Für die spätere iPhone-App ist das ein Vorteil, denn EventKit gibt es auf iOS genauso.</div>
   <h3>Grundsatz</h3>
   <ol>
-    <li><b>Lesen als Overlay.</b> Externe Termine erscheinen in allen Kalendersichten und zählen zur Auslastung. Sie werden <i>nicht</i> zu Events, weil sie fremder Zustand sind. Sie liegen im Cache.</li>
-    <li><b>Veröffentlichen</b> (optional, Phase 2): Eigene Buchungen werden in einen eigenen Kalender „Rundblick“ geschrieben, damit andere die Belegung sehen. Termine werden normale Events. Reservierungen werden ganztägige Einträge mit „frei“-Transparenz und dem Titel <code>▭ 2 h · Angebot Hüttner</code>. Die Verknüpfung speichert das Event <code>BuchungVeroeffentlicht</code>.</li>
+    <li><b>Lesen als Overlay.</b> Externe Termine erscheinen in allen Kalendersichten. Bei der Auslastung werden sie nur zur Information angezeigt und belegen keine Kapazität (siehe offene Frage 3). Sie werden <i>nicht</i> zu Events, weil sie fremder Zustand sind. Sie liegen im Cache.</li>
+    <li><b>Veröffentlichen</b> (optional, Phase 2): Eigene Buchungen werden per EventKit in einen eigenen Kalender „Rundblick“ geschrieben (z. B. in iCloud), damit andere die Belegung sehen. Termine werden normale Events. Reservierungen werden ganztägige Einträge mit „frei“-Transparenz und dem Titel <code>▭ 2 h · Angebot Hüttner</code>. Die Verknüpfung speichert das Event <code>BuchungVeroeffentlicht</code>.</li>
     <li><b>Rückkanal</b> (optional, Phase 3): Wird ein veröffentlichter Termin extern verschoben, erzeugt der Sync ein <code>BuchungVerschoben</code> mit <code>meta.quelle = "sync"</code>. Für alle anderen externen Änderungen bleibt Rundblick der Master.</li>
-    <li><b>Aus externem Termin eine Aufgabe machen</b>: <code>aufgabeErfassen</code> mit vorbelegtem Titel und Termin plus einem Verweis auf das Original.</li>
+    <li><b>Aus externem Termin eine Aufgabe oder Buchung machen</b>: <code>aufgabeErfassen</code> bzw. <code>buchungEintragen</code> mit vorbelegtem Titel und Termin plus einem Verweis auf das Original.</li>
   </ol>
-  <h3>Synchronisation</h3>
+  <h3>Synchronisation mit EventKit</h3>
   <ul>
-    <li>Der Body steuert sie über den Command <code>synchronisieren()</code>. Ausgelöst wird er per <b>Zeitgeber</b> (alle 5 min), beim <b>Fokussieren des Fensters</b> und beim <b>Start</b>.</li>
-    <li>Google: inkrementell per <code>syncToken</code>. Ein HTTP 410 bedeutet Neuaufbau. Push-Kanäle brauchen einen öffentlichen HTTPS-Endpunkt und kommen für eine Desktop-App deshalb nicht in Frage.</li>
-    <li>iCloud: CalDAV <code>sync-collection</code> (RFC 6578) oder <code>ctag</code>-Vergleich plus <code>calendar-query</code> für das Fenster −30 / +180 Tage.</li>
-    <li>Fehler (offline, Token abgelaufen) verändern keinen Domain state. Der Client zeigt einen dezenten Hinweis „Google seit 14:20 nicht aktualisiert“.</li>
+    <li>Der Swift-Helfer läuft als Kindprozess des Main-Prozesses und spricht JSON-Zeilen über stdin/stdout: <code>{"op":"kalender"}</code>, <code>{"op":"termine","von":"…","bis":"…"}</code>, <code>{"op":"schreiben",…}</code>.</li>
+    <li>EventKit meldet Änderungen selbst (<code>EKEventStoreChanged</code>). Der Helfer gibt sie als <code>{"ereignis":"geaendert"}</code> weiter, und der Body ruft <code>synchronisieren()</code> auf. Ein Polling ist nicht nötig. Die Synchronisation mit iCloud und Google erledigt macOS selbst.</li>
+    <li>Serien sind bereits aufgelöst: EventKit liefert Einzeltermine pro Zeitraum.</li>
+    <li>Der Cache hält das Fenster −30 / +180 Tage vor, damit Queries nie auf den Helfer warten.</li>
+    <li>Fehlt die Berechtigung oder stürzt der Helfer ab, ändert sich kein Domain state. Der Client zeigt einen Hinweis, zum Beispiel „Kalenderzugriff in den Systemeinstellungen erlauben“.</li>
   </ul>
-  <div class="note"><b>Abkürzung für macOS: EventKit.</b> Wenn Google und iCloud ohnehin in der macOS-App „Kalender“ eingerichtet sind, kann ein winziger Swift-Helfer über EventKit <i>alle</i> Kalender lesen und schreiben. Dafür sind kein OAuth, keine Google-Cloud-Console, kein App-Passwort und kein CalDAV-Code nötig. Die Architektur bleibt dieselbe, es ist nur eine weitere Implementierung von <code>Kalenderquelle</code>. <b>Empfehlung:</b> mit EventKit beginnen (am schnellsten am Ziel), Google REST und CalDAV als portable Implementierungen später nachziehen.</div>
+
 
   <!-- ===================================================== -->
   <h2 id="ablaeufe">10 Abläufe</h2>
@@ -477,30 +528,47 @@
   </table>
 
   <!-- ===================================================== -->
-  <h2 id="offen">13 Offene Fragen &amp; Empfehlungen</h2>
-  <div class="dec"><div class="n">1</div><div><p><b>Direkt im Kalender eingetragene Reservierung: eigene Aufgabe oder nicht?</b></p><p class="rec">Empfehlung: Jede Buchung gehört zu einer Aufgabe. <code>reservierungEintragen</code> legt still eine Aufgabe mit demselben Titel an. So bleibt das Modell einfach, und nichts verschwindet aus dem Überblick.</p></div></div>
-  <div class="dec"><div class="n">2</div><div><p><b>Spalte „Fertig“ und Abschließen</b></p><p class="rec">Empfehlung: Beides getrennt halten. „Fertig“ ist ein Status zum Prüfen und Abrechnen, das Abschließen bleibt ein bewusster Klick (in den Entwürfen der Knopf „✓ abschließen“). Alternative: eine Einstellung „Ziehen nach Fertig schließt ab“.</p></div></div>
-  <div class="dec"><div class="n">3</div><div><p><b>Brauchen Buchungen eine eigene Notiz oder einen eigenen Titel?</b> (z. B. „Teil 2: Kalkulation“)</p><p class="rec">Empfehlung: optionales Feld <code>notiz</code> ab Version 1, angezeigt als „Titel · Notiz“.</p></div></div>
-  <div class="dec"><div class="n">4</div><div><p><b>Wiederkehrende Aufgaben</b> (jeden Monat „Reisekosten einreichen“)</p><p class="rec">Gehört nicht zum ersten Wurf. Passt später als <code>WiederholungFestgelegt</code> plus Erzeugung beim Abschließen.</p></div></div>
-  <div class="dec"><div class="n">5</div><div><p><b>Vergangene Buchungen:</b> Soll man „wahrgenommen / nicht geschafft“ markieren können? Das würde die Kalenderrückschau zum Werkzeug machen.</p><p class="rec">Empfehlung: zunächst nicht. Nicht geschaffte Reservierungen erscheinen aber im Überblick als Hinweis „3 Reservierungen von gestern ohne Abschluss“.</p></div></div>
-  <div class="dec"><div class="n">6</div><div><p><b>Tageskapazität und Arbeitszeitfenster</b> für die Auslastung (Entwurf: 8 h, 7–21 Uhr)</p><p class="rec">als Einstellung, eventuell pro Wochentag</p></div></div>
-  <div class="dec"><div class="n">7</div><div><p><b>Externe Anbindung:</b> EventKit (nur Mac, schnell) oder Google REST + CalDAV (portabel, aufwendiger)?</p><p class="rec">Empfehlung: EventKit zuerst, siehe <a href="#extern">9</a></p></div></div>
-  <div class="dec"><div class="n">8</div><div><p><b>Mehrere Rechner</b> über Dropbox?</p><p class="rec">Möglich mit einer Event-Datei pro Gerät (8.4). Das Event-Format sollte deshalb von Anfang an <code>meta.geraet</code> und eine HLC-Zeit enthalten.</p></div></div>
-  <div class="dec"><div class="n">9</div><div><p><b>Verantwortliche:</b> freie Zeichenkette oder Verweis auf Kontakte (macOS-Kontakte oder die Kontakte-App)?</p><p class="rec">Freitext mit Autovervollständigung aus der Projektion <code>vorschlaege</code></p></div></div>
-  <div class="dec"><div class="n">10</div><div><p><b>Layout:</b> welcher Entwurf (A, B oder C)?</p><p class="rec">Empfehlung: A als Grundgerüst, dazu die Spotlight-Erfassung aus B und die Timeline mit Hover-Verknüpfung aus C</p></div></div>
+  <h2 id="offen">13 Entscheidungen, Backlog &amp; offene Fragen</h2>
+  <h3>Entschieden (16.11.2026)</h3>
+  <table>
+    <tr><th>Thema</th><th>Entscheidung</th><th>Folge im Design</th></tr>
+    <tr><td>Externe Kalender</td><td><b>EventKit zuerst</b></td><td>Swift-Helfer als Provider; keine Geheimnisse, kein OAuth (7, 9)</td></tr>
+    <tr><td>Eintrag direkt im Kalender</td><td>Legt <b>keine</b> Aufgabe an. Aus einer Buchung kann man später eine Aufgabe machen.</td><td>Freie Buchung; <code>aufgabeAusBuchung</code>; Event <code>AufgabeAusBuchungErstellt</code></td></tr>
+    <tr><td>Buchungsinhalt</td><td>Buchungen sind wie Aufgaben mit Termin-Angaben: <b>eigener Titel und eigene Beschreibung</b></td><td><code>BuchungAngelegt</code> mit titel/beschreibung, <code>BuchungUmbenannt</code> …</td></tr>
+    <tr><td>„Fertig“ und Board-Status</td><td>Abgeschlossen ist ein <b>anderer Zustand</b> als der Board-Status</td><td>Getrennt: <code>AufgabeAbgeschlossen</code> und <code>StatusGesetzt</code></td></tr>
+    <tr><td>Board-Spalten</td><td>Beliebig viele Spalten, jede gehört zu einer von <b>drei Kategorien</b> (nicht begonnen / begonnen / beendet)</td><td><code>StatusspalteAngelegt.kategorie</code>; kompaktes Board zeigt die Kategorien</td></tr>
+    <tr><td>Kapazität</td><td>Tageskapazität je Wochentag aus den Einstellungen; Buchungen <i>können</i> Kapazität belegen; gebuchte Zeit summiert sich je Aufgabe</td><td><code>TageskapazitaetFestgelegt</code>, <code>belegt</code>-Flag, Auslastung in allen Kalendersichten</td></tr>
+    <tr><td>Verantwortliche</td><td>Freie Zeichenkette</td><td>Autovervollständigung aus der Projektion <code>vorschlaege</code></td></tr>
+    <tr><td>Speicherort</td><td>Daten liegen in der <b>Dropbox</b>. Erst ein Mac, später eventuell eine iPhone-App, die über die Dropbox-App zugreift</td><td>Event-Datei pro Gerät, HLC im Event-Format (8.4, 8.5)</td></tr>
+    <tr><td>Layout</td><td><b>Raster</b>: Fenster frei in Zellen teilen, in jede Zelle eine Sicht legen</td><td>Entwurf D; Arbeitsbereiche als lokaler UI-Zustand (4)</td></tr>
+  </table>
+  <h3>Backlog (später)</h3>
+  <ul>
+    <li><b>Wiederkehrende Aufgaben</b> (jeden Monat „Reisekosten einreichen“), etwa über <code>WiederholungFestgelegt</code> plus Erzeugung der nächsten Aufgabe beim Abschließen.</li>
+    <li><b>Vergangene Buchungen</b> als „wahrgenommen / nicht geschafft“ markieren, damit die Kalenderrückschau zum Werkzeug wird.</li>
+    <li>Veröffentlichen eigener Buchungen in einen Kalender „Rundblick“ und der Rückkanal (9).</li>
+    <li>iPhone-App mit Zugriff auf denselben Dropbox-Ordner.</li>
+    <li>Direkte Anbindung von Google und CalDAV ohne macOS-Kalender.</li>
+  </ul>
+  <h3>Noch offen</h3>
+  <div class="dec"><div class="n">1</div><div><p><b>Abgeschlossene Aufgaben auf dem Board:</b> sofort ausblenden oder in ihrer „Beendet“-Spalte stehen lassen, bis man aufräumt?</p><p class="rec">Vorschlag: sofort ausblenden (so in den Entwürfen); eine Ansichtsoption „abgeschlossene zeigen“.</p></div></div>
+  <div class="dec"><div class="n">2</div><div><p><b>Aufwandsschätzung:</b> Soll eine Aufgabe einen geschätzten Aufwand bekommen, damit „gebucht 4 h von geschätzt 6 h“ sichtbar wird?</p><p class="rec">Passt gut zur Kapazitätsplanung, wäre ein optionales Feld <code>aufwand</code>.</p></div></div>
+  <div class="dec"><div class="n">3</div><div><p><b>Externe Termine und Kapazität:</b> Sollen Termine aus iCloud oder Google auch Kapazität belegen (pro Kalender einstellbar, z. B. „Arbeit“ ja, „Familie“ nein)?</p><p class="rec">In den Entwürfen belegen sie nichts und werden nur angezeigt.</p></div></div>
+  <div class="dec"><div class="n">4</div><div><p><b>Kapazität für einzelne Tage</b> (Urlaub, Workshop-Tag): Reicht der Wochentag, oder braucht es Ausnahmen pro Datum?</p><p class="rec">Vorschlag: <code>TageskapazitaetAusnahme</code> {datum, minuten} als späteres Event.</p></div></div>
+  <div class="dec"><div class="n">5</div><div><p><b>Name der App:</b> Bleibt es bei „Rundblick“?</p></div></div>
 
   <!-- ===================================================== -->
   <h2 id="plan">14 Schrittfolge</h2>
   <ol>
-    <li><b>Gerüst:</b> electron-vite, Schichtordner, dependency-cruiser, JSONL Event Store mit Contract-Tests</li>
-    <li><b>Aufgaben + Liste + Schnellerfassung</b> (Parser, Vorschau). Damit ist die App ab dem ersten Tag nutzbar.</li>
-    <li><b>Status + Board</b> inklusive Spalten-Konfiguration</li>
-    <li><b>Buchungen + Woche/Tag</b> mit Drag &amp; Drop, Reservierungsband und Auslastung</li>
-    <li><b>Monat + Timeline</b> mit Zoom und Hover-Verknüpfung</li>
-    <li><b>Triptychon-Layout</b> mit Fokus und Mini-Zusammenfassungen, dazu Tastatursteuerung</li>
-    <li><b>Externe Kalender lesend</b> (EventKit), Cache, Sync-Anzeige</li>
+    <li><b>Gerüst:</b> electron-vite, Schichtordner, dependency-cruiser, JSONL Event Store pro Gerät im Dropbox-Ordner mit HLC, Contract-Tests</li>
+    <li><b>Aufgaben + Aufgabenliste + Schnellerfassung</b> (Parser, Vorschau). Damit ist die App ab dem ersten Tag nutzbar.</li>
+    <li><b>Raster mit Arbeitsbereichen</b> als Rahmen, zunächst nur mit der Aufgabenliste</li>
+    <li><b>Board</b> mit Spalten und Kategorien</li>
+    <li><b>Buchungen</b> (frei und zu Aufgaben) + Tageskalender + Mehrtageskalender, Drag &amp; Drop, Kapazität und Auslastung</li>
+    <li><b>EventKit-Helfer</b> mit Cache und eingeblendeten Kalendern</li>
+    <li><b>Timeline</b> mit Zoom und Hover-Verknüpfung</li>
     <li><b>Globales Schnellerfassungsfenster</b>, Tray, Benachrichtigungen zu Frist und Wiedervorlage</li>
-    <li><b>Veröffentlichen</b> eigener Buchungen, optional lokales REST API</li>
+    <li>Backlog nach Bedarf</li>
   </ol>
 </main>
 </div>
