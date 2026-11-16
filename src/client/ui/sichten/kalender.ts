@@ -162,7 +162,7 @@ function evHtml(e: Ev, dichte: Dichte): string {
   if (e.b) {
     const b = e.b;
     const tip = `${b.titel}${b.aufgabentitel && b.aufgabentitel !== b.titel ? ` (Aufgabe: ${b.aufgabentitel})` : ''} · ${uhrzeit(b.s)}–${uhrzeit(b.e)}${b.belegt ? '' : ' · belegt keine Kapazität'}`;
-    return `<div class="ev own ${b.aufgabeId ? '' : 'frei'} ${b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="${pos}" title="${esc(tip)}">${esc(b.titel)}${zeit}</div>`;
+    return `<div class="ev own ${b.aufgabeId ? '' : 'frei'} ${b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="${pos}" title="${esc(tip)}">${esc(b.titel)}${zeit}<span class="zieh" data-zieh="${b.id}" data-dauer="${b.dauer}" title="Ziehen: Dauer ändern"></span></div>`;
   }
   const x = e.x!;
   return `<div class="ev extern ${x.belegt ? 'belegt' : ''}" style="${pos};--kf:${x.farbe}" title="${esc(`${x.titel} · ${uhrzeit(e.s)}–${uhrzeit(e.e)} · ${x.konto} / ${x.kalender}${x.belegt ? ' · belegt Kapazität' : ''}${x.ort ? ' · ' + x.ort : ''}`)}">${esc(x.titel)}${zeit}</div>`;

@@ -409,3 +409,5 @@ kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ff
 .zugriff .dot { width: 8px; height: 8px; border-radius: 50%; }
 .qc .qc-preview .chips .chip.err { text-decoration: none; }
 .mo .mc[data-day] { cursor: default; }
+.ev .zieh { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; cursor: ns-resize; }
+.ev .zieh:hover { background: rgba(255,255,255,.35); }

@@ -101,6 +101,29 @@ export function interaktionAnbinden(): void {
     }
   });
 
+  // ---- Dauer eines Termins durch Ziehen an der Unterkante ändern (15-Minuten-Raster)
+  document.addEventListener('pointerdown', e => {
+    const griff = (e.target as HTMLElement).closest<HTMLElement>('[data-zieh]');
+    if (!griff) return;
+    e.preventDefault(); e.stopPropagation();
+    const ev = griff.parentElement!, spalte = ev.closest<HTMLElement>('.dcol')!;
+    const proPx = SPANMIN / spalte.clientHeight, start = e.clientY, alt = Number(griff.dataset.dauer), hoehe = ev.offsetHeight;
+    ev.draggable = false;
+    let neu = alt;
+    const bewegen = (m: PointerEvent) => {
+      neu = Math.max(15, Math.round((alt + (m.clientY - start) * proPx) / 15) * 15);
+      ev.style.height = `${hoehe + (neu - alt) / proPx}px`;
+      ev.title = dauerText(neu);
+    };
+    const los = async () => {
+      removeEventListener('pointermove', bewegen); removeEventListener('pointerup', los);
+      ev.draggable = true;
+      if (neu !== alt) pruefe(await body.buchungAendern({ buchungId: griff.dataset.zieh!, dauer: neu }), `Dauer: ${dauerText(neu)}`);
+    };
+    addEventListener('pointermove', bewegen); addEventListener('pointerup', los);
+  }, true);
+  document.addEventListener('click', e => { if ((e.target as HTMLElement).closest('[data-zieh]')) e.stopImmediatePropagation(); }, true);
+
   // ---- Hervorhebung: Fährt man über eine Aufgabe, leuchten all ihre Darstellungen auf
   let hl: string | null = null;
   document.addEventListener('mouseover', e => {
