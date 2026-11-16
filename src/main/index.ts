@@ -1,12 +1,14 @@
 // Composition Root: erzeugt Provider → Domain → Body → Clients und verdrahtet sie.
 // Umgebungsvariablen: RB_DATEN (Datenordner), RB_KALENDER=beispiel (Beispiel-Kalender statt EventKit),
 // RB_DEMO=1 (leeren Datenordner mit Beispieldaten füllen),
+// RB_WEB=1 (Web-Client sofort starten, Port RB_WEB_PORT, Standard 4718),
 // RB_SCREENSHOT=datei.png (Fenster nach dem Laden abfotografieren und beenden; RB_JS: vorher ausführen).
 import { existsSync, writeFileSync } from 'node:fs';
 import { homedir, hostname } from 'node:os';
 import { join, resolve } from 'node:path';
-import { app, BrowserWindow, Menu, shell } from 'electron';
+import { app, BrowserWindow, dialog, Menu, shell } from 'electron';
 import { RundblickBody } from '../body/body';
+import { webAnbinden, type WebServer } from '../client/adapter/http';
 import { ipcAnbinden } from '../client/adapter/ipc';
 import { Domain } from '../domain/domain';
 import { jsonEinstellungen } from '../providers/einstellungen/json';
@@ -68,6 +70,17 @@ async function starte(): Promise<void> {
   // ---- Clients
   const abbinden = ipcAnbinden(body);
   const win = fenster();
+
+  // Zweiter Client: dieselbe Oberfläche im Browser (z. B. Chrome mit Feedback-Extension)
+  let web: WebServer | null = null;
+  const imBrowserOeffnen = async () => {
+    try {
+      web ??= await webAnbinden(body, join(import.meta.dirname, '../renderer'), Number(process.env.RB_WEB_PORT ?? 4718));
+      void shell.openExternal(web.url);
+    } catch (e) { dialog.showErrorBox('Rundblick im Browser', `Web-Server konnte nicht starten: ${(e as Error).message}`); }
+  };
+  menueSetzen(imBrowserOeffnen);
+  if (process.env.RB_WEB === '1') web = await webAnbinden(body, join(import.meta.dirname, '../renderer'), Number(process.env.RB_WEB_PORT ?? 4718));
   win.on('focus', () => { void body.synchronisieren(); });
 
   // ---- Zeitgeber: Tageswechsel und gelegentliche Synchronisation
@@ -90,17 +103,24 @@ async function starte(): Promise<void> {
   }
 
   app.on('before-quit', () => {
-    clearInterval(takt); clearInterval(sync); beobachtungStoppen(); abbinden();
+    clearInterval(takt); clearInterval(sync); beobachtungStoppen(); abbinden(); web?.stoppen();
     if ('beenden' in kalender) (kalender as { beenden(): void }).beenden();
   });
 }
 
-Menu.setApplicationMenu(Menu.buildFromTemplate([
-  { role: 'appMenu' },
-  { role: 'editMenu' },
-  { label: 'Ansicht', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' }] },
-  { role: 'windowMenu' },
-]));
+function menueSetzen(imBrowserOeffnen: () => void): void {
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    { role: 'appMenu' },
+    { role: 'editMenu' },
+    { label: 'Ansicht', submenu: [
+      { label: 'Im Browser öffnen (für Feedback)', accelerator: 'CmdOrCtrl+Shift+B', click: imBrowserOeffnen },
+      { type: 'separator' },
+      { role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' },
+    ] },
+    { role: 'windowMenu' },
+  ]));
+}
+menueSetzen(() => {});
 
 void app.whenReady().then(starte);
 app.on('window-all-closed', () => app.quit());

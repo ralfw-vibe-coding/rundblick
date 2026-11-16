@@ -21,6 +21,10 @@ npm run demo           # Beispieldaten in /tmp/rundblick-demo, Beispiel-Kalender
 
 Entwicklung: `npm run dev` (Hot Reload), `npm run check` (Typecheck, Schichtregeln, Tests).
 
+## Im Browser (z. B. für die Feedback-Extension)
+
+In der laufenden App: **Ansicht › Im Browser öffnen** (`⇧⌘B`). Das startet ein lokales Web-API auf `http://127.0.0.1:4718/` und öffnet die gleiche Oberfläche im Standardbrowser – mit denselben Daten, Änderungen erscheinen live in beiden. Nur über `127.0.0.1` erreichbar; Commands brauchen den Header `X-Rundblick: 1`, damit fremde Webseiten nichts auslösen können. Sofort beim Start: `RB_WEB=1` (Port: `RB_WEB_PORT`).
+
 ## Daten
 
 | Was | Wo |
