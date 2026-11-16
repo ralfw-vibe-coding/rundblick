@@ -1,0 +1,242 @@
+// Body: koordiniert jede Anfrage. Holt Zeit und IDs von Providern, ruft die Domain auf,
+// führt eigene und externe Kalenderdaten zusammen und meldet Änderungen an die Clients.
+import { plusTage } from '../basis/datum';
+import type { DomainInterface, Ergebnis } from '../domain/interface';
+import type { Einstellungen } from '../providers/einstellungen/interface';
+import type { IdGenerator } from '../providers/ids/interface';
+import type { KalenderCache, Kalenderquelle } from '../providers/kalender/interface';
+import type { Uhr } from '../providers/uhr/interface';
+import type { KalenderEinstellung, KalenderZugriff } from '../schema/extern';
+import type { Datum } from '../schema/werte';
+import { board, liste, zeile } from './abfragen/aufgaben';
+import { buchungDto, KALENDER_STANDARD, zeitraum } from './abfragen/zeitraum';
+import type { Bereich, Body, CommandStatus, EinstellungenDto, ErfassungVorschau, Layout, StatusInfo } from './interface';
+import { parseErfassung } from './schnellerfassung/parse';
+
+export type BodyAbhaengigkeiten = {
+  domain: DomainInterface;
+  uhr: Uhr;
+  ids: IdGenerator;
+  einstellungen: Einstellungen;
+  kalender: Kalenderquelle;
+  cache: KalenderCache;
+  info: { datenordner: string; geraet: string };
+};
+
+const status = (e: Ergebnis, ids?: Record<string, string>): CommandStatus => (e.ok ? (ids ? { ok: true, ids } : { ok: true }) : e);
+const VORLAUF = 35, NACHLAUF = 200;
+
+export class RundblickBody implements Body {
+  private abos = new Set<(b: Bereich[]) => void>();
+  private zugriffStand: KalenderZugriff = 'unbestimmt';
+  private laedt = false;
+
+  constructor(private readonly x: BodyAbhaengigkeiten) {
+    x.domain.beiAenderung(() => this.melde(['aufgaben', 'board', 'kalender']));
+    x.kalender.beiAenderung(() => { void this.synchronisieren(); });
+  }
+
+  /** Beim Start: Standardspalten anlegen (nur beim allerersten Mal) */
+  einrichten(): void { this.x.domain.standardspaltenEinrichten(); }
+
+  // ---------------- Commands: Aufgaben ----------------
+  async aufgabeErfassen(c: Parameters<Body['aufgabeErfassen']>[0]): Promise<CommandStatus> {
+    const aufgabeId = this.x.ids.neu();
+    const buchungId = c.buchung ? this.x.ids.neu() : undefined;
+    const { buchung, ...felder } = c;
+    const e = this.x.domain.aufgabeErfassen({ aufgabeId, felder, buchung: buchung && { ...buchung, buchungId: buchungId! } });
+    return status(e, buchungId ? { aufgabeId, buchungId } : { aufgabeId });
+  }
+
+  async schnellErfassen(c: { text: string }): Promise<CommandStatus> {
+    const p = this.parse(c.text);
+    if (!p.titel) return { ok: false, fehler: ['Titel fehlt.'] };
+    if (p.fehler.length) return { ok: false, fehler: [`Nicht verstanden: ${p.fehler.join(', ')}`] };
+    if (p.nurBuchung) return this.buchungEintragen({ titel: p.titel, ...p.buchung! });
+    return this.aufgabeErfassen({
+      titel: p.titel, tags: p.tags, verantwortlich: p.verantwortlich, ort: p.ort, frist: p.frist,
+      wiedervorlage: p.wiedervorlage, status: p.status, ...(p.buchung ? { buchung: p.buchung } : {}),
+    });
+  }
+
+  async aufgabeAendern(c: Parameters<Body['aufgabeAendern']>[0]) { return status(this.x.domain.aufgabeAendern(c)); }
+  async statusSetzen(c: Parameters<Body['statusSetzen']>[0]) { return status(this.x.domain.statusSetzen(c)); }
+  async aufgabeAbschliessen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeAbschliessen(c)); }
+  async aufgabeWiedereroeffnen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeWiedereroeffnen(c)); }
+  async aufgabeVerwerfen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeVerwerfen(c)); }
+
+  // ---------------- Commands: Buchungen ----------------
+  async buchungAnlegen(c: Parameters<Body['buchungAnlegen']>[0]) {
+    const buchungId = this.x.ids.neu();
+    return status(this.x.domain.buchungAnlegen({ ...c, buchungId }), { buchungId });
+  }
+  async buchungEintragen(c: Parameters<Body['buchungEintragen']>[0]) {
+    const buchungId = this.x.ids.neu();
+    return status(this.x.domain.buchungEintragen({ ...c, buchungId }), { buchungId });
+  }
+  async buchungAendern(c: Parameters<Body['buchungAendern']>[0]) {
+    const { buchungId, ...aenderungen } = c;
+    return status(this.x.domain.buchungAendern({ buchungId, aenderungen }));
+  }
+  async buchungStornieren(c: { buchungId: string }) { return status(this.x.domain.buchungStornieren(c)); }
+  async aufgabeAusBuchung(c: Parameters<Body['aufgabeAusBuchung']>[0]) {
+    const aufgabeId = this.x.ids.neu();
+    return status(this.x.domain.aufgabeAusBuchung({ ...c, aufgabeId }), { aufgabeId });
+  }
+
+  // ---------------- Commands: Board & Planung ----------------
+  async spalteAnlegen(c: Parameters<Body['spalteAnlegen']>[0]) {
+    const statusId = this.x.ids.neu();
+    return status(this.x.domain.spalteAnlegen({ ...c, statusId }), { statusId });
+  }
+  async spalteUmbenennen(c: Parameters<Body['spalteUmbenennen']>[0]) { return status(this.x.domain.spalteUmbenennen(c)); }
+  async spaltenSortieren(c: Parameters<Body['spaltenSortieren']>[0]) { return status(this.x.domain.spaltenSortieren(c)); }
+  async spalteEntfernen(c: Parameters<Body['spalteEntfernen']>[0]) { return status(this.x.domain.spalteEntfernen(c)); }
+  async tageskapazitaetFestlegen(c: Parameters<Body['tageskapazitaetFestlegen']>[0]) { return status(this.x.domain.tageskapazitaetFestlegen(c)); }
+  async standarddauerFestlegen(c: Parameters<Body['standarddauerFestlegen']>[0]) { return status(this.x.domain.standarddauerFestlegen(c)); }
+
+  // ---------------- Commands: externe Kalender & Gerät ----------------
+  async kalenderEinstellen(c: { kalenderId: string; sichtbar?: boolean; belegt?: boolean }): Promise<CommandStatus> {
+    const alle = this.kalenderEinstellungen();
+    const alt = alle[c.kalenderId] ?? KALENDER_STANDARD;
+    alle[c.kalenderId] = { sichtbar: c.sichtbar ?? alt.sichtbar, belegt: c.belegt ?? alt.belegt };
+    this.x.einstellungen.schreiben('kalender', alle);
+    this.melde(['kalender', 'einstellungen']);
+    return { ok: true };
+  }
+
+  async kalenderZugriffAnfragen(): Promise<CommandStatus> {
+    this.zugriffStand = await this.x.kalender.zugriff();
+    this.melde(['einstellungen']);
+    if (this.zugriffStand !== 'erlaubt') return { ok: false, fehler: [this.zugriffText()] };
+    return this.synchronisieren();
+  }
+
+  async synchronisieren(): Promise<CommandStatus> {
+    const heute = this.x.uhr.heute();
+    return this.laden(plusTage(heute, -VORLAUF), plusTage(heute, NACHLAUF));
+  }
+
+  async layoutSpeichern(c: { layout: Layout }): Promise<CommandStatus> {
+    this.x.einstellungen.schreiben('layout', c.layout);
+    return { ok: true };
+  }
+
+  // ---------------- Queries ----------------
+  async liste(q: { filter?: string }) {
+    const d = this.x.domain;
+    return liste(d.aufgaben(), d.buchungen(), new Map(d.spalten().map(s => [s.id, s])), this.x.uhr.heute(), q.filter ?? '');
+  }
+
+  async board() {
+    const d = this.x.domain;
+    return board(d.aufgaben(), d.buchungen(), d.spalten(), this.x.uhr.heute());
+  }
+
+  async zeitraum(q: { von: Datum; bis: Datum }) {
+    const d = this.x.domain, st = this.x.cache.stand();
+    if (this.zugriffStand === 'erlaubt' && (!st.von || !st.bis || q.von < st.von || q.bis > st.bis)) {
+      void this.laden(st.von && st.von < q.von ? st.von : q.von, st.bis && st.bis > q.bis ? st.bis : q.bis);
+    }
+    return zeitraum({
+      von: q.von, bis: q.bis, heute: this.x.uhr.heute(), jetzt: this.x.uhr.minuteDesTages(),
+      aufgaben: d.aufgaben(), buchungen: d.buchungen(q.von, q.bis), planung: d.planung(),
+      extern: this.x.cache.termine(q.von, q.bis), kalender: this.x.cache.kalender(), kalenderEinstellungen: this.kalenderEinstellungen(),
+    });
+  }
+
+  async aufgabe(q: { aufgabeId: string }) {
+    const d = this.x.domain, a = d.aufgabe(q.aufgabeId);
+    if (!a) return null;
+    const amap = new Map(d.aufgaben().map(x => [x.id, x]));
+    return {
+      ...zeile(a, d.buchungen(), new Map(d.spalten().map(s => [s.id, s])), this.x.uhr.heute()),
+      beschreibung: a.beschreibung,
+      buchungsliste: d.buchungenDerAufgabe(a.id).map(b => buchungDto(b, amap)),
+    };
+  }
+
+  async buchung(q: { buchungId: string }) {
+    const d = this.x.domain, b = d.buchung(q.buchungId);
+    if (!b) return null;
+    const amap = new Map(d.aufgaben().map(x => [x.id, x]));
+    const tag = (await this.zeitraum({ von: b.datum, bis: b.datum })).tage[0]!;
+    return { ...buchungDto(b, amap), tag: tag.auslastung };
+  }
+
+  async einstellungen(): Promise<EinstellungenDto> {
+    const d = this.x.domain, p = d.planung(), e = this.kalenderEinstellungen();
+    return {
+      spalten: d.spalten().map(s => ({ id: s.id, name: s.name, kategorie: s.kategorie })),
+      kapazitaet: p.kapazitaet, standarddauer: p.standarddauer,
+      kalender: this.x.cache.kalender().map(k => ({ ...k, ...(e[k.id] ?? KALENDER_STANDARD) })),
+      zugriff: this.zugriffStand, letzteSynchronisation: this.x.cache.stand().zuletzt,
+      datenordner: this.x.info.datenordner, geraet: this.x.info.geraet,
+    };
+  }
+
+  async erfassungVorschau(q: { text: string }): Promise<ErfassungVorschau> {
+    const p = this.parse(q.text);
+    const s = p.status ? this.x.domain.spalten().find(x => x.id === p.status) : undefined;
+    const st: StatusInfo | null = s ? { id: s.id, name: s.name, kategorie: s.kategorie } : null;
+    return { ...p, status: st };
+  }
+
+  async vorschlaege(q: { art: 'tag' | 'person' | 'ort'; praefix: string }): Promise<string[]> {
+    const zaehler = new Map<string, number>();
+    for (const a of this.x.domain.aufgaben()) {
+      const werte = q.art === 'tag' ? a.tags : q.art === 'person' ? [a.verantwortlich] : [a.ort];
+      werte.filter(Boolean).forEach(w => zaehler.set(w, (zaehler.get(w) ?? 0) + 1));
+    }
+    const p = q.praefix.toLowerCase();
+    return [...zaehler.entries()].filter(([w]) => w.toLowerCase().startsWith(p)).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'de')).map(([w]) => w).slice(0, 12);
+  }
+
+  async layout(): Promise<Layout> { return this.x.einstellungen.lesen<Layout>('layout', null); }
+
+  beiAenderung(cb: (bereiche: Bereich[]) => void): () => void {
+    this.abos.add(cb);
+    return () => { this.abos.delete(cb); };
+  }
+
+  /** Für den Tageswechsel (Zeitgeber in der Composition Root) */
+  tageswechsel(): void { this.melde(['aufgaben', 'board', 'kalender']); }
+
+  // ---------------- intern ----------------
+  private parse(text: string) {
+    const d = this.x.domain;
+    return parseErfassung(text, this.x.uhr.heute(), d.spalten(), d.planung().standarddauer);
+  }
+
+  private kalenderEinstellungen(): Record<string, KalenderEinstellung> {
+    return { ...this.x.einstellungen.lesen<Record<string, KalenderEinstellung>>('kalender', {}) };
+  }
+
+  private async laden(von: Datum, bis: Datum): Promise<CommandStatus> {
+    if (this.laedt) return { ok: true };
+    this.laedt = true;
+    try {
+      this.zugriffStand = await this.x.kalender.zugriff();
+      if (this.zugriffStand !== 'erlaubt') { this.melde(['einstellungen']); return { ok: false, fehler: [this.zugriffText()] }; }
+      const [kalender, termine] = await Promise.all([this.x.kalender.kalender(), this.x.kalender.termine(von, bis)]);
+      this.x.cache.ersetzen(von, bis, kalender, termine);
+      this.melde(['kalender', 'einstellungen']);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, fehler: [`Kalender konnten nicht gelesen werden: ${(e as Error).message}`] };
+    } finally {
+      this.laedt = false;
+    }
+  }
+
+  private zugriffText(): string {
+    return {
+      erlaubt: '', unbestimmt: 'Kalenderzugriff noch nicht erteilt.',
+      verweigert: 'Kalenderzugriff verweigert – in den Systemeinstellungen › Datenschutz › Kalender erlauben.',
+      nichtVerfuegbar: 'Kalender-Helfer nicht verfügbar (npm run build:helfer).',
+    }[this.zugriffStand];
+  }
+
+  private melde(b: Bereich[]): void { this.abos.forEach(cb => cb(b)); }
+}
+
