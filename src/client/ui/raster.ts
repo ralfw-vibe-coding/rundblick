@@ -41,7 +41,7 @@ function sichtErzeugen(z: Zelle): Sicht | null {
     case 'board': return new BoardSicht();
     case 'tag': return new KalenderSicht({ ansicht: 'tag', anker: null, pph: 10, ...(z.zustand as Partial<KalZustand>) }, ['tag']);
     case 'mehrtage': return new KalenderSicht({ ansicht: 'woche', anker: null, pph: 10, ...(z.zustand as Partial<KalZustand>) }, ['tage3', 'woche', 'monat', 'monate3']);
-    case 'timeline': return new KalenderSicht({ ansicht: 'timeline', anker: null, pph: 12, ...(z.zustand as Partial<KalZustand>) }, ['timeline']);
+    case 'timeline': return new KalenderSicht({ ansicht: 'timeline', anker: null, pph: 16, ...(z.zustand as Partial<KalZustand>) }, ['timeline']);
     default: return null;
   }
 }

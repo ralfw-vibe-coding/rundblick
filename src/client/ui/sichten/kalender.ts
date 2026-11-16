@@ -218,7 +218,7 @@ function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte): 
         : `<i class="extern" style="${stil};--kf:${e.x!.farbe}" title="${esc(uhrzeit(e.s) + ' ' + e.titel + ' · ' + e.x!.kalender)}">${dichte === 'full' ? esc(e.titel) : ''}</i>`;
     }).join('');
     const max = dichte === 'full' ? 3 : 2;
-    const res = t.reservierungen.slice(0, max).map(resHtml).join('') + (t.reservierungen.length > max ? `<div class="more">+${t.reservierungen.length - max}</div>` : '');
+    const res = ganztags(t) + t.reservierungen.slice(0, max).map(resHtml).join('') + (t.reservierungen.length > max ? `<div class="more">+${t.reservierungen.length - max}</div>` : '');
     const anders = monat(t.datum) !== m;
     return `<div class="mc ${anders ? 'other' : ''} ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-res="${t.datum}" data-day="${t.datum}" title="Doppelklick: Tagesansicht">
       <div class="mh"><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>

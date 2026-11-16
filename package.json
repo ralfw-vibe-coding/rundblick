@@ -15,15 +15,51 @@
     "lint:deps": "depcruise src --config .dependency-cruiser.cjs",
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint:deps && npm run test",
-    "postinstall": "node node_modules/electron/install.js && node tools/electron-kalenderrecht.mjs"
+    "postinstall": "node node_modules/electron/install.js && node tools/electron-kalenderrecht.mjs",
+    "app": "npm run build:helfer && electron-vite build && electron-builder --mac --dir && codesign --force --deep --sign - dist/mac-arm64/Rundblick.app",
+    "demo": "electron-vite build && RB_DATEN=/tmp/rundblick-demo RB_DEMO=1 RB_KALENDER=beispiel electron ."
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
     "dependency-cruiser": "^18.7.2",
     "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "typescript": "^5.9.3",
     "vite": "^8.3.7",
     "vitest": "^5.1.0"
+  },
+  "build": {
+    "appId": "de.ralfw.rundblick",
+    "productName": "Rundblick",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "helfer/bin/rb-kalender",
+        "to": "rb-kalender"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "extendInfo": {
+        "NSCalendarsUsageDescription": "Rundblick zeigt Termine aus deinen Kalendern neben deinen Aufgaben.",
+        "NSCalendarsFullAccessUsageDescription": "Rundblick zeigt Termine aus deinen Kalendern neben deinen Aufgaben."
+      }
+    }
   }
 }
