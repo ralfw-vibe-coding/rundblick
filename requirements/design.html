@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Rundblick – Architekturideen</title>
+<style>
+  :root { --ink:#1d1d1f; --ink2:#44444a; --mute:#8a8890; --line:#e7e4de; --bg:#f7f6f3; --own:#4f46e5; --own-soft:#eceafd;
+    --c-client:#0ea5e9; --c-body:#4f46e5; --c-domain:#16a34a; --c-prov:#d97706; --c-state:#64748b;
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; color: var(--ink); }
+  body { margin: 0; background: var(--bg); }
+  .wrap { display: grid; grid-template-columns: 250px minmax(0, 1fr); max-width: 1280px; margin: 0 auto; }
+  nav { position: sticky; top: 0; height: 100vh; overflow: auto; padding: 36px 16px 30px 26px; font-size: 13px; }
+  nav b { display: block; margin-bottom: 10px; font-size: 14px; }
+  nav a { display: block; color: var(--ink2); text-decoration: none; padding: 3px 0; }
+  nav a:hover { color: var(--own); }
+  main { padding: 36px 40px 100px; min-width: 0; }
+  h1 { font-size: 30px; letter-spacing: -.02em; margin: 0 0 4px; }
+  h2 { font-size: 21px; margin: 52px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); letter-spacing: -.01em; }
+  h3 { font-size: 16px; margin: 26px 0 8px; }
+  p, li { color: var(--ink2); }
+  .lead { font-size: 16px; max-width: 820px; }
+  code { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ecebe7; padding: 1px 5px; border-radius: 4px; color: #2b2b30; }
+  pre { background: #1e1e24; color: #e6e6ea; padding: 14px 16px; border-radius: 10px; overflow: auto; font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  pre .c { color: #8b8fa3; } pre .k { color: #c4b5fd; } pre .t { color: #7dd3fc; } pre .s { color: #fcd34d; }
+  table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13.5px; margin: 10px 0; }
+  th, td { text-align: left; padding: 7px 11px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #fbfaf8; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); }
+  td code { white-space: nowrap; }
+  .note { background: #fff; border-left: 4px solid var(--own); padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 14px 0; }
+  .note.warn { border-left-color: #d97706; }
+  .note b:first-child { color: var(--ink); }
+  .meta { color: var(--mute); font-size: 13px; margin-bottom: 18px; }
+  .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; color: #fff; vertical-align: 2px; }
+
+  /* Schichtendiagramm */
+  .arch { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 18px 0; position: relative; }
+  .box { background: #fff; border: 2px solid; border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+  .box h4 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .box p { margin: 0; font-size: 12.5px; }
+  .box ul { margin: 6px 0 0; padding-left: 16px; font-size: 12.5px; }
+  .box.client { border-color: var(--c-client); } .box.client h4 { color: #0369a1; }
+  .box.body { border-color: var(--c-body); } .box.body h4 { color: var(--c-body); }
+  .box.domain { border-color: var(--c-domain); } .box.domain h4 { color: #15803d; }
+  .box.prov { border-color: var(--c-prov); } .box.prov h4 { color: #b45309; }
+  .box.state { border-color: var(--c-state); border-style: dashed; } .box.state h4 { color: #475569; }
+  .span3 { grid-column: 1 / 4; } .span2 { grid-column: span 2; }
+  .arrow { text-align: center; color: var(--mute); font-size: 12px; grid-column: 1 / 4; margin: -6px 0; }
+  .proc { display: grid; grid-template-columns: 1fr 1fr 2.2fr; gap: 12px; margin: 16px 0; }
+  .proc > div { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; }
+  .proc h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); }
+  .proc .inner { border: 1.5px solid; border-radius: 8px; padding: 6px 9px; margin-top: 6px; font-size: 12.5px; }
+  .seq { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0; font-size: 13.5px; }
+  .seq ol { margin: 6px 0 0; padding-left: 22px; }
+  .seq li { margin: 3px 0; }
+  .tag { font: 11px ui-monospace, Menlo, monospace; padding: 0 5px; border-radius: 4px; color: #fff; }
+  .tc { background: var(--c-client); } .tb { background: var(--c-body); } .td { background: var(--c-domain); } .tp { background: var(--c-prov); }
+  .dec { display: grid; grid-template-columns: 34px 1fr; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 8px 0; }
+  .dec .n { font-weight: 700; color: var(--own); font-size: 18px; }
+  .dec p { margin: 2px 0; }
+  .dec .rec { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <b>Rundblick · Design</b>
+  <a href="#leitbild">1 Leitbild &amp; Begriffe</a>
+  <a href="#ueberblick">2 Architektur im Überblick</a>
+  <a href="#electron">3 Abbildung auf Electron</a>
+  <a href="#client">4 Client interface</a>
+  <a href="#body">5 Body interface</a>
+  <a href="#domain">6 Domain interface</a>
+  <a href="#provider">7 Provider interfaces</a>
+  <a href="#schema">8 Application state schema</a>
+  <a href="#extern">9 Google &amp; iCloud</a>
+  <a href="#ablaeufe">10 Abläufe</a>
+  <a href="#struktur">11 Projektstruktur</a>
+  <a href="#tests">12 Teststrategie</a>
+  <a href="#offen">13 Offene Fragen</a>
+  <a href="#plan">14 Schrittfolge</a>
+  <br><a href="../entwuerfe/index.html">→ UI-Entwürfe</a>
+</nav>
+<main>
+  <h1>Rundblick – Architekturideen</h1>
+  <div class="meta">Arbeitstitel · Entwurf vom 16.11.2026 · Electron-Desktop-App für Aufgaben, Board und Kalender mit Google Calendar und iCloud</div>
+  <p class="lead">Rundblick verwaltet <b>eigene Daten</b> (Aufgaben und ihre Buchungen) in einem <b>Event Store</b> und blendet <b>fremde Daten</b> (Termine aus Google Calendar und iCloud) daneben ein. Die Architektur folgt den Vorgaben: <b>Client → Body → Domain/Provider</b>, strikt nach <b>CQS</b> getrennt. Jeder Pfeil zeigt nur auf ein <i>Interface</i>, nie auf eine Implementation.</p>
+
+  <!-- ===================================================== -->
+  <h2 id="leitbild">1 Leitbild &amp; Begriffe</h2>
+  <p><b>Überblick ist King.</b> Das prägt die Architektur. Fast jede Interaktion endet damit, dass <i>alle</i> sichtbaren Sichten aktuell sein müssen: Liste, Board und Kalender, auch in eingeklappter Form. Daraus folgt:</p>
+  <ul>
+    <li>Ein Command meldet nur Erfolg oder Misserfolg zurück. Danach erfahren alle Clients per <b>Änderungsbenachrichtigung</b>, welche Bereiche betroffen sind, und fragen ihre Queries neu ab.</li>
+    <li>Queries müssen <b>sehr schnell</b> sein (Ziel &lt; 5 ms). Deshalb liegen Projektionen im Speicher. Die Datenmenge einer Person (Zehntausende Events) passt bequem hinein.</li>
+    <li>Erfassen muss ohne Kontextwechsel gehen. Dafür gibt es eine zweite Client-Oberfläche, das <b>Schnellerfassungsfenster</b> mit globalem Hotkey.</li>
+  </ul>
+  <h3>Ubiquitous Language</h3>
+  <table>
+    <tr><th>Begriff</th><th>Bedeutung</th><th>Anmerkung</th></tr>
+    <tr><td><b>Aufgabe</b></td><td>Etwas zu Tuendes. Pflichtfeld ist der <i>Titel</i>. Optional: Beschreibung, Ort, Verantwortliche/r, Tags, Frist, Wiedervorlage, Status.</td><td>Eine Aufgabe bleibt offen, bis sie <b>explizit abgeschlossen</b> wird.</td></tr>
+    <tr><td><b>Status</b></td><td>Optionale Spalte auf dem Board (z. B. Bereit, In Arbeit, Wartet, Fertig).</td><td>Ohne Status keine Board-Karte. Die Statusliste ist konfigurierbar.</td></tr>
+    <tr><td><b>Frist</b></td><td>Datum, bis zu dem die Aufgabe fällig ist.</td><td>Bestimmt die Gruppierung der Liste (überfällig, heute, Woche …).</td></tr>
+    <tr><td><b>Wiedervorlage</b></td><td>Datum, bis zu dem die Aufgabe <i>unsichtbar</i> ist.</td><td>Wird beim Abfragen gegen „heute“ ausgewertet. Beim Wiederauftauchen entsteht <i>kein</i> Event.</td></tr>
+    <tr><td><b>Buchung</b></td><td>Ein Eintrag im Kalender, der zu einer Aufgabe gehört: Datum + Dauer (+ optional Startzeit).</td><td>Eine Aufgabe kann beliebig viele Buchungen haben.</td></tr>
+    <tr><td><b>Reservierung</b></td><td>Buchung <i>ohne</i> Startzeit: „Am Do brauche ich 2 h dafür.“</td><td>Kein eigener Typ. Ob Reservierung oder Termin, ergibt sich daraus, ob eine Startzeit gesetzt ist.</td></tr>
+    <tr><td><b>Termin</b></td><td>Buchung <i>mit</i> Startzeit.</td><td>Wird aus einer Reservierung zum Termin, sobald man eine Uhrzeit setzt, und umgekehrt.</td></tr>
+    <tr><td><b>Externer Termin</b></td><td>Eintrag aus Google Calendar oder iCloud.</td><td>Gehört <i>nicht</i> zum Domain state. Er ist ein Cache und wird nur lesend eingeblendet.</td></tr>
+    <tr><td><b>Auslastung</b></td><td>Summe aus Terminen, externen Terminen und Reservierungen pro Tag im Verhältnis zur Tageskapazität.</td><td>Abgeleitet. Erscheint als Balken im Reservierungsband und in der Timeline.</td></tr>
+  </table>
+
+  <!-- ===================================================== -->
+  <h2 id="ueberblick">2 Architektur im Überblick</h2>
+  <div class="arch">
+    <div class="box client span3"><h4>Client interface &nbsp;<span class="pill" style="background:var(--c-client)">kennt nur Body interface</span></h4>
+      <p>Hauptfenster (UI) · Schnellerfassungsfenster (globaler Hotkey) · optional lokales REST API (für Raycast, Kurzbefehle, Skripte) · Menüleisten-Symbol. Nur hier sind Svelte, Electron-IPC, HTTP-Server und globalShortcut bekannt.</p></div>
+    <div class="arrow">▼ Commands / Queries · ▲ CommandStatus / Query-Ergebnisse / Änderungsbenachrichtigungen</div>
+    <div class="box body span3"><h4>Body interface &nbsp;<span class="pill" style="background:var(--c-body)">kennt Domain + Provider interfaces</span></h4>
+      <p>Koordiniert jede Anfrage. Holt Uhrzeit und IDs von Providern, ruft die Domain auf, fügt eigene und externe Kalenderdaten für Queries zusammen, stößt die Synchronisation an und veröffentlicht Buchungen extern. Parst die Schnellerfassung. Meldet Änderungen.</p></div>
+    <div class="arrow" style="grid-column:1/3">▼</div><div class="arrow" style="grid-column:3/4;margin-top:-22px">▼</div>
+    <div class="box domain span2"><h4>Domain interface &nbsp;<span class="pill" style="background:var(--c-domain)">kennt nur den Domain state provider</span></h4>
+      <p>Entscheidet über Commands und beantwortet Fragen zum eigenen Zustand. Für jeden Command baut sie sich aus dem Event Store ein <b>Kontextmodell</b>, prüft die Regeln und hängt neue Events an. Queries liest sie aus <b>Projektionen</b>, die laufend aus den Events nachgeführt werden.</p>
+      <ul><li>Aufgaben, Status, Buchungen, Board-Konfiguration, Verknüpfungen zu externen Kalendern</li></ul></div>
+    <div class="box prov"><h4>Provider interfaces</h4>
+      <ul><li>Uhr · IdGenerator</li><li>Kalenderquelle (Google, iCloud, optional EventKit)</li><li>Externer Kalender-Cache</li><li>Geheimnisspeicher (Keychain)</li><li>Einstellungen · Benachrichtiger</li></ul></div>
+    <div class="arrow" style="grid-column:1/3">▼</div>
+    <div class="box prov span2"><h4>Domain state provider: Event Store</h4><p>Append-only, Abfrage nach Event-Typen und Tags, bedingtes Anhängen (optimistische Konsistenz). Implementierung zunächst als JSONL-Datei.</p></div>
+    <div class="box state"><h4>Application state</h4><p>Events (= Domain state) · Cache externer Termine + Sync-Tokens · Einstellungen · Geheimnisse im Schlüsselbund</p></div>
+  </div>
+
+  <h3>Abhängigkeitsregeln</h3>
+  <table>
+    <tr><th>Modul</th><th>darf importieren</th><th>darf <i>nicht</i> importieren</th></tr>
+    <tr><td><span class="tag tc">client</span></td><td><code>body/interface</code> (nur Typen), UI-/Netz-Frameworks</td><td>Body-Implementierung, Domain, Provider</td></tr>
+    <tr><td><span class="tag tb">body</span></td><td><code>domain/interface</code>, <code>providers/*/interface</code>, <code>schema</code> (Typen)</td><td>Frameworks, Electron, Node-APIs, Provider-Implementierungen</td></tr>
+    <tr><td><span class="tag td">domain</span></td><td><code>providers/eventstore/interface</code>, <code>schema/events</code></td><td>andere Provider (auch keine Uhr: die Zeit kommt als Parameter vom Body)</td></tr>
+    <tr><td><span class="tag tp">providers/*</span></td><td>eigenes Interface, <code>schema</code>, externe Bibliotheken (googleapis, tsdav, fs …)</td><td>Body, Domain, Client</td></tr>
+    <tr><td><code>main.ts</code></td><td>alles. Das ist die <b>Composition Root</b>: Sie erzeugt Provider, Domain, Body und Clients und verdrahtet sie.</td><td>–</td></tr>
+  </table>
+  <p>Die Regeln werden mit <code>dependency-cruiser</code> im CI geprüft. Ein Verstoß bricht den Build.</p>
+
+  <div class="note"><b>Warum bekommt die Domain keine Uhr?</b> Damit ist die Domain deterministisch: Gleiche Events und gleicher Command ergeben immer dieselben neuen Events. Der Body holt <code>jetzt</code> und neue IDs bei den Providern und übergibt sie als Parameter. Das passt zur Vorgabe, dass die Domain nur den Domain state provider kennt.</div>
+
+  <!-- ===================================================== -->
+  <h2 id="electron">3 Abbildung auf Electron</h2>
+  <div class="proc">
+    <div><h4>Renderer · Hauptfenster</h4>
+      <div class="inner" style="border-color:var(--c-client)"><b>Client (UI)</b><br>Svelte 5, Sichten, Drag &amp; Drop, Tastatur</div>
+      <div class="inner" style="border-color:var(--c-client)">ruft <code>window.rundblick.command / query</code> und abonniert <code>onChange</code></div></div>
+    <div><h4>Renderer · Schnellerfassung</h4>
+      <div class="inner" style="border-color:var(--c-client)"><b>Client (Spotlight)</b><br>rahmenloses Fenster, <kbd>⌥ Leertaste</kbd> global, Vorschau als Chips</div></div>
+    <div><h4>Main-Prozess</h4>
+      <div class="inner" style="border-color:var(--c-client)"><b>Client-Adapter:</b> <code>ipcMain.handle</code>, globalShortcut, Tray, optional HTTP auf <code>127.0.0.1</code> mit Token</div>
+      <div class="inner" style="border-color:var(--c-body)"><b>Body</b></div>
+      <div class="inner" style="border-color:var(--c-domain)"><b>Domain</b> + Projektionen (im Speicher)</div>
+      <div class="inner" style="border-color:var(--c-prov)"><b>Provider:</b> JSONL Event Store, Keychain (safeStorage), Google REST, CalDAV, Notification</div></div>
+  </div>
+  <ul>
+    <li><b>Preload/contextBridge</b> stellt nur drei Funktionen bereit: <code>command(name, payload)</code>, <code>query(name, payload)</code> und <code>onChange(cb)</code>. Die Typen kommen aus <code>body/interface.ts</code>. Der Renderer sieht also genau das Body interface und nichts sonst. Einstellungen: <code>contextIsolation</code> an, <code>sandbox</code> an, <code>nodeIntegration</code> aus.</li>
+    <li>Body und Domain laufen im <b>Main-Prozess</b>. Die Synchronisation mit den externen Kalendern läuft dort asynchron und blockiert nichts. Wird sie zu schwer, wandert der Kalender-Provider in einen <code>utilityProcess</code>, ohne dass sich am Body etwas ändert.</li>
+    <li>Das lokale <b>REST API</b> ist ein zweiter Client derselben Body-Schnittstelle: <code>POST /commands/schnellErfassen</code>, <code>GET /queries/heute</code>. So lassen sich zum Beispiel Raycast, Alfred oder iOS-Kurzbefehle anbinden (im LAN mit Token).</li>
+  </ul>
+
+  <!-- ===================================================== -->
+  <h2 id="client">4 Client interface</h2>
+  <p>Das Client interface ist die Außenseite der App, also das, womit Menschen und andere Programme interagieren. Die Implementierung übersetzt Gesten in Commands und Queries des Body und stellt Ergebnisse dar. Sie enthält <b>keine Fachlogik</b>. Erlaubt ist nur Darstellungslogik: Layout von Überlappungen, Pixel ↔ Zeit, Zoom, Fokuszustand.</p>
+  <table>
+    <tr><th>Geste</th><th>Body-Aufruf</th></tr>
+    <tr><td>Tippen in der Schnellerfassung (Live-Vorschau)</td><td><code>query.erfassungVorschau({ text })</code></td></tr>
+    <tr><td><kbd>↵</kbd> in der Schnellerfassung</td><td><code>command.schnellErfassen({ text })</code></td></tr>
+    <tr><td>Aufgabe aufs Reservierungsband ziehen</td><td><code>command.buchungAnlegen({ aufgabeId, datum, dauer: 60 })</code></td></tr>
+    <tr><td>Aufgabe ins Zeitraster ziehen</td><td><code>command.buchungAnlegen({ aufgabeId, datum, start, dauer })</code></td></tr>
+    <tr><td>Buchung verschieben / aufs Band ziehen</td><td><code>command.buchungVerschieben({ buchungId, datum, start | null })</code></td></tr>
+    <tr><td>Doppelklick ins Band oder Raster ohne Aufgabe</td><td><code>command.reservierungEintragen({ titel, datum, dauer, start? })</code></td></tr>
+    <tr><td>Karte in eine andere Spalte ziehen</td><td><code>command.statusSetzen({ aufgabeId, status })</code></td></tr>
+    <tr><td>Kreis abhaken</td><td><code>command.aufgabeAbschliessen({ aufgabeId })</code></td></tr>
+    <tr><td>Sicht wird sichtbar oder ändert ihren Zeitraum</td><td><code>query.liste / board / zeitraum({ von, bis }) / ueberblick</code></td></tr>
+    <tr><td>Benachrichtigung <code>geaendert(['kalender'])</code></td><td>nur die betroffenen sichtbaren Sichten fragen neu ab</td></tr>
+  </table>
+  <p>UI-Zustand wie Fokus, Zoom, Kalendersicht oder Splitter-Position gehört <i>nicht</i> zum Domain state. Er wird über <code>command.einstellungMerken</code> im Einstellungs-Provider abgelegt, ganz ohne Events.</p>
+
+  <!-- ===================================================== -->
+  <h2 id="body">5 Body interface</h2>
+  <p>Eine Methode pro Command und pro Query. <b>Commands</b> verändern den Zustand und liefern nur einen <code>CommandStatus</code>. <b>Queries</b> verändern nichts und liefern Daten. IDs neuer Objekte stehen im Status, sonst wüsste der Client nicht, was er gerade angelegt hat. Das ist die übliche, CQS-verträgliche Ausnahme.</p>
+<pre><span class="c">// body/interface.ts – das Einzige, was ein Client kennt</span>
+<span class="k">export type</span> <span class="t">CommandStatus</span> = { ok: <span class="k">true</span>; ids?: Record&lt;string, string&gt; } | { ok: <span class="k">false</span>; fehler: <span class="t">Fehler</span>[] };
+<span class="k">export type</span> <span class="t">Bereich</span> = <span class="s">'aufgaben'</span> | <span class="s">'board'</span> | <span class="s">'kalender'</span> | <span class="s">'extern'</span> | <span class="s">'einstellungen'</span>;
+
+<span class="k">export interface</span> <span class="t">Body</span> {
+  <span class="c">// ---- Commands: Aufgaben</span>
+  schnellErfassen(c: { text: string }): Promise&lt;CommandStatus&gt;;
+  aufgabeErfassen(c: AufgabeEntwurf &amp; { buchung?: BuchungEntwurf }): Promise&lt;CommandStatus&gt;;
+  aufgabeAendern(c: { aufgabeId: Id; aenderungen: Partial&lt;AufgabeFelder&gt; }): Promise&lt;CommandStatus&gt;;  <span class="c">// → feingranulare Events</span>
+  statusSetzen(c: { aufgabeId: Id; status: StatusId | <span class="k">null</span> }): Promise&lt;CommandStatus&gt;;
+  aufgabeAbschliessen(c: { aufgabeId: Id }): Promise&lt;CommandStatus&gt;;
+  aufgabeWiedereroeffnen(c: { aufgabeId: Id }): Promise&lt;CommandStatus&gt;;
+  aufgabeVerwerfen(c: { aufgabeId: Id }): Promise&lt;CommandStatus&gt;;
+  <span class="c">// ---- Commands: Buchungen</span>
+  buchungAnlegen(c: { aufgabeId: Id; datum: Datum; dauer: Minuten; start?: Uhrzeit }): Promise&lt;CommandStatus&gt;;
+  reservierungEintragen(c: { titel: string; datum: Datum; dauer: Minuten; start?: Uhrzeit }): Promise&lt;CommandStatus&gt;;
+  buchungVerschieben(c: { buchungId: Id; datum: Datum; start: Uhrzeit | <span class="k">null</span> }): Promise&lt;CommandStatus&gt;;
+  buchungsdauerAendern(c: { buchungId: Id; dauer: Minuten }): Promise&lt;CommandStatus&gt;;
+  buchungStornieren(c: { buchungId: Id }): Promise&lt;CommandStatus&gt;;
+  <span class="c">// ---- Commands: Board-Konfiguration</span>
+  statusspalteAnlegen(c: { name: string; position?: number }): Promise&lt;CommandStatus&gt;;
+  statusspalteUmbenennen(c: { statusId: StatusId; name: string }): Promise&lt;CommandStatus&gt;;
+  statusspaltenSortieren(c: { reihenfolge: StatusId[] }): Promise&lt;CommandStatus&gt;;
+  <span class="c">// ---- Commands: externe Kalender (Application state, z. T. Domain state)</span>
+  kalenderVerbinden(c: { quelle: <span class="s">'google'</span> | <span class="s">'icloud'</span>; zugang: Zugang }): Promise&lt;CommandStatus&gt;;
+  kalenderTrennen(c: { verbindungId: Id }): Promise&lt;CommandStatus&gt;;
+  kalenderAuswaehlen(c: { verbindungId: Id; kalenderIds: string[] }): Promise&lt;CommandStatus&gt;;
+  synchronisieren(): Promise&lt;CommandStatus&gt;;
+  buchungVeroeffentlichen(c: { buchungId: Id; zielKalender: KalenderRef }): Promise&lt;CommandStatus&gt;;
+  einstellungMerken(c: { schluessel: string; wert: unknown }): Promise&lt;CommandStatus&gt;;
+
+  <span class="c">// ---- Queries</span>
+  erfassungVorschau(q: { text: string }): Promise&lt;ErfassungVorschau&gt;;  <span class="c">// Titel, Chips, Fehler</span>
+  liste(q: { filter?: string; mitZurueckgestellten?: boolean; mitAbgeschlossenen?: boolean }): Promise&lt;Aufgabenliste&gt;;
+  board(): Promise&lt;Board&gt;;
+  zeitraum(q: { von: Datum; bis: Datum }): Promise&lt;Zeitraum&gt;;  <span class="c">// bedient Tag, Woche, Monat UND Timeline</span>
+  aufgabe(q: { aufgabeId: Id }): Promise&lt;AufgabeDetails | <span class="k">null</span>&gt;;
+  ueberblick(): Promise&lt;Ueberblick&gt;;   <span class="c">// Zähler und Vorschau für eingeklappte Sichten und die Kachel „Heute“</span>
+  vorschlaege(q: { art: <span class="s">'tag'</span> | <span class="s">'person'</span> | <span class="s">'ort'</span>; praefix: string }): Promise&lt;string[]&gt;;
+  verbindungen(): Promise&lt;Verbindung[]&gt;;
+
+  <span class="c">// ---- Benachrichtigung (Push vom Body zum Client)</span>
+  beiAenderung(cb: (bereiche: Bereich[]) =&gt; <span class="k">void</span>): Abmelden;
+}</pre>
+<pre><span class="c">// Eine Query für alle Kalendersichten: Die Sichten unterscheiden sich nur in der Darstellung.</span>
+<span class="k">type</span> <span class="t">Zeitraum</span> = { heute: Datum; jetzt: Uhrzeit; tage: <span class="t">Tag</span>[] };
+<span class="k">type</span> <span class="t">Tag</span> = {
+  datum: Datum;
+  termine: { buchungId; aufgabeId; titel; start; ende; abgeschlossen }[];
+  reservierungen: { buchungId; aufgabeId; titel; dauer; abgeschlossen }[];
+  extern: { quelle: <span class="s">'google'</span>|<span class="s">'icloud'</span>; kalender; titel; start; ende; ganztaegig }[];
+  fristen: { aufgabeId; titel; dringlichkeit: <span class="s">'ueberfaellig'</span>|<span class="s">'heute'</span>|<span class="s">'bald'</span>|<span class="s">'spaeter'</span> }[];
+  wiedervorlagen: { aufgabeId; titel }[];
+  auslastung: { gebucht: Minuten; kapazitaet: Minuten };
+};</pre>
+
+  <h3>Verarbeitung im Body (Beispiel)</h3>
+<pre><span class="k">async</span> buchungAnlegen(c) {
+  <span class="k">const</span> fehler = pruefeEingabe(c);                       <span class="c">// Syntax: Datum gültig, Dauer &gt; 0 …</span>
+  <span class="k">if</span> (fehler.length) <span class="k">return</span> { ok: <span class="k">false</span>, fehler };
+  <span class="k">const</span> jetzt = <span class="k">this</span>.uhr.jetzt(), buchungId = <span class="k">this</span>.ids.neu();     <span class="c">// Provider</span>
+  <span class="k">const</span> r = <span class="k">await this</span>.domain.buchungAnlegen({ ...c, buchungId, jetzt }); <span class="c">// Domain entscheidet + speichert</span>
+  <span class="k">if</span> (!r.ok) <span class="k">return</span> r;
+  <span class="k">if</span> (<span class="k">this</span>.einstellungen.autoVeroeffentlichen) <span class="k">await this</span>.veroeffentlichen(buchungId);  <span class="c">// optional, Provider</span>
+  <span class="k">this</span>.melde([<span class="s">'kalender'</span>, <span class="s">'aufgaben'</span>, <span class="s">'board'</span>]);
+  <span class="k">return</span> { ok: <span class="k">true</span>, ids: { buchungId } };
+}
+
+<span class="k">async</span> zeitraum({ von, bis }) {
+  <span class="k">const</span> heute = <span class="k">this</span>.uhr.heute();
+  <span class="k">const</span> eigene = <span class="k">this</span>.domain.kalender(von, bis, heute);        <span class="c">// Projektion</span>
+  <span class="k">const</span> fremde = <span class="k">await this</span>.kalenderCache.termine(von, bis);   <span class="c">// Provider (Cache, keine Netzlast)</span>
+  <span class="k">return</span> fuegeZusammen(eigene, fremde, <span class="k">this</span>.einstellungen.kapazitaet);  <span class="c">// pure Funktion im Body</span>
+}</pre>
+  <p>Der Parser der Schnellerfassung ist eine <b>pure Funktion</b> im Body (<code>body/schnellerfassung/parse.ts</code>). Er braucht nur „heute“ als Parameter. <code>schnellErfassen</code> parst den Text und ruft dann intern <code>aufgabeErfassen</code> auf. Die Live-Vorschau verwendet denselben Parser, deshalb sieht der Nutzer schon beim Tippen genau das, was gespeichert wird.</p>
+
+  <!-- ===================================================== -->
+  <h2 id="domain">6 Domain interface</h2>
+  <p>Die Domain kapselt den Zugriff auf den Domain state. Statt Aggregaten verwendet sie <b>Kontextmodelle pro Command</b>: Für jede Entscheidung holt sie genau die Events, die dafür relevant sind (per Typ und Tag), baut daraus ein kleines Modell, prüft die Regeln und hängt neue Events an. Das Anhängen ist <b>bedingt</b>: Ist seit dem Lesen ein relevantes Event dazugekommen, wird der Command wiederholt oder abgelehnt. Das entspricht dem Prinzip der „Dynamic Consistency Boundary“.</p>
+<pre><span class="c">// domain/interface.ts</span>
+<span class="k">export interface</span> <span class="t">Domain</span> {
+  <span class="c">// Commands (Zeit &amp; IDs kommen vom Body)</span>
+  aufgabeErfassen(c: { aufgabeId; jetzt; felder: AufgabeFelder; buchung?: BuchungEntwurf &amp; { buchungId } }): Promise&lt;Ergebnis&gt;;
+  aufgabeAendern(c: { aufgabeId; jetzt; aenderungen }): Promise&lt;Ergebnis&gt;;
+  statusSetzen(c: { aufgabeId; status; jetzt }): Promise&lt;Ergebnis&gt;;
+  aufgabeAbschliessen(c: { aufgabeId; jetzt }): Promise&lt;Ergebnis&gt;;
+  buchungAnlegen(c: { buchungId; aufgabeId; datum; dauer; start?; jetzt }): Promise&lt;Ergebnis&gt;;
+  buchungVerschieben(c: { buchungId; datum; start; jetzt }): Promise&lt;Ergebnis&gt;;
+  buchungVerknuepfen(c: { buchungId; quelle; kalenderId; externeId; jetzt }): Promise&lt;Ergebnis&gt;;
+  <span class="c">// … weitere analog zum Body</span>
+
+  <span class="c">// Queries (synchron aus Projektionen im Speicher)</span>
+  aufgaben(heute: Datum): AufgabenProjektion;
+  board(): BoardProjektion;
+  kalender(von: Datum, bis: Datum, heute: Datum): EigeneKalenderdaten;
+  aufgabe(id: Id): AufgabeDetails | <span class="k">null</span>;
+  vorschlaege(art, praefix): string[];
+  veroeffentlichungen(): Verknuepfung[];
+}</pre>
+<pre><span class="c">// domain/commands/buchungAnlegen.ts – Kontextmodell statt Aggregat</span>
+<span class="k">export async function</span> buchungAnlegen(es: EventStore, c) {
+  <span class="k">const</span> abfrage = { tags: [<span class="s">`aufgabe:${c.aufgabeId}`</span>], typen: [<span class="s">'AufgabeErfasst'</span>, <span class="s">'AufgabeAbgeschlossen'</span>, <span class="s">'AufgabeWiedereroeffnet'</span>, <span class="s">'AufgabeVerworfen'</span>] };
+  <span class="k">const</span> { events, position } = <span class="k">await</span> es.lesen(abfrage);
+  <span class="k">const</span> ctx = events.reduce(entwickle, { existiert: <span class="k">false</span>, offen: <span class="k">false</span> });   <span class="c">// pure</span>
+  <span class="k">if</span> (!ctx.existiert) <span class="k">return</span> fehler(<span class="s">'Aufgabe unbekannt'</span>);
+  <span class="k">if</span> (!ctx.offen)     <span class="k">return</span> fehler(<span class="s">'Aufgabe ist abgeschlossen'</span>);
+  <span class="k">return</span> es.anhaengen([buchungAngelegt(c)], { bedingung: { abfrage, nachPosition: position } });
+}</pre>
+  <h3>Projektionen</h3>
+  <ul>
+    <li>Beim Start liest die Domain alle Events einmal ein und baut daraus die Projektionen <code>Aufgaben</code>, <code>Buchungen nach Datum</code>, <code>Board</code>, <code>Vorschläge</code> und <code>Verknüpfungen</code>. Bei 50.000 Events dauert das unter einer Sekunde. Später kann ein <b>Snapshot</b> pro Projektion den Start weiter beschleunigen.</li>
+    <li>Nach jedem erfolgreichen Anhängen benachrichtigt der Event Store die Domain, und die Projektionen werden inkrementell nachgeführt. So sind Lesen und Schreiben getrennt (CQS), und jede Query ist trotzdem sofort aktuell.</li>
+    <li>Alles, was von „heute“ abhängt (Wiedervorlage sichtbar? Frist überfällig?), wird <b>beim Abfragen</b> mit dem übergebenen Datum ausgewertet und nicht in der Projektion gespeichert.</li>
+  </ul>
+  <h3>Fachliche Regeln (Auswahl)</h3>
+  <table>
+    <tr><th>Regel</th><th>Kontext (Events per Tag)</th></tr>
+    <tr><td>Titel ist Pflicht und nicht leer</td><td>– (Eingabeprüfung)</td></tr>
+    <tr><td>Abgeschlossene oder verworfene Aufgaben bekommen keine neuen Buchungen, keinen Status, keine Änderungen</td><td><code>aufgabe:&lt;id&gt;</code></td></tr>
+    <tr><td>Abschließen erfolgt nur explizit. Buchungen in der Vergangenheit und die Spalte „Fertig“ schließen <i>nicht</i> ab.</td><td>–</td></tr>
+    <tr><td>Status muss eine existierende Spalte sein</td><td><code>board</code></td></tr>
+    <tr><td>Spalte entfernen nur, wenn leer (oder Aufgaben werden statuslos)</td><td><code>board</code> + Status-Events</td></tr>
+    <tr><td>Dauer &gt; 0. Start + Dauer darf über Mitternacht gehen? → <i>offen</i></td><td>–</td></tr>
+    <tr><td>Wiedervorlage in der Vergangenheit ist erlaubt, wirkt aber nicht (Aufgabe sofort sichtbar)</td><td>–</td></tr>
+  </table>
+
+  <!-- ===================================================== -->
+  <h2 id="provider">7 Provider interfaces</h2>
+<pre><span class="k">interface</span> <span class="t">EventStore</span> {                          <span class="c">// Domain state provider</span>
+  lesen(abfrage?: { typen?: string[]; tags?: string[]; abPosition?: number }): Promise&lt;{ events: GespeichertesEvent[]; position: number }&gt;;
+  anhaengen(events: NeuesEvent[], opt?: { bedingung?: { abfrage; nachPosition: number } }): Promise&lt;Ergebnis&gt;;
+  abonnieren(cb: (e: GespeichertesEvent[]) =&gt; <span class="k">void</span>): Abmelden;
+}
+<span class="k">interface</span> <span class="t">Uhr</span>         { jetzt(): Zeitpunkt; heute(): Datum; zeitzone(): string }
+<span class="k">interface</span> <span class="t">IdGenerator</span> { neu(): Id }                               <span class="c">// ULID: zeitlich sortierbar</span>
+<span class="k">interface</span> <span class="t">Kalenderquelle</span> {                                       <span class="c">// je Implementierung: Google, iCloud (CalDAV), EventKit</span>
+  verbinden(zugang: Zugang): Promise&lt;Verbindung&gt;;
+  kalenderAuflisten(v: Verbindung): Promise&lt;KalenderInfo[]&gt;;
+  aenderungenHolen(v: Verbindung, kalenderId: string, syncStand?: string): Promise&lt;{ geaendert: ExternerTermin[]; geloescht: string[]; syncStand: string }&gt;;
+  terminSchreiben(v: Verbindung, kalenderId: string, t: ExternerTerminEntwurf, externeId?: string): Promise&lt;{ externeId: string }&gt;;
+  terminLoeschen(v: Verbindung, kalenderId: string, externeId: string): Promise&lt;<span class="k">void</span>&gt;;
+}
+<span class="k">interface</span> <span class="t">KalenderCache</span> {                 <span class="c">// Application state, NICHT Domain state</span>
+  termine(von: Datum, bis: Datum): Promise&lt;ExternerTermin[]&gt;;
+  uebernehmen(kalenderId: string, delta: { geaendert; geloescht }, syncStand: string): Promise&lt;<span class="k">void</span>&gt;;
+  syncStand(kalenderId: string): Promise&lt;string | <span class="k">undefined</span>&gt;;
+}
+<span class="k">interface</span> <span class="t">Geheimnisse</span>    { lesen(k: string): Promise&lt;string | <span class="k">null</span>&gt;; schreiben(k: string, v: string): Promise&lt;<span class="k">void</span>&gt;; loeschen(k: string): Promise&lt;<span class="k">void</span>&gt; }
+<span class="k">interface</span> <span class="t">Einstellungen</span>  { lesen&lt;T&gt;(k: string, standard: T): T; schreiben(k: string, v: unknown): Promise&lt;<span class="k">void</span>&gt; }
+<span class="k">interface</span> <span class="t">Benachrichtiger</span> { zeigen(n: { titel: string; text: string; aufgabeId?: Id }): <span class="k">void</span> }  <span class="c">// Frist heute, Wiedervorlage fällig</span>
+<span class="k">interface</span> <span class="t">Zeitgeber</span>       { alle(ms: number, f: () =&gt; <span class="k">void</span>): Abmelden; beiTageswechsel(f: () =&gt; <span class="k">void</span>): Abmelden }</pre>
+  <table>
+    <tr><th>Provider</th><th>Implementierung (Vorschlag)</th><th>Bemerkung</th></tr>
+    <tr><td>EventStore</td><td><code>eventstore-jsonl</code>: eine Zeile pro Event, <code>fsync</code> nach jedem Anhängen, Index der Tags im Speicher</td><td>Später als Alternative <code>eventstore-sqlite</code>. Für Tests gibt es eine In-Memory-Variante mit gemeinsamer Contract-Testsuite.</td></tr>
+    <tr><td>Uhr / IdGenerator</td><td>System-Uhr, <code>ulid</code></td><td>Für Tests feste Uhr und deterministische IDs.</td></tr>
+    <tr><td>Kalenderquelle Google</td><td>Google Calendar REST v3, OAuth 2.0 „Installed App“ mit PKCE und Loopback-Redirect</td><td><code>events.list</code> mit <code>singleEvents=true</code> und <code>syncToken</code></td></tr>
+    <tr><td>Kalenderquelle iCloud</td><td>CalDAV (<code>tsdav</code>) + <code>ical.js</code>, Apple-ID + app-spezifisches Passwort</td><td>iCloud bietet kein OAuth. Serien werden über <code>expand</code> oder <code>ical.js</code> aufgelöst.</td></tr>
+    <tr><td>Kalenderquelle EventKit (Option)</td><td>kleines Swift-Hilfsprogramm, JSON über stdin/stdout</td><td>Liest <i>alle</i> in macOS eingerichteten Kalender (iCloud, Google, Exchange) ohne eigene Anmeldung. Siehe <a href="#extern">9</a>.</td></tr>
+    <tr><td>KalenderCache</td><td>SQLite (<code>better-sqlite3</code>) oder JSON pro Kalender</td><td>Zeitraumabfragen über einen Index auf <code>start</code>.</td></tr>
+    <tr><td>Geheimnisse</td><td>Electron <code>safeStorage</code> (Keychain-gestützt)</td><td>OAuth-Refresh-Token, iCloud-App-Passwort</td></tr>
+  </table>
+
+  <!-- ===================================================== -->
+  <h2 id="schema">8 Application state schema</h2>
+  <h3>8.1 Event-Hülle</h3>
+<pre>{
+  <span class="s">"id"</span>: <span class="s">"01JD8W3K…"</span>,            <span class="c">// ULID</span>
+  <span class="s">"typ"</span>: <span class="s">"BuchungAngelegt"</span>,
+  <span class="s">"zeit"</span>: <span class="s">"2026-11-16T10:41:07.120+01:00"</span>,
+  <span class="s">"tags"</span>: [<span class="s">"aufgabe:01JD…"</span>, <span class="s">"buchung:01JD…"</span>],
+  <span class="s">"daten"</span>: { <span class="s">"buchungId"</span>: <span class="s">"01JD…"</span>, <span class="s">"aufgabeId"</span>: <span class="s">"01JD…"</span>, <span class="s">"datum"</span>: <span class="s">"2026-11-19"</span>, <span class="s">"dauer"</span>: 120 },
+  <span class="s">"meta"</span>: { <span class="s">"schema"</span>: 1, <span class="s">"quelle"</span>: <span class="s">"ui"</span> | <span class="s">"schnellerfassung"</span> | <span class="s">"api"</span> | <span class="s">"sync"</span>, <span class="s">"geraet"</span>: <span class="s">"mbp-ralf"</span> }
+}</pre>
+  <p>Die <b>Position</b> (laufende Nummer im Store) wird beim Speichern vergeben und gehört nicht zum Event. Bei Schemaänderungen werden Events nie umgeschrieben. Stattdessen gibt es <b>Upcaster</b> beim Lesen (<code>schema: 1 → 2</code>).</p>
+
+  <h3>8.2 Events (Domain state)</h3>
+  <table>
+    <tr><th>Event</th><th>Daten</th><th>Tags</th></tr>
+    <tr><td><code>AufgabeErfasst</code></td><td>aufgabeId, titel, beschreibung?, ort?, verantwortlich?, tags[], frist?, wiedervorlage?, status?</td><td>aufgabe</td></tr>
+    <tr><td><code>AufgabeUmbenannt</code></td><td>aufgabeId, titel</td><td>aufgabe</td></tr>
+    <tr><td><code>BeschreibungGeaendert</code></td><td>aufgabeId, beschreibung</td><td>aufgabe</td></tr>
+    <tr><td><code>OrtGeaendert</code></td><td>aufgabeId, ort | null</td><td>aufgabe</td></tr>
+    <tr><td><code>VerantwortlicherGeaendert</code></td><td>aufgabeId, verantwortlich | null</td><td>aufgabe</td></tr>
+    <tr><td><code>AufgabeGetaggt</code> / <code>TagEntfernt</code></td><td>aufgabeId, tag</td><td>aufgabe</td></tr>
+    <tr><td><code>FristGesetzt</code> / <code>FristEntfernt</code></td><td>aufgabeId, frist</td><td>aufgabe</td></tr>
+    <tr><td><code>WiedervorlageGesetzt</code> / <code>WiedervorlageAufgehoben</code></td><td>aufgabeId, datum</td><td>aufgabe</td></tr>
+    <tr><td><code>StatusGesetzt</code> / <code>StatusEntfernt</code></td><td>aufgabeId, status</td><td>aufgabe, board</td></tr>
+    <tr><td><code>AufgabeAbgeschlossen</code> / <code>AufgabeWiedereroeffnet</code></td><td>aufgabeId</td><td>aufgabe</td></tr>
+    <tr><td><code>AufgabeVerworfen</code></td><td>aufgabeId, grund?</td><td>aufgabe</td></tr>
+    <tr><td><code>BuchungAngelegt</code></td><td>buchungId, aufgabeId, datum, dauer, start?</td><td>aufgabe, buchung</td></tr>
+    <tr><td><code>BuchungVerschoben</code></td><td>buchungId, datum, start | null (<i>null macht sie zur Reservierung</i>)</td><td>aufgabe, buchung</td></tr>
+    <tr><td><code>BuchungsdauerGeaendert</code></td><td>buchungId, dauer</td><td>aufgabe, buchung</td></tr>
+    <tr><td><code>BuchungStorniert</code></td><td>buchungId</td><td>aufgabe, buchung</td></tr>
+    <tr><td><code>StatusspalteAngelegt</code> / <code>…Umbenannt</code> / <code>StatusspaltenSortiert</code> / <code>StatusspalteEntfernt</code></td><td>statusId, name, position / reihenfolge[]</td><td>board</td></tr>
+    <tr><td><code>BuchungVeroeffentlicht</code></td><td>buchungId, quelle, kalenderId, externeId</td><td>buchung, extern</td></tr>
+    <tr><td><code>VeroeffentlichungZurueckgezogen</code></td><td>buchungId, externeId</td><td>buchung, extern</td></tr>
+  </table>
+  <div class="note"><b>Feingranular statt <code>AufgabeGeaendert</code>.</b> Jedes Event hat eine fachliche Bedeutung („Frist gesetzt“). So lassen sich später Fragen beantworten wie „Wie oft wurde diese Frist verschoben?“ oder „Wie lange stand die Karte in ‚Wartet‘?“. Das nützt dem Überblick, zum Beispiel für eine Durchlaufzeit-Anzeige auf dem Board. Ein Command wie <code>aufgabeAendern</code> erzeugt einfach mehrere Events in <i>einem</i> atomaren Anhängen.</div>
+
+  <h3>8.3 Weiterer Application state (kein Domain state)</h3>
+  <table>
+    <tr><th>Was</th><th>Wo</th><th>Struktur</th></tr>
+    <tr><td>Externe Termine</td><td><code>kalendercache.sqlite</code></td><td><code>termin(quelle, kalenderId, externeId PK, titel, start, ende, ganztaegig, ort, aktualisiert)</code>, <code>syncstand(kalenderId PK, token, zuletzt)</code></td></tr>
+    <tr><td>Verbindungen</td><td><code>einstellungen.json</code></td><td><code>{ id, quelle, konto, kalender: [{ id, name, farbe, sichtbar }] }</code></td></tr>
+    <tr><td>Geheimnisse</td><td>Keychain via safeStorage</td><td>Refresh-Token, App-Passwörter. Nie im Klartext auf der Platte.</td></tr>
+    <tr><td>UI-Zustand</td><td><code>einstellungen.json</code></td><td>Fokus-Sicht, Kalendersicht, Zoom, Splitter, Tageskapazität, Arbeitszeitfenster</td></tr>
+  </table>
+  <h3>8.4 Speicherort &amp; mehrere Rechner</h3>
+  <p>Am Anfang liegt alles unter <code>~/Library/Application Support/Rundblick/</code>. Soll der Bestand über Dropbox oder iCloud Drive auf mehreren Macs verfügbar sein, bietet sich eine <b>Event-Datei pro Gerät</b> an (<code>events/&lt;geraet&gt;.jsonl</code>). Jedes Gerät schreibt nur in seine eigene Datei, deshalb gibt es keine Schreibkonflikte im Dateisystem. Gelesen wird die Vereinigung aller Dateien, sortiert nach Zeitstempel (Hybrid Logical Clock) und dann nach ID. Fachliche Konflikte (zwei Geräte verschieben dieselbe Buchung) löst die Regel „letztes Event gewinnt“, was für eine Ein-Personen-App ausreicht. Der Cache externer Termine bleibt pro Gerät lokal.</p>
+
+  <!-- ===================================================== -->
+  <h2 id="extern">9 Google Calendar &amp; iCloud</h2>
+  <h3>Grundsatz</h3>
+  <ol>
+    <li><b>Lesen als Overlay.</b> Externe Termine erscheinen in allen Kalendersichten und zählen zur Auslastung. Sie werden <i>nicht</i> zu Events, weil sie fremder Zustand sind. Sie liegen im Cache.</li>
+    <li><b>Veröffentlichen</b> (optional, Phase 2): Eigene Buchungen werden in einen eigenen Kalender „Rundblick“ geschrieben, damit andere die Belegung sehen. Termine werden normale Events. Reservierungen werden ganztägige Einträge mit „frei“-Transparenz und dem Titel <code>▭ 2 h · Angebot Hüttner</code>. Die Verknüpfung speichert das Event <code>BuchungVeroeffentlicht</code>.</li>
+    <li><b>Rückkanal</b> (optional, Phase 3): Wird ein veröffentlichter Termin extern verschoben, erzeugt der Sync ein <code>BuchungVerschoben</code> mit <code>meta.quelle = "sync"</code>. Für alle anderen externen Änderungen bleibt Rundblick der Master.</li>
+    <li><b>Aus externem Termin eine Aufgabe machen</b>: <code>aufgabeErfassen</code> mit vorbelegtem Titel und Termin plus einem Verweis auf das Original.</li>
+  </ol>
+  <h3>Synchronisation</h3>
+  <ul>
+    <li>Der Body steuert sie über den Command <code>synchronisieren()</code>. Ausgelöst wird er per <b>Zeitgeber</b> (alle 5 min), beim <b>Fokussieren des Fensters</b> und beim <b>Start</b>.</li>
+    <li>Google: inkrementell per <code>syncToken</code>. Ein HTTP 410 bedeutet Neuaufbau. Push-Kanäle brauchen einen öffentlichen HTTPS-Endpunkt und kommen für eine Desktop-App deshalb nicht in Frage.</li>
+    <li>iCloud: CalDAV <code>sync-collection</code> (RFC 6578) oder <code>ctag</code>-Vergleich plus <code>calendar-query</code> für das Fenster −30 / +180 Tage.</li>
+    <li>Fehler (offline, Token abgelaufen) verändern keinen Domain state. Der Client zeigt einen dezenten Hinweis „Google seit 14:20 nicht aktualisiert“.</li>
+  </ul>
+  <div class="note"><b>Abkürzung für macOS: EventKit.</b> Wenn Google und iCloud ohnehin in der macOS-App „Kalender“ eingerichtet sind, kann ein winziger Swift-Helfer über EventKit <i>alle</i> Kalender lesen und schreiben. Dafür sind kein OAuth, keine Google-Cloud-Console, kein App-Passwort und kein CalDAV-Code nötig. Die Architektur bleibt dieselbe, es ist nur eine weitere Implementierung von <code>Kalenderquelle</code>. <b>Empfehlung:</b> mit EventKit beginnen (am schnellsten am Ziel), Google REST und CalDAV als portable Implementierungen später nachziehen.</div>
+
+  <!-- ===================================================== -->
+  <h2 id="ablaeufe">10 Abläufe</h2>
+  <div class="seq"><b>Schnellerfassung</b> „Angebot Müller #kunde !fr &gt;mi 2h“
+    <ol>
+      <li><span class="tag tc">client</span> globaler Hotkey → Spotlight-Fenster; bei jeder Eingabe <code>erfassungVorschau(text)</code></li>
+      <li><span class="tag tb">body</span> <code>parse(text, uhr.heute())</code> → Titel, Tags, Frist, Buchung → Chips</li>
+      <li><span class="tag tc">client</span> <kbd>↵</kbd> → <code>schnellErfassen(text)</code></li>
+      <li><span class="tag tb">body</span> parsen, <code>ids.neu()</code> ×2, <code>uhr.jetzt()</code> → <code>domain.aufgabeErfassen(…)</code></li>
+      <li><span class="tag td">domain</span> Regeln prüfen → <code>AufgabeErfasst</code> + <code>BuchungAngelegt</code> atomar anhängen → Projektionen nachführen</li>
+      <li><span class="tag tb">body</span> <code>melde(['aufgaben','kalender'])</code> → <code>{ ok, ids }</code></li>
+      <li><span class="tag tc">client</span> Hauptfenster: Liste und Kalender fragen neu ab. Die neue Zeile blinkt kurz auf.</li>
+    </ol></div>
+  <div class="seq"><b>Aufgabe aus der Liste in die Woche ziehen</b>
+    <ol>
+      <li><span class="tag tc">client</span> Drop im Raster bei y → Uhrzeit (auf 15 min gerastert) → <code>buchungAnlegen({ aufgabeId, datum, start, dauer: 60 })</code></li>
+      <li><span class="tag td">domain</span> Kontext <code>aufgabe:&lt;id&gt;</code>: existiert und ist offen → <code>BuchungAngelegt</code></li>
+      <li><span class="tag tb">body</span> optional veröffentlichen: <span class="tag tp">provider</span> <code>terminSchreiben</code> → <code>domain.buchungVerknuepfen</code></li>
+      <li><span class="tag tc">client</span> Kalender, Liste (Buchungssymbol) und Board-Karte aktualisieren sich</li>
+    </ol></div>
+  <div class="seq"><b>Tageswechsel</b>
+    <ol>
+      <li><span class="tag tp">provider</span> <code>Zeitgeber.beiTageswechsel</code> → <span class="tag tb">body</span> <code>melde(['aufgaben','kalender','board'])</code>, weil Wiedervorlagen sichtbar werden und Fristen überfällig</li>
+      <li><span class="tag tb">body</span> fragt die Domain nach heute fälligen Aufgaben und Wiedervorlagen → <code>Benachrichtiger.zeigen</code></li>
+    </ol></div>
+
+  <!-- ===================================================== -->
+  <h2 id="struktur">11 Projektstruktur</h2>
+<pre>rundblick/
+├─ requirements/design.html        <span class="c">← dieses Dokument</span>
+├─ entwuerfe/                      <span class="c">← klickbare UI-Entwürfe</span>
+└─ src/
+   ├─ main.ts                      <span class="c">// Composition Root: Provider → Domain → Body → Clients</span>
+   ├─ schema/                      <span class="c">// Application state schema</span>
+   │  ├─ events.ts                 <span class="c">// Event-Typen (discriminated union), Versionen, Upcaster</span>
+   │  └─ extern.ts                 <span class="c">// ExternerTermin, Cache-Tabellen</span>
+   ├─ client/
+   │  ├─ ui/                       <span class="c">// Svelte: App, panes/, liste/, board/, kalender/{tag,woche,monat,timeline}/, detail/</span>
+   │  ├─ schnellerfassung/         <span class="c">// zweites Fenster</span>
+   │  ├─ bridge/preload.ts         <span class="c">// contextBridge: command/query/onChange</span>
+   │  └─ adapter/                  <span class="c">// ipc-server.ts, http-api.ts, hotkey.ts, tray.ts</span>
+   ├─ body/
+   │  ├─ interface.ts
+   │  ├─ body.ts
+   │  ├─ schnellerfassung/parse.ts <span class="c">// pure</span>
+   │  └─ kalender/zusammenfuehren.ts <span class="c">// pure: eigene + externe + Auslastung</span>
+   ├─ domain/
+   │  ├─ interface.ts
+   │  ├─ domain.ts
+   │  ├─ commands/*.ts             <span class="c">// je Command: Abfrage, entwickle(), entscheide()</span>
+   │  └─ projektionen/*.ts
+   └─ providers/
+      ├─ eventstore/{interface.ts, jsonl/, memory/}
+      ├─ uhr/ · ids/ · zeitgeber/ · einstellungen/ · geheimnisse/ · benachrichtiger/
+      └─ kalender/{interface.ts, eventkit/, google/, caldav/, cache-sqlite/}</pre>
+  <p>Tooling: <code>electron-vite</code>, TypeScript strict, Svelte 5, Vitest, Playwright (Electron), <code>dependency-cruiser</code> für die Schichtregeln aus <a href="#ueberblick">2</a>.</p>
+
+  <!-- ===================================================== -->
+  <h2 id="tests">12 Teststrategie</h2>
+  <table>
+    <tr><th>Ebene</th><th>Form</th><th>Beispiel</th></tr>
+    <tr><td>Domain-Commands</td><td><b>Given</b> Events · <b>When</b> Command · <b>Then</b> Events oder Fehler (In-Memory-Store)</td><td>Given AufgabeErfasst, AufgabeAbgeschlossen · When buchungAnlegen · Then Fehler „abgeschlossen“</td></tr>
+    <tr><td>Projektionen</td><td>Given Events · Then Read Model</td><td>Liste gruppiert nach Frist, Wiedervorlage blendet aus</td></tr>
+    <tr><td>Body</td><td>mit Fake-Providern (feste Uhr, Zähler-IDs, Fake-Kalenderquelle)</td><td><code>zeitraum</code> fügt externe Termine ein und berechnet die Auslastung</td></tr>
+    <tr><td>Parser</td><td>tabellengetrieben</td><td><code>"&gt;do 14:00 45m"</code> → Termin Do 14:00, 45 min</td></tr>
+    <tr><td>Provider</td><td>Contract-Tests: dieselbe Suite gegen <code>memory</code> und <code>jsonl</code></td><td>bedingtes Anhängen schlägt bei konkurrierendem Event fehl</td></tr>
+    <tr><td>Client</td><td>wenige E2E-Tests (Playwright/Electron)</td><td>Erfassen → erscheint in der Liste; Ziehen → Reservierung im Band</td></tr>
+  </table>
+
+  <!-- ===================================================== -->
+  <h2 id="offen">13 Offene Fragen &amp; Empfehlungen</h2>
+  <div class="dec"><div class="n">1</div><div><p><b>Direkt im Kalender eingetragene Reservierung: eigene Aufgabe oder nicht?</b></p><p class="rec">Empfehlung: Jede Buchung gehört zu einer Aufgabe. <code>reservierungEintragen</code> legt still eine Aufgabe mit demselben Titel an. So bleibt das Modell einfach, und nichts verschwindet aus dem Überblick.</p></div></div>
+  <div class="dec"><div class="n">2</div><div><p><b>Spalte „Fertig“ und Abschließen</b></p><p class="rec">Empfehlung: Beides getrennt halten. „Fertig“ ist ein Status zum Prüfen und Abrechnen, das Abschließen bleibt ein bewusster Klick (in den Entwürfen der Knopf „✓ abschließen“). Alternative: eine Einstellung „Ziehen nach Fertig schließt ab“.</p></div></div>
+  <div class="dec"><div class="n">3</div><div><p><b>Brauchen Buchungen eine eigene Notiz oder einen eigenen Titel?</b> (z. B. „Teil 2: Kalkulation“)</p><p class="rec">Empfehlung: optionales Feld <code>notiz</code> ab Version 1, angezeigt als „Titel · Notiz“.</p></div></div>
+  <div class="dec"><div class="n">4</div><div><p><b>Wiederkehrende Aufgaben</b> (jeden Monat „Reisekosten einreichen“)</p><p class="rec">Gehört nicht zum ersten Wurf. Passt später als <code>WiederholungFestgelegt</code> plus Erzeugung beim Abschließen.</p></div></div>
+  <div class="dec"><div class="n">5</div><div><p><b>Vergangene Buchungen:</b> Soll man „wahrgenommen / nicht geschafft“ markieren können? Das würde die Kalenderrückschau zum Werkzeug machen.</p><p class="rec">Empfehlung: zunächst nicht. Nicht geschaffte Reservierungen erscheinen aber im Überblick als Hinweis „3 Reservierungen von gestern ohne Abschluss“.</p></div></div>
+  <div class="dec"><div class="n">6</div><div><p><b>Tageskapazität und Arbeitszeitfenster</b> für die Auslastung (Entwurf: 8 h, 7–21 Uhr)</p><p class="rec">als Einstellung, eventuell pro Wochentag</p></div></div>
+  <div class="dec"><div class="n">7</div><div><p><b>Externe Anbindung:</b> EventKit (nur Mac, schnell) oder Google REST + CalDAV (portabel, aufwendiger)?</p><p class="rec">Empfehlung: EventKit zuerst, siehe <a href="#extern">9</a></p></div></div>
+  <div class="dec"><div class="n">8</div><div><p><b>Mehrere Rechner</b> über Dropbox?</p><p class="rec">Möglich mit einer Event-Datei pro Gerät (8.4). Das Event-Format sollte deshalb von Anfang an <code>meta.geraet</code> und eine HLC-Zeit enthalten.</p></div></div>
+  <div class="dec"><div class="n">9</div><div><p><b>Verantwortliche:</b> freie Zeichenkette oder Verweis auf Kontakte (macOS-Kontakte oder die Kontakte-App)?</p><p class="rec">Freitext mit Autovervollständigung aus der Projektion <code>vorschlaege</code></p></div></div>
+  <div class="dec"><div class="n">10</div><div><p><b>Layout:</b> welcher Entwurf (A, B oder C)?</p><p class="rec">Empfehlung: A als Grundgerüst, dazu die Spotlight-Erfassung aus B und die Timeline mit Hover-Verknüpfung aus C</p></div></div>
+
+  <!-- ===================================================== -->
+  <h2 id="plan">14 Schrittfolge</h2>
+  <ol>
+    <li><b>Gerüst:</b> electron-vite, Schichtordner, dependency-cruiser, JSONL Event Store mit Contract-Tests</li>
+    <li><b>Aufgaben + Liste + Schnellerfassung</b> (Parser, Vorschau). Damit ist die App ab dem ersten Tag nutzbar.</li>
+    <li><b>Status + Board</b> inklusive Spalten-Konfiguration</li>
+    <li><b>Buchungen + Woche/Tag</b> mit Drag &amp; Drop, Reservierungsband und Auslastung</li>
+    <li><b>Monat + Timeline</b> mit Zoom und Hover-Verknüpfung</li>
+    <li><b>Triptychon-Layout</b> mit Fokus und Mini-Zusammenfassungen, dazu Tastatursteuerung</li>
+    <li><b>Externe Kalender lesend</b> (EventKit), Cache, Sync-Anzeige</li>
+    <li><b>Globales Schnellerfassungsfenster</b>, Tray, Benachrichtigungen zu Frist und Wiedervorlage</li>
+    <li><b>Veröffentlichen</b> eigener Buchungen, optional lokales REST API</li>
+  </ol>
+</main>
+</div>
+</body>
+</html>

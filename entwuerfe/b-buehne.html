@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Rundblick · Entwurf B – Übersicht &amp; Zoom</title>
+<link rel="stylesheet" href="shared/base.css">
+<style>
+  .stage { flex: 1; min-height: 0; position: relative; padding: 12px; }
+  .grid { position: absolute; inset: 12px; display: grid; grid-template-columns: 1fr 1.35fr; grid-template-rows: 1fr 1fr; gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+  .grid:not(.zoomed) .tile { cursor: zoom-in; }
+  .grid:not(.zoomed) .tile:hover { border-color: var(--own); box-shadow: 0 0 0 3px var(--own-soft), var(--shadow); }
+  .tile-h { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .tile-h h2 { margin: 0; font-size: 14px; }
+  .tile-h .sub { color: var(--mute); font-size: 12px; }
+  .tile-h kbd { margin-left: auto; }
+  .tile-b { flex: 1; min-height: 0; position: relative; }
+  /* In der Übersicht sind die Kacheln „Vorschauen“: Interaktion erst nach dem Hineinzoomen */
+  .grid:not(.zoomed) .tile-b > * { pointer-events: none; }
+  .grid.zoomed { display: block; }
+  .grid.zoomed .tile { display: none; }
+  .grid.zoomed .tile.z { display: flex; position: absolute; inset: 0; }
+  .grid.zoomed .tile.z .tile-h kbd { display: none; }
+
+  .hello { padding: 12px 14px 0; display: flex; align-items: baseline; gap: 10px; }
+  .hello h1 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+  .newbtn { margin-left: auto; border: 1px dashed var(--own); color: var(--own); background: #fff; border-radius: 8px; padding: 5px 12px; font-weight: 600; pointer-events: auto !important; }
+  .newbtn:hover { background: var(--own-soft); }
+
+  /* Spotlight-Schnellerfassung */
+  .spot-bg { position: fixed; inset: 0; background: rgba(20,20,30,.28); backdrop-filter: blur(3px); z-index: 90; display: none; align-items: flex-start; justify-content: center; padding-top: 16vh; }
+  .spot-bg.open { display: flex; }
+  .spot { width: 640px; background: #fff; border-radius: 14px; box-shadow: 0 30px 80px rgba(0,0,0,.25); padding: 6px; }
+  .spot .qc { max-width: none; }
+  .spot .qc input { font-size: 18px; padding: 14px 16px 14px 40px; border: 0; background: #fff; box-shadow: none !important; }
+  .spot .qc .plus { top: 12px; left: 15px; font-size: 20px; }
+  .spot .qc .hint { display: none; }
+  .spot .qc-preview { position: static; display: block; border: 0; box-shadow: none; border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; }
+  .spot .foot { display: flex; justify-content: space-between; color: var(--mute); font-size: 11px; padding: 6px 12px 8px; }
+
+  .zbar { display: none; }
+  .zoomed-on .zbar { display: inline-flex; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="brand"><span class="logo"></span>Rundblick <small>Entwurf B · Übersicht &amp; Zoom</small></div>
+    <span class="spacer"></span>
+    <div class="seg zbar" id="seg">
+      <button data-z="">▦ Übersicht<kbd>␣</kbd></button>
+      <button data-z="heute">Heute<kbd>1</kbd></button>
+      <button data-z="list">Liste<kbd>2</kbd></button>
+      <button data-z="board">Board<kbd>3</kbd></button>
+      <button data-z="cal">Kalender<kbd>4</kbd></button>
+    </div>
+    <button class="btn primary" id="newTop">+ Neue Aufgabe <kbd style="background:transparent;color:#fff;border-color:rgba(255,255,255,.5)">N</kbd></button>
+  </header>
+  <div class="stage">
+    <div class="grid" id="grid">
+      <section class="tile" data-k="heute"><div class="tile-h"><h2>Heute</h2><span class="sub" id="todaySub"></span><kbd>1</kbd></div><div class="tile-b" style="display:flex;flex-direction:column"><div class="hello"><h1 id="hello"></h1><span class="muted" id="hello2"></span><button class="newbtn" id="newTile">+ Neue Aufgabe</button></div><div style="flex:1;min-height:0" id="todayBody"></div></div></section>
+      <section class="tile" data-k="cal"><div class="tile-h"><h2>Kalender</h2><span class="sub">Woche · Google + iCloud eingeblendet</span><kbd>4</kbd></div><div class="tile-b"></div></section>
+      <section class="tile" data-k="list"><div class="tile-h"><h2>Aufgaben</h2><span class="sub" id="listSub"></span><kbd>2</kbd></div><div class="tile-b"></div></section>
+      <section class="tile" data-k="board"><div class="tile-h"><h2>Board</h2><span class="sub">Aufgaben mit Status</span><kbd>3</kbd></div><div class="tile-b"></div></section>
+    </div>
+  </div>
+</div>
+<div class="spot-bg" id="spotBg"><div class="spot"><div id="spotQc"></div><div class="foot"><span><kbd>↵</kbd> erfassen &amp; weiter &nbsp; <kbd>⇧↵</kbd> erfassen &amp; schließen</span><span><kbd>Esc</kbd> schließen · in der App global per <kbd>⌥ Leertaste</kbd></span></div></div></div>
+<div class="draftnote"><b>Entwurf B – Übersicht &amp; Zoom.</b> Start ist ein Dashboard aus vier Live-Kacheln. Klick oder <kbd>1</kbd>–<kbd>4</kbd> zoomt hinein, <kbd>Leertaste</kbd> zoomt heraus. Neue Aufgabe jederzeit mit <kbd>N</kbd> als Spotlight-Fenster. <a href="index.html">← alle Entwürfe</a></div>
+
+<script src="shared/data.js"></script>
+<script src="shared/views.js"></script>
+<script>
+  const grid = document.getElementById('grid'), app = document.getElementById('app');
+  const cal = { view: 'woche', anchor: Store.HEUTE, pph: 8 };
+  let zoom = null;
+  const hp = new URLSearchParams(location.hash.slice(1));
+  if (hp.get('f')) zoom = hp.get('f'); if (hp.get('v')) cal.view = hp.get('v');
+
+  function render() {
+    grid.classList.toggle('zoomed', !!zoom);
+    app.classList.toggle('zoomed-on', !!zoom);
+    document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', (b.dataset.z || null) === zoom));
+    document.querySelectorAll('.tile').forEach(t => {
+      const k = t.dataset.k, mode = zoom === k ? 'full' : 'compact';
+      t.classList.toggle('z', zoom === k);
+      if (zoom && zoom !== k) return; // nicht sichtbar
+      const body = t.querySelector('.tile-b');
+      if (k === 'heute') V.today(document.getElementById('todayBody'));
+      if (k === 'list') V.list(body, { mode });
+      if (k === 'board') V.board(body, { mode });
+      if (k === 'cal') V.calendar(body, cal, { mode });
+    });
+    const h = new Date().getHours();
+    document.getElementById('hello').textContent = D.WT_LANG[D.wd(Store.HEUTE)] + ', ' + D.parse(Store.HEUTE).getDate() + '. ' + D.MON_LANG[D.parse(Store.HEUTE).getMonth()];
+    const e = Store.entriesOn(Store.HEUTE);
+    document.getElementById('hello2').textContent = `${e.termine.length + e.extern.length} Termine · ${e.reservierungen.length} Reservierungen · ${D.dauer(Store.load(Store.HEUTE))} gebucht`;
+    document.getElementById('todaySub').textContent = 'KW ' + D.kw(Store.HEUTE);
+    document.getElementById('listSub').textContent = Store.visibleTasks().length + ' offen';
+  }
+
+  // Zoom mit FLIP-Animation (Kachel wächst aus ihrer Position in der Übersicht)
+  function setZoom(k) {
+    if (k === zoom) return;
+    const tile = k ? grid.querySelector(`.tile[data-k="${k}"]`) : grid.querySelector('.tile.z');
+    const from = tile ? tile.getBoundingClientRect() : null;
+    zoom = k;
+    render();
+    if (!tile || !from) return;
+    const to = tile.getBoundingClientRect();
+    const inv = `translate(${from.left - to.left}px,${from.top - to.top}px) scale(${from.width / to.width},${from.height / to.height})`;
+    tile.animate([{ transform: inv, transformOrigin: '0 0' }, { transform: 'none', transformOrigin: '0 0' }], { duration: 260, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  }
+  grid.addEventListener('click', e => {
+    if (zoom) return;
+    if (e.target.closest('.newbtn')) return;
+    const t = e.target.closest('.tile');
+    if (t) { e.stopPropagation(); setZoom(t.dataset.k); }
+  }, true);
+  document.getElementById('seg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setZoom(b.dataset.z || null); });
+
+  // Spotlight
+  const spotBg = document.getElementById('spotBg');
+  const spotInput = V.quickCapture(document.getElementById('spotQc'), { placeholder: 'Was ist zu tun?' });
+  let closeAfter = false;
+  spotInput.addEventListener('keydown', e => { if (e.key === 'Enter') closeAfter = e.shiftKey; if (e.key === 'Escape') { e.stopPropagation(); closeSpot(); } }, true);
+  spotInput.addEventListener('keyup', e => { if (e.key === 'Enter' && closeAfter) closeSpot(); });
+  function openSpot() { spotBg.classList.add('open'); setTimeout(() => spotInput.focus(), 10); }
+  function closeSpot() { spotBg.classList.remove('open'); spotInput.blur(); }
+  spotBg.addEventListener('mousedown', e => { if (e.target === spotBg) closeSpot(); });
+  document.getElementById('newTop').onclick = openSpot;
+  document.getElementById('newTile').onclick = e => { e.stopPropagation(); openSpot(); };
+
+  document.addEventListener('keydown', e => {
+    if (V.typing(e)) return;
+    if (spotBg.classList.contains('open')) return;
+    const map = { '1': 'heute', '2': 'list', '3': 'board', '4': 'cal' };
+    if (e.key in map) setZoom(map[e.key]);
+    else if (e.key === ' ' ) { e.preventDefault(); setZoom(null); }
+    else if (e.key === 'Escape' && !document.querySelector('.drawer.open')) setZoom(null);
+    else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); openSpot(); }
+    else if (zoom === 'cal' && 'twmz'.includes(e.key.toLowerCase())) { cal.view = { t: 'tag', w: 'woche', m: 'monat', z: 'timeline' }[e.key.toLowerCase()]; render(); }
+  });
+  Store.on(render);
+  render();
+</script>
+</body>
+</html>

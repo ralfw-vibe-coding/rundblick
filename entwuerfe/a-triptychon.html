@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Rundblick · Entwurf A – Triptychon</title>
+<link rel="stylesheet" href="shared/base.css">
+<style>
+  .tri { flex: 1; min-height: 0; display: flex; gap: 10px; padding: 10px; }
+  .pane { min-width: 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; transition: flex-grow .35s cubic-bezier(.2,.8,.2,1); flex-basis: 0; }
+  .pane[data-k="list"] { --g: 1.05; } .pane[data-k="board"] { --g: 1.35; } .pane[data-k="cal"] { --g: 1.8; }
+  .pane { flex-grow: var(--g); }
+  .tri[data-focus] .pane { --g: 1; }
+  .tri[data-focus] .pane.focus { --g: 6.5; }
+  .pane-h { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; white-space: nowrap; }
+  .pane-h h2 { margin: 0; font-size: 13px; }
+  .pane-h .sub { color: var(--mute); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .pane-h .fbtn { margin-left: auto; border: 0; background: none; color: var(--mute); font-size: 14px; padding: 0 2px; }
+  .pane-h:hover .fbtn { color: var(--ink); }
+  .pane-b { flex: 1; min-height: 0; }
+  .pane.mini { cursor: pointer; }
+  .pane.mini .pane-h .sub { display: none; }
+  .pane.mini:hover { border-color: var(--line2); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="logo"></span>Rundblick <small>Entwurf A · Triptychon</small></div>
+    <div id="qc"></div>
+    <div class="seg" id="seg">
+      <button data-f="">Überblick<kbd>0</kbd></button>
+      <button data-f="list">Liste<kbd>1</kbd></button>
+      <button data-f="board">Board<kbd>2</kbd></button>
+      <button data-f="cal">Kalender<kbd>3</kbd></button>
+    </div>
+  </header>
+  <main class="tri" id="tri">
+    <section class="pane" id="p-list" data-k="list"><div class="pane-h"><h2>Aufgaben</h2><span class="sub" id="s-list"></span><button class="fbtn" title="Fokus">⤢</button></div><div class="pane-b"></div></section>
+    <section class="pane" id="p-board" data-k="board"><div class="pane-h"><h2>Board</h2><span class="sub">nur Aufgaben mit Status</span><button class="fbtn" title="Fokus">⤢</button></div><div class="pane-b"></div></section>
+    <section class="pane" id="p-cal" data-k="cal"><div class="pane-h"><h2>Kalender</h2><span class="sub">eigene Buchungen + Google + iCloud</span><button class="fbtn" title="Fokus">⤢</button></div><div class="pane-b"></div></section>
+  </main>
+</div>
+<div class="draftnote"><b>Entwurf A – Triptychon.</b> Alle drei Sichten immer nebeneinander. <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> holt eine nach vorn, die anderen schrumpfen zu Live-Zusammenfassungen; <kbd>0</kbd>/<kbd>Esc</kbd> zurück. Aufgaben in den Kalender ziehen = Reservierung (Band oben) oder Termin (Raster). <a href="index.html">← alle Entwürfe</a></div>
+
+<script src="shared/data.js"></script>
+<script src="shared/views.js"></script>
+<script>
+  const tri = document.getElementById('tri');
+  const cal = { view: 'woche', anchor: Store.HEUTE, pph: 8 };
+  let focus = null;
+  const hp = new URLSearchParams(location.hash.slice(1));
+  if (hp.get('f')) focus = hp.get('f'); if (hp.get('v')) cal.view = hp.get('v');
+  const qcInput = V.quickCapture(document.getElementById('qc'));
+
+  function render() {
+    if (focus) tri.dataset.focus = focus; else delete tri.dataset.focus;
+    document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', (b.dataset.f || null) === focus));
+    document.querySelectorAll('.pane').forEach(p => {
+      const k = p.dataset.k;
+      const mode = !focus ? 'compact' : focus === k ? 'full' : 'mini';
+      p.classList.toggle('focus', focus === k);
+      p.classList.toggle('mini', mode === 'mini');
+      p.querySelector('.fbtn').textContent = focus === k ? '⤡' : '⤢';
+      const body = p.querySelector('.pane-b');
+      if (k === 'list') V.list(body, { mode });
+      if (k === 'board') V.board(body, { mode });
+      if (k === 'cal') V.calendar(body, cal, { mode });
+    });
+    document.getElementById('s-list').textContent = Store.visibleTasks().length + ' offen';
+  }
+  function setFocus(k) { focus = (k === focus ? null : k) || null; render(); }
+
+  document.querySelectorAll('.pane').forEach(p => {
+    p.querySelector('.pane-h').addEventListener('click', () => setFocus(p.dataset.k));
+    p.addEventListener('click', e => { if (p.classList.contains('mini') && !e.target.closest('[data-task]')) setFocus(p.dataset.k); });
+  });
+  document.getElementById('seg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { focus = b.dataset.f || null; render(); } });
+  document.addEventListener('keydown', e => {
+    if (V.typing(e)) return;
+    const map = { '0': null, '1': 'list', '2': 'board', '3': 'cal' };
+    if (e.key in map) { focus = map[e.key]; render(); }
+    else if (e.key === 'Escape' && !document.querySelector('.drawer.open')) { focus = null; render(); }
+    else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); qcInput.focus(); }
+    else if ('twmz'.includes(e.key.toLowerCase())) {
+      cal.view = { t: 'tag', w: 'woche', m: 'monat', z: 'timeline' }[e.key.toLowerCase()];
+      render();
+    }
+  });
+  Store.on(render);
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Rundblick · Entwürfe</title>
+<link rel="stylesheet" href="shared/base.css">
+<style>
+  body { overflow: auto; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 36px 28px 80px; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+  .lead { color: var(--ink2); font-size: 15px; line-height: 1.55; max-width: 780px; }
+  .drafts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 28px 0; }
+  .d { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; text-decoration: none; color: inherit; transition: .15s; }
+  .d:hover { border-color: var(--own); box-shadow: 0 0 0 3px var(--own-soft); }
+  .thumb { height: 170px; background: var(--bg); position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .thumb iframe { width: 1440px; height: 900px; border: 0; transform: scale(.245); transform-origin: 0 0; pointer-events: none; position: absolute; left: 0; top: 0; }
+  .d .c { padding: 14px 16px 16px; }
+  .d h3 { margin: 0 0 6px; font-size: 15px; }
+  .d p { margin: 0 0 8px; color: var(--ink2); line-height: 1.5; }
+  .d ul { margin: 0; padding-left: 18px; color: var(--ink2); line-height: 1.55; }
+  .d .pc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 12px; }
+  .d .pc b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); margin-bottom: 2px; }
+  h2 { font-size: 17px; margin: 34px 0 10px; }
+  table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  td, th { text-align: left; padding: 7px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); background: var(--panel2); }
+  code { background: var(--bg); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .legend-big { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .lg { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .lg .sample { height: 34px; margin-bottom: 8px; position: relative; }
+  .rec { background: #fff; border-left: 4px solid var(--own); padding: 14px 18px; border-radius: 0 10px 10px 0; line-height: 1.6; color: var(--ink2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="brand"><span class="logo" style="width:26px;height:26px"></span></span>Rundblick – Entwürfe</h1>
+  <p class="lead">Arbeitstitel für die Aufgaben-Kalender-App. Ziel: <b>Überblick ist King</b>. Liste, Board und Kalender sollen gleichzeitig sichtbar sein, eine Sicht lässt sich schnell nach vorn holen, und eine neue Aufgabe ist in zwei Sekunden erfasst. Die drei Entwürfe sind klickbare Attrappen mit denselben Beispieldaten. Alles läuft im Speicher, nichts wird gespeichert.</p>
+
+  <div class="drafts">
+    <a class="d" href="a-triptychon.html">
+      <div class="thumb"><iframe src="a-triptychon.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="c"><h3>A · Triptychon</h3>
+        <p>Drei Spalten nebeneinander: Liste | Board | Kalender. Eine Sicht nimmt man mit <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> in den Fokus. Die anderen bleiben als schmale <i>Live-Zusammenfassungen</i> stehen (Zähler, „als Nächstes“).</p>
+        <div class="pc"><div><b>Stark</b>Nie „weg“ aus einer Sicht. Ziehen zwischen allen dreien jederzeit. Sehr wenig Modus.</div><div><b>Schwach</b>Auf kleinen Bildschirmen eng. Die Woche im Überblick ist schmal.</div></div>
+      </div></a>
+    <a class="d" href="b-buehne.html">
+      <div class="thumb"><iframe src="b-buehne.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="c"><h3>B · Übersicht &amp; Zoom</h3>
+        <p>Ein Dashboard aus vier Kacheln (Heute, Kalender, Liste, Board). Mit einem Klick zoomt man in eine Kachel, mit der <kbd>Leertaste</kbd> wieder heraus. Die Erfassung läuft über ein Spotlight-Fenster (<kbd>N</kbd>, in der App auch global per Hotkey).</p>
+        <div class="pc"><div><b>Stark</b>Die Fokussicht hat den ganzen Platz. „Heute“ beantwortet die Morgenfrage. Erfassen geht ohne Kontextwechsel.</div><div><b>Schwach</b>Im Fokus sieht man die anderen Sichten nicht. Zum Ziehen zwischen Sichten muss man in die Übersicht.</div></div>
+      </div></a>
+    <a class="d" href="c-zeitachse.html">
+      <div class="thumb"><iframe src="c-zeitachse.html" loading="lazy" tabindex="-1"></iframe></div>
+      <div class="c"><h3>C · Zeitachse als Rückgrat</h3>
+        <p>Oben verläuft die Zeit als zoombare Timeline (oder Tag/Woche/Monat), unten liegt der Vorrat aus Liste und Board. Einplanen heißt: nach oben ziehen. Fährt man mit der Maus über eine Aufgabe, leuchten ihre Buchungen und ihre Frist auf der Zeitachse auf.</p>
+        <div class="pc"><div><b>Stark</b>Zeigt die Last über Wochen: Fristen, Reservierungen und Wiedervorlagen auf einer Achse. Planen fühlt sich physisch an.</div><div><b>Schwach</b>Die Timeline ist ungewohnter als ein Wochenraster. Drei Bereiche konkurrieren um die Höhe.</div></div>
+      </div></a>
+  </div>
+
+  <div class="rec"><b>Meine Empfehlung:</b> <b>A</b> als Grundgerüst, dazu zwei Bausteine aus den anderen Entwürfen: die <b>Spotlight-Erfassung aus B</b> (globaler Hotkey, auch wenn die App im Hintergrund ist) und die <b>Timeline aus C</b> als vierte Kalendersicht mit Hover-Verknüpfung. Die „Heute“-Kachel aus B wird zur Mini-Zusammenfassung des Kalenders in A. So bleibt immer alles im Blick, und gearbeitet wird mit einem einzigen Tastendruck in einer Sicht.</div>
+
+  <h2>Bildsprache im Kalender</h2>
+  <div class="legend-big">
+    <div class="lg"><div class="sample"><div class="ev own" style="inset:2px 30% 2px 0">Call Codelution<small>14:00–15:00</small></div></div><b>Termin</b><br><span class="muted">Buchung mit Datum, Uhrzeit und Dauer. Ausgefüllter Block im Zeitraster.</span></div>
+    <div class="lg"><div class="sample"><div class="resv" style="margin-top:6px"><b>2h</b><span>Angebot Hüttner</span></div></div><b>Reservierung</b><br><span class="muted">Buchung mit Datum und Dauer, aber ohne Uhrzeit. Gestrichelt im Reservierungsband über dem Raster. Der Balken darunter zeigt, wie voll der Tag ist.</span></div>
+    <div class="lg"><div class="sample"><div class="ev gcal" style="inset:2px 50% 2px 0">Jour fixe</div><div class="ev icloud" style="inset:2px 0 2px 52%">Yoga</div></div><b>Extern</b><br><span class="muted">Google Calendar (blau) und iCloud (orange). Nur lesbar eingeblendet, hell gefüllt.</span></div>
+    <div class="lg"><div class="sample" style="display:flex;gap:14px;align-items:center"><span class="due over">◆ Frist</span><span class="chip wv">↩ Wiedervorlage</span></div><b>Frist &amp; Wiedervorlage</b><br><span class="muted">Fristen sind Rauten (rot = überfällig, orange = heute). Bis zur Wiedervorlage ist eine Aufgabe unsichtbar. Dann taucht sie wieder auf.</span></div>
+  </div>
+
+  <h2>Schnellerfassung – eine Zeile, alles drin</h2>
+  <table>
+    <tr><th>Eingabe</th><th>Bedeutung</th><th>Beispiel</th></tr>
+    <tr><td><i>freier Text</i></td><td>Titel (Pflicht)</td><td><code>Angebot Müller schreiben</code></td></tr>
+    <tr><td><code>#tag</code></td><td>Tag (mehrere möglich)</td><td><code>#kunde #dringend</code></td></tr>
+    <tr><td><code>@person</code></td><td>Verantwortlich</td><td><code>@Markus</code></td></tr>
+    <tr><td><code>/ort</code></td><td>Ort (<code>_</code> steht für ein Leerzeichen)</td><td><code>/Hamburg_Eppendorf</code></td></tr>
+    <tr><td><code>!datum</code></td><td>Frist</td><td><code>!fr</code> · <code>!24.12.</code> · <code>!+3</code></td></tr>
+    <tr><td><code>^datum</code></td><td>Wiedervorlage (bis dahin unsichtbar)</td><td><code>^+2w</code> · <code>^1.12.</code></td></tr>
+    <tr><td><code>=status</code></td><td>Status. Damit landet die Aufgabe auch auf dem Board.</td><td><code>=inarbeit</code> · <code>=bereit</code> · <code>=wartet</code></td></tr>
+    <tr><td><code>&gt;datum dauer</code></td><td>Buchung als <b>Reservierung</b></td><td><code>&gt;do 2h</code></td></tr>
+    <tr><td><code>&gt;datum hh:mm dauer</code></td><td>Buchung als <b>Termin</b></td><td><code>&gt;morgen 14:00 45m</code></td></tr>
+  </table>
+  <p class="muted">Datumsangaben: <code>heute</code> <code>morgen</code> <code>üm</code> <code>mo</code>…<code>so</code> <code>+3</code> <code>+2w</code> <code>24.12.</code> <code>24.12.27</code>. Schon beim Tippen zeigt eine Vorschau als Chips, was erkannt wurde.</p>
+
+  <h2>Gemeinsam in allen Entwürfen</h2>
+  <ul class="lead" style="font-size:14px">
+    <li><b>Ziehen ist Planen.</b> Aufgabe aufs Reservierungsband ziehen ergibt eine Reservierung, ins Zeitraster einen Termin (auf 15 Minuten gerastert). Aufs Board ziehen setzt den Status. Buchungen lassen sich verschieben, und vom Raster aufs Band gezogen wird aus einem Termin eine Reservierung.</li>
+    <li><b>Abschließen ist explizit.</b> Das geht über den Kreis in der Liste, den Knopf in der Spalte „Fertig“ oder die Detailansicht. Buchungen schließen eine Aufgabe nie ab.</li>
+    <li><b>Ohne Status kein Board.</b> Das Board zeigt nur Aufgaben mit Status. Die Liste zeigt alle, gruppiert nach Frist.</li>
+    <li><b>Zurückgestellt</b> (Wiedervorlage in der Zukunft) ist eingeklappt. Wichtig ist nur: Es gibt sie.</li>
+    <li><b>Tastatur:</b> <kbd>N</kbd> neu, <kbd>0</kbd>–<kbd>4</kbd> Sichten, <kbd>T</kbd> <kbd>W</kbd> <kbd>M</kbd> <kbd>Z</kbd> Kalendersicht, <kbd>Esc</kbd> zurück. Ein Klick auf eine Aufgabe öffnet die Details.</li>
+    <li>Architekturideen: <a href="../requirements/design.html">requirements/design.html</a></li>
+  </ul>
+</div>
+</body>
+</html>

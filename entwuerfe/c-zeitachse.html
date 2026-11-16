@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Rundblick · Entwurf C – Zeitachse als Rückgrat</title>
+<link rel="stylesheet" href="shared/base.css">
+<style>
+  .cmain { flex: 1; min-height: 0; display: grid; grid-template-rows: var(--top, 42%) 8px minmax(0, 1fr); padding: 10px 10px 10px; }
+  .region { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); min-height: 0; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .rh { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .rh h2 { margin: 0; font-size: 13px; }
+  .rh .sub { color: var(--mute); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .rh .max { margin-left: auto; border: 0; background: none; color: var(--mute); font-size: 14px; }
+  .rb { flex: 1; min-height: 0; }
+  .split { cursor: row-resize; display: grid; place-items: center; }
+  .split::after { content: ''; width: 46px; height: 4px; border-radius: 2px; background: var(--line2); }
+  .bottom { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 10px; min-height: 0; }
+  /* Maximieren */
+  .cmain[data-max="band"] { grid-template-rows: 1fr 0 0; } .cmain[data-max="band"] .bottom { display: none; } .cmain[data-max="band"] .split { display: none; }
+  .cmain[data-max="list"], .cmain[data-max="board"] { grid-template-rows: 0 0 1fr; } .cmain[data-max="list"] #band, .cmain[data-max="board"] #band, .cmain[data-max="list"] .split, .cmain[data-max="board"] .split { display: none; }
+  .cmain[data-max="list"] .bottom { grid-template-columns: 1fr 0; } .cmain[data-max="list"] #r-board { display: none; }
+  .cmain[data-max="board"] .bottom { grid-template-columns: 0 1fr; } .cmain[data-max="board"] #r-list { display: none; }
+  .cmain[data-max="list"] .bottom, .cmain[data-max="board"] .bottom { gap: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="logo"></span>Rundblick <small>Entwurf C · Zeitachse</small></div>
+    <div id="qc"></div>
+    <div class="seg" id="seg">
+      <button data-m="">Alles<kbd>0</kbd></button>
+      <button data-m="band">Zeit<kbd>1</kbd></button>
+      <button data-m="list">Liste<kbd>2</kbd></button>
+      <button data-m="board">Board<kbd>3</kbd></button>
+    </div>
+  </header>
+  <div class="cmain" id="main">
+    <section class="region" id="band"><div class="rb" id="bandBody"></div></section>
+    <div class="split" id="split" title="Ziehen zum Anpassen"></div>
+    <div class="bottom">
+      <section class="region" id="r-list"><div class="rh"><h2>Aufgaben</h2><span class="sub" id="listSub"></span><button class="max" data-max="list" title="Maximieren">⤢</button></div><div class="rb"></div></section>
+      <section class="region" id="r-board"><div class="rh"><h2>Board</h2><span class="sub">Hover auf eine Aufgabe zeigt ihre Buchungen &amp; Frist oben auf der Zeitachse</span><button class="max" data-max="board" title="Maximieren">⤢</button></div><div class="rb"></div></section>
+    </div>
+  </div>
+</div>
+<div class="draftnote"><b>Entwurf C – Zeitachse als Rückgrat.</b> Oben läuft die Zeit (zoombare Timeline – oder Tag/Woche/Monat), unten liegt der Vorrat (Liste + Board). Aufgaben nach oben ziehen = einplanen. Hover verbindet beides. Trenner ziehen; <kbd>1</kbd>–<kbd>3</kbd> maximiert, <kbd>0</kbd> zurück. <a href="index.html">← alle Entwürfe</a></div>
+
+<script src="shared/data.js"></script>
+<script src="shared/views.js"></script>
+<script>
+  const main = document.getElementById('main');
+  const cal = { view: 'timeline', anchor: Store.HEUTE, pph: 16 };
+  let max = '';
+  const hp = new URLSearchParams(location.hash.slice(1));
+  if (hp.get('f')) max = hp.get('f'); if (hp.get('v')) cal.view = hp.get('v');
+  const qcInput = V.quickCapture(document.getElementById('qc'));
+
+  function render() {
+    main.dataset.max = max;
+    document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.m === max));
+    if (max !== 'list' && max !== 'board') V.calendar(document.getElementById('bandBody'), cal, { mode: max === 'band' ? 'full' : 'compact' });
+    if (max !== 'band' && max !== 'board') V.list(document.querySelector('#r-list .rb'), { mode: max === 'list' ? 'full' : 'compact' });
+    if (max !== 'band' && max !== 'list') V.board(document.querySelector('#r-board .rb'), { mode: max === 'board' ? 'full' : 'compact' });
+    document.getElementById('listSub').textContent = Store.visibleTasks().length + ' offen · nach oben ziehen zum Einplanen';
+    document.querySelectorAll('.max').forEach(b => b.textContent = max === b.dataset.max ? '⤡' : '⤢');
+  }
+  document.querySelectorAll('.max').forEach(b => b.onclick = () => { max = max === b.dataset.max ? '' : b.dataset.max; render(); });
+  document.getElementById('seg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { max = b.dataset.m; render(); } });
+
+  // Trenner
+  const split = document.getElementById('split');
+  split.addEventListener('pointerdown', e => {
+    split.setPointerCapture(e.pointerId);
+    const r = main.getBoundingClientRect();
+    const mv = ev => { const p = Math.max(18, Math.min(80, (ev.clientY - r.top) / r.height * 100)); main.style.setProperty('--top', p + '%'); };
+    const up = () => { split.removeEventListener('pointermove', mv); split.removeEventListener('pointerup', up); render(); };
+    split.addEventListener('pointermove', mv); split.addEventListener('pointerup', up);
+  });
+
+  document.addEventListener('keydown', e => {
+    if (V.typing(e)) return;
+    const map = { '0': '', '1': 'band', '2': 'list', '3': 'board' };
+    if (e.key in map) { max = map[e.key]; render(); }
+    else if (e.key === 'Escape' && !document.querySelector('.drawer.open')) { max = ''; render(); }
+    else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); qcInput.focus(); }
+    else if ('twmz'.includes(e.key.toLowerCase())) { cal.view = { t: 'tag', w: 'woche', m: 'monat', z: 'timeline' }[e.key.toLowerCase()]; render(); }
+  });
+  Store.on(render);
+  render();
+</script>
+</body>
+</html>
