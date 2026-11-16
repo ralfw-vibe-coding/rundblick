@@ -97,15 +97,17 @@
 
   // Buchungen: ohne start = Reservierung, mit start = Termin.
   // taskId = null → freie Buchung (ohne Aufgabe) mit eigenem Titel; kann später zur Aufgabe werden.
-  const B = (id, taskId, datum, dauer, start = null, titel = null) => ({ id, taskId, datum, dauer, start, titel });
+  // Jede Buchung hat eigenen Titel + Beschreibung (bei Aufgaben-Buchungen vorbelegt mit dem Aufgabentitel)
+  // und belegt optional Kapazität (belegt=false z. B. für einen Arzttermin in der Freizeit).
+  const B = (id, taskId, datum, dauer, start = null, titel = null, o = {}) => Object.assign({ id, taskId, datum, dauer, start, titel: titel || (taskId ? (tasks.find(t => t.id === taskId) || {}).titel : ''), beschreibung: '', belegt: true }, o);
   const bookings = [
     B('b1', 'a1', d(1), 120),
     B('b2', 'a2', d(3), 180),
-    B('b3', 'a2', d(4), 60),
+    B('b3', 'a2', d(4), 60, null, 'Folien: Übungen bauen', { beschreibung: 'Drei Stationen, je 15 min.' }),
     B('b4', 'a8', d(0), 90),
-    B('b5', null, d(2), 45, '08:30', 'Zahnarzt'),
+    B('b5', null, d(2), 45, '08:30', 'Zahnarzt', { beschreibung: 'Kontrolle', belegt: false }),
     B('b16', null, d(2), 60, null, 'Belege sortieren'),
-    B('b17', null, d(4), 45, '17:00', 'Friseur'),
+    B('b17', null, d(4), 45, '17:00', 'Friseur', { belegt: false }),
     B('b6', 'a15', d(1), 60, '14:00'),
     B('b7', 'a13', d(4), 240),
     B('b8', 'a17', d(3), 90, '10:00'),
@@ -114,7 +116,7 @@
     B('b11', 'a9', d(0), 30),
     B('b12', 'a19', d(7), 120),
     B('b13', 'a14', d(11), 60),
-    B('b14', 'a1', d(3), 30, '16:00'),
+    B('b14', 'a1', d(3), 30, '16:00', 'Angebot mit Hüttner besprechen', { beschreibung: 'Telefon, Nummer im Angebot.' }),
     B('b15', 'a3', d(0), 90),
   ];
 
@@ -167,7 +169,7 @@
     setStatus(id, s) { const t = Store.task(id); if (t && t.status !== s) { t.status = s; Store.emit(); } },
     complete(id) { const t = Store.task(id); if (t) { t.done = true; Store.emit(); } },
     reopen(id) { const t = Store.task(id); if (t) { t.done = false; Store.emit(); } },
-    addBooking(taskId, datum, start, dauer) { const b = B('b' + (nid++), taskId, datum, dauer || 60, start || null); bookings.push(b); Store.emit(); return b; },
+    addBooking(taskId, datum, start, dauer) { const b = B('b' + (nid++), taskId, datum, dauer || 60, start || null, Store.task(taskId).titel); bookings.push(b); Store.emit(); return b; },
     moveBooking(id, datum, start) { const b = Store.booking(id); if (b) { b.datum = datum; b.start = start; Store.emit(); } return b; },
     addFree(datum, start, dauer, titel) { const b = B('b' + (nid++), null, datum, dauer || 60, start || null, titel); bookings.push(b); Store.emit(); return b; },
     // „Aus einer Buchung eine Aufgabe machen“: Buchung bleibt, bekommt eine neue Aufgabe
@@ -176,7 +178,8 @@
       if (!b || b.taskId) return null;
       const t = T('a' + (nid++), b.titel, { status: status || null });
       tasks.unshift(t);
-      b.taskId = t.id; b.titel = null;
+      b.taskId = t.id;  // Titel/Beschreibung der Buchung bleiben erhalten
+      t.beschreibung = b.beschreibung;
       Store.emit();
       return t;
     },
@@ -185,7 +188,7 @@
     // Alles, was an einem Tag im Kalender erscheint
     entriesOn(datum) {
       const own = bookings.filter(b => b.datum === datum).map(b => ({ b, t: b.taskId ? Store.task(b.taskId) : null })).filter(x => x.t || !x.b.taskId);
-      const info = x => x.t ? { taskId: x.t.id, titel: x.t.titel, done: x.t.done, frei: false } : { taskId: null, titel: x.b.titel, done: false, frei: true };
+      const info = x => ({ taskId: x.t ? x.t.id : null, titel: x.b.titel, aufgabe: x.t ? x.t.titel : null, done: x.t ? x.t.done : false, frei: !x.t, belegt: x.b.belegt });
       return {
         termine: own.filter(x => x.b.start).map(x => Object.assign({ kind: 'own', id: x.b.id, s: D.min(x.b.start), e: D.min(x.b.start) + x.b.dauer }, info(x))),
         reservierungen: own.filter(x => !x.b.start).map(x => Object.assign({ id: x.b.id, dauer: x.b.dauer }, info(x))),
@@ -195,10 +198,16 @@
       };
     },
     // gebuchte Minuten im Tagesfenster (für die Kapazitätsanzeige)
-    load(datum) {
-      const e = Store.entriesOn(datum);
-      return [...e.termine, ...e.extern].reduce((s, x) => s + (x.e - x.s), 0) + e.reservierungen.reduce((s, r) => s + r.dauer, 0);
-    },
+    // ---- Kapazitätsplanung ----
+    // Tageskapazität je Wochentag (Einstellung), in Minuten: Mo … So
+    KAPAZITAET: [360, 360, 360, 360, 300, 0, 0],
+    kapazitaet(datum) { return Store.KAPAZITAET[D.wd(datum)]; },
+    // eigene Buchungen, die Kapazität belegen
+    load(datum) { return bookings.filter(b => b.datum === datum && b.belegt && (!b.taskId || !Store.task(b.taskId).done)).reduce((s, b) => s + b.dauer, 0); },
+    // externe Termine (zur Info, belegen keine Planungskapazität)
+    loadExtern(datum) { return external.filter(x => x.datum === datum).reduce((s, x) => s + x.dauer, 0); },
+    // kumulierte gebuchte Kapazität einer Aufgabe
+    gebucht(taskId) { return bookings.filter(b => b.taskId === taskId && b.belegt).reduce((s, b) => s + b.dauer, 0); },
   };
 
   // ---------- Schnellerfassung ----------

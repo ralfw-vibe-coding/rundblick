@@ -307,3 +307,5 @@ kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ff
 .mm-h { font-weight: 600; padding: 4px 8px; background: var(--panel2); border-bottom: 1px solid var(--line); }
 .mm .mo { flex: 1; }
 .list.drop-hint, .list.over { outline: 2px dashed var(--own); outline-offset: -3px; }
+.bkh { color: var(--mute); margin-left: 3px; font-weight: 500; }
+.cap.nocap { background: repeating-linear-gradient(90deg, #ebe8e2 0 3px, transparent 3px 6px); }

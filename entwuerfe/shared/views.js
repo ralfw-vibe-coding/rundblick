@@ -19,7 +19,8 @@
     if (!bs.length) return '';
     const r = bs.filter(b => !b.start).length, m = bs.length - r;
     const tip = bs.map(b => D.rel(b.datum) + (b.start ? ' ' + b.start : '') + ' · ' + D.dauer(b.dauer)).join('\n');
-    return `<span class="bk" title="${esc(tip)}">${r ? `<i class="ic-res"></i><b>${r}</b>` : ''}${m ? `<i class="ic-term"></i><b>${m}</b>` : ''}</span>`;
+    const g = S.gebucht(t.id);
+    return `<span class="bk" title="${esc(tip + '\nGebucht gesamt: ' + D.dauer(g))}">${r ? `<i class="ic-res"></i><b>${r}</b>` : ''}${m ? `<i class="ic-term"></i><b>${m}</b>` : ''}${g ? `<span class="bkh">${D.dauer(g).replace(' ', '')}</span>` : ''}</span>`;
   }
   const tags = t => t.tags.map(g => `<span class="chip tag">#${esc(g)}</span>`).join('');
   const person = t => t.verantwortlich ? `<span class="chip person">@${esc(t.verantwortlich)}</span>` : '';
@@ -168,12 +169,13 @@
     const w = 100 / e.n, own = e.kind === 'own';
     const attrs = own ? `draggable="true" data-booking="${e.id}"${e.taskId ? ` data-task="${e.taskId}"` : ''}` : '';
     const showTime = mode === 'full' && (e.e - e.s) >= 45;
-    return `<div class="ev ${e.kind} ${e.done ? 'done' : ''} ${e.frei ? 'frei' : ''}" ${attrs} style="top:${top}%;height:${h}%;left:calc(${e.lane * w}% + 1px);width:calc(${w}% - 3px)" title="${esc(e.titel)} · ${D.hm(e.s)}–${D.hm(e.e)}${own ? '' : ' · ' + (e.kind === 'gcal' ? 'Google Calendar' : 'iCloud')}">${esc(e.titel)}${showTime ? `<small>${D.hm(e.s)}–${D.hm(e.e)}</small>` : ''}</div>`;
+    return `<div class="ev ${e.kind} ${e.done ? 'done' : ''} ${e.frei ? 'frei' : ''}" ${attrs} style="top:${top}%;height:${h}%;left:calc(${e.lane * w}% + 1px);width:calc(${w}% - 3px)" title="${esc(e.titel)}${e.aufgabe && e.aufgabe !== e.titel ? ' (Aufgabe: ' + esc(e.aufgabe) + ')' : ''} · ${D.hm(e.s)}–${D.hm(e.e)}${own ? '' : ' · ' + (e.kind === 'gcal' ? 'Google Calendar' : 'iCloud')}">${esc(e.titel)}${showTime ? `<small>${D.hm(e.s)}–${D.hm(e.e)}</small>` : ''}</div>`;
   }
   const resHtml = r => `<div class="resv ${r.done ? 'done' : ''} ${r.frei ? 'frei' : ''}" draggable="true" data-booking="${r.id}"${r.taskId ? ` data-task="${r.taskId}"` : ''} title="${r.frei ? 'Freie ' : ''}Reservierung: ${esc(r.titel)} · ${D.dauer(r.dauer)}"><b>${D.dauer(r.dauer).replace(' ', '')}</b><span>${esc(r.titel)}</span></div>`;
   function capHtml(datum) {
-    const used = S.load(datum), cap = 8 * 60, p = used / cap;
-    return `<div class="cap ${p > 1 ? 'overbooked' : p > .8 ? 'full' : ''}" title="${D.dauer(used)} von 8 h gebucht"><i style="width:${Math.min(100, p * 100)}%"></i></div>`;
+    const used = S.load(datum), cap = S.kapazitaet(datum), p = cap ? used / cap : (used ? 2 : 0);
+    const tip = `${D.dauer(used)} von ${cap ? D.dauer(cap) : '0 h'} Kapazität belegt${p > 1 ? ' – überbucht!' : ''}\nextern: ${D.dauer(S.loadExtern(datum))}`;
+    return `<div class="cap ${p > 1 ? 'overbooked' : p > .8 ? 'full' : ''} ${cap ? '' : 'nocap'}" title="${tip}"><i style="width:${Math.min(100, p * 100)}%"></i></div>`;
   }
   const frHtml = fs => fs.length ? `<span class="fr" style="color:var(--${(n => n < 0 ? 'over' : n === 0 ? 'today' : n <= 2 ? 'soon' : 'mute')(D.diff(S.HEUTE, fs[0].frist))})" title="Fällig:\n${esc(fs.map(t => t.titel).join('\n'))}">◆${fs.length}</span>` : '';
 
@@ -243,7 +245,7 @@
     for (let i = 0; i < N; i++) {
       const dt = D.add(start, i), e = S.entriesOn(dt);
       e.termine.forEach(t => { lanes.termine += `<div class="tl-it own ${t.done ? 'done' : ''} ${t.frei ? 'frei' : ''}" draggable="true" data-booking="${t.id}"${t.taskId ? ` data-task="${t.taskId}"` : ''} style="left:${x(dt, t.s)}px;width:${Math.max(6, (t.e - t.s) / 60 * pph - 2)}px;top:6px" title="${esc(t.titel)} · ${D.hm(t.s)}">${esc(t.titel)}</div>`; });
-      { const u = S.load(dt), p = u / 480; lanes.last += `<div title="${D.dauer(u)} von 8 h gebucht" style="position:absolute;left:${i * dayW + 3}px;width:${dayW - 6}px;bottom:3px;height:${Math.min(1.15, p) / 1.15 * 30}px;border-radius:3px 3px 0 0;background:${p > 1 ? 'var(--over)' : p > .8 ? 'var(--soon)' : '#c9c5bd'};opacity:.75"></div>${dayW >= 60 && u ? `<span style="position:absolute;left:${i * dayW + 6}px;top:3px;font-size:10px;color:var(--mute)">${D.dauer(u)}</span>` : ''}`; }
+      { const u = S.load(dt), cp = S.kapazitaet(dt), p = cp ? u / cp : (u ? 2 : 0); lanes.last += `<div title="${D.dauer(u)} von ${D.dauer(cp)} Kapazität" style="position:absolute;left:${i * dayW + 3}px;width:${dayW - 6}px;bottom:3px;height:${Math.min(1.15, p) / 1.15 * 30}px;border-radius:3px 3px 0 0;background:${p > 1 ? 'var(--over)' : p > .8 ? 'var(--soon)' : '#c9c5bd'};opacity:.75"></div>${dayW >= 60 && (u || cp) ? `<span style="position:absolute;left:${i * dayW + 6}px;top:3px;font-size:10px;color:${p > 1 ? 'var(--over)' : 'var(--mute)'}">${D.dauer(u).replace(' ', '')} / ${D.dauer(cp).replace(' ', '')}</span>` : ''}`; }
       let off = H0 * 60;
       e.reservierungen.forEach(r => { lanes.res += `<div class="tl-it resv ${r.frei ? 'frei' : ''}" draggable="true" data-booking="${r.id}"${r.taskId ? ` data-task="${r.taskId}"` : ''} style="left:${x(dt, off)}px;width:${Math.max(6, r.dauer / 60 * pph - 2)}px;top:6px" title="Reservierung ${D.dauer(r.dauer)}: ${esc(r.titel)}"><b>${D.dauer(r.dauer).replace(' ', '')}</b> ${esc(r.titel)}</div>`; off += r.dauer; });
       layoutDay(e.extern).forEach(t => { lanes.ext += `<div class="tl-it ${t.kind}" style="left:${x(dt, t.s)}px;width:${Math.max(6, (t.e - t.s) / 60 * pph - 2)}px;top:${4 + t.lane * 24}px" title="${esc(t.titel)} · ${D.hm(t.s)}">${esc(t.titel)}</div>`; });
@@ -408,6 +410,7 @@
         if (a.dataset.dact === 'complete') { S.complete(tid); closeDetail(); toast('Aufgabe abgeschlossen'); }
         if (a.dataset.dact === 'res') { const b = S.addBooking(tid, D.add(S.HEUTE, 1), null, 60); toast('Reservierung angelegt: ' + D.rel(b.datum) + ' · 1 h'); openDetail(tid); }
         if (a.dataset.dact === 'rm') { S.removeBooking(a.dataset.b); openDetail(tid); }
+        if (a.dataset.dact === 'task') { e.preventDefault(); openDetail(drawer.dataset.id); }
         if (a.dataset.dact === 'totask') { const t = S.bookingToTask(drawer.dataset.b); toast('Aufgabe erstellt: ' + t.titel); openDetail(t.id); }
         if (a.dataset.dact === 'rmfree') { S.removeBooking(drawer.dataset.b); closeDetail(); }
       });
@@ -428,8 +431,8 @@
           ${f('Ort', t.ort)}
           ${f('Tags', t.tags.length ? tags(t) : '', true)}
         </div>
-        <div class="fld"><label>Buchungen</label><div class="bk-list">
-          ${bs.map(b => `<div class="bk-item" data-booking="${b.id}" data-task="${id}"><span class="k ${b.start ? 'term' : 'res'}">${b.start ? 'Termin' : 'Reservierung'}</span><span>${D.WT[D.wd(b.datum)]} ${D.kurz(b.datum)}${b.start ? ' · ' + b.start : ''}</span><span class="muted">${D.dauer(b.dauer)}</span><button class="x" data-dact="rm" data-b="${b.id}" title="Buchung entfernen">×</button></div>`).join('') || '<div class="muted">Noch keine Buchung. Aufgabe in den Kalender ziehen oder:</div>'}
+        <div class="fld"><label>Buchungen · gebucht gesamt ${D.dauer(S.gebucht(id))}</label><div class="bk-list">
+          ${bs.map(b => `<div class="bk-item" data-booking="${b.id}" data-task="${id}"><span class="k ${b.start ? 'term' : 'res'}">${b.start ? 'Termin' : 'Reservierung'}</span><span>${D.WT[D.wd(b.datum)]} ${D.kurz(b.datum)}${b.start ? ' · ' + b.start : ''}${b.titel !== t.titel ? ` <span class="muted">· ${esc(b.titel)}</span>` : ''}</span><span class="muted">${D.dauer(b.dauer)}${b.belegt ? '' : ' (frei)'}</span><button class="x" data-dact="rm" data-b="${b.id}" title="Buchung entfernen">×</button></div>`).join('') || '<div class="muted">Noch keine Buchung. Aufgabe in den Kalender ziehen oder:</div>'}
           <button class="btn" data-dact="res" style="align-self:flex-start">+ Reservierung morgen · 1 h</button>
         </div></div>
         <div class="muted" style="font-size:11px;line-height:1.5">Entwurf: Felder sind hier nur Anzeige. In der App inline editierbar; jede Änderung = ein Command → ein Event (z. B. <code>FristGesetzt</code>).</div>
@@ -441,20 +444,26 @@
   function openBooking(bid) {
     const b = S.booking(bid);
     if (!b) return;
-    if (b.taskId) return openDetail(b.taskId);
+    const t = b.taskId ? S.task(b.taskId) : null;
     openDetail(null);
-    drawer.dataset.id = '';
+    drawer.dataset.id = t ? t.id : '';
     drawer.dataset.b = bid;
+    const f = (l, v) => `<div class="fld"><label>${l}</label><div class="v ${v ? '' : 'empty'}">${v || '—'}</div></div>`;
     drawer.innerHTML = `<div class="dh"><h3>${esc(b.titel)}</h3><button data-dact="close" title="Schließen (Esc)">×</button></div>
       <div class="db">
+        ${f('Beschreibung', esc(b.beschreibung))}
         <div class="fld-grid">
-          <div class="fld"><label>Art</label><div class="v">${b.start ? 'Termin' : 'Reservierung'} <span class="muted">· ohne Aufgabe</span></div></div>
-          <div class="fld"><label>Wann</label><div class="v">${D.WT[D.wd(b.datum)]} ${D.kurz(b.datum)}${b.start ? ' · ' + b.start : ''}</div></div>
-          <div class="fld"><label>Dauer</label><div class="v">${D.dauer(b.dauer)}</div></div>
+          ${f('Art', (b.start ? 'Termin' : 'Reservierung'))}
+          ${f('Wann', `${D.WT[D.wd(b.datum)]} ${D.kurz(b.datum)}${b.start ? ' · ' + b.start : ''}`)}
+          ${f('Dauer', D.dauer(b.dauer))}
+          ${f('Kapazität', `<label style="text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);display:flex;gap:6px;align-items:center"><input type="checkbox" data-belegt ${b.belegt ? 'checked' : ''}> belegt ${D.dauer(b.dauer)}</label>`)}
         </div>
-        <div class="muted" style="line-height:1.5">Eine freie Buchung ist nur ein Kalendereintrag. Wird mehr daraus, macht man eine Aufgabe draus. Die Buchung bleibt erhalten und gehört dann zur Aufgabe. Alternativ die Buchung auf die Liste oder eine Board-Spalte ziehen.</div>
+        ${t ? `<div class="fld"><label>Gehört zu Aufgabe</label><div class="v"><a href="#" data-dact="task" style="color:var(--own)">${esc(t.titel)}</a> <span class="muted">· gebucht gesamt ${D.dauer(S.gebucht(t.id))}</span></div></div>`
+            : `<div class="muted" style="line-height:1.5">Freie Buchung ohne Aufgabe. Wird mehr daraus: „→ Aufgabe daraus machen“ (Titel und Beschreibung werden übernommen, die Buchung bleibt und gehört dann zur Aufgabe) – oder die Buchung auf Liste/Board ziehen.</div>`}
+        <div class="fld"><label>Tagesauslastung</label><div class="v">${D.dauer(S.load(b.datum))} von ${D.dauer(S.kapazitaet(b.datum))} ${capHtml(b.datum).replace('class="cap', 'style="height:6px;margin-top:4px" class="cap')}</div></div>
       </div>
-      <div class="df"><button class="btn primary" data-dact="totask">→ Aufgabe daraus machen</button><span class="spacer"></span><button class="btn" data-dact="rmfree">Löschen</button></div>`;
+      <div class="df">${t ? '' : '<button class="btn primary" data-dact="totask">→ Aufgabe daraus machen</button>'}<span class="spacer"></span><button class="btn" data-dact="rmfree">Buchung löschen</button></div>`;
+    drawer.querySelector('[data-belegt]').onchange = e => { b.belegt = e.target.checked; S.emit(); openBooking(bid); };
   }
   let pop;
   function closePop() { if (pop) { pop.remove(); pop = null; } }
@@ -548,10 +557,10 @@
       return;
     }
     if (e.target.closest('.drawer, .pop')) return;
-    const t = e.target.closest('[data-task]');
-    if (t) { openDetail(t.dataset.task); return; }
     const b = e.target.closest('[data-booking]');
-    if (b) openBooking(b.dataset.booking);
+    if (b) { openBooking(b.dataset.booking); return; }
+    const t = e.target.closest('[data-task]');
+    if (t) openDetail(t.dataset.task);
   });
   // Doppelklick ins Reservierungsband oder Zeitraster: freie Buchung eintragen
   document.addEventListener('dblclick', e => {
