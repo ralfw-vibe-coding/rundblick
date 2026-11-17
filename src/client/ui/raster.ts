@@ -198,7 +198,7 @@ export class Raster {
     cb.onclick = null;
     try { await s.render(cb, dichte); }
     catch (e) { cb.innerHTML = `<div class="leer">Fehler beim Zeichnen: ${esc((e as Error).message)}</div>`; }
-    info.textContent = z.sicht === 'board' ? (dichte === 'compact' ? 'nach Kategorie' : dichte === 'full' ? 'alle Spalten' : '') : '';
+    info.textContent = '';
   }
 
   // ---------- Struktur ändern ----------
