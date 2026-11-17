@@ -8,14 +8,15 @@ export type CommandStatus = { ok: true; ids?: Record<string, Id> } | { ok: false
 export type Bereich = 'aufgaben' | 'board' | 'kalender' | 'einstellungen';
 
 // ---------- DTOs ----------
-export type Dringlichkeit = 'ueberfaellig' | 'heute' | 'bald' | 'spaeter';
+/** entspricht den Abschnitten der Liste: überfällig · heute · diese Woche (bis Sonntag) · später */
+export type Dringlichkeit = 'ueberfaellig' | 'heute' | 'woche' | 'spaeter';
 export type StatusInfo = { id: Id; name: string; kategorie: KategorieId };
 
 export type AufgabeZeile = {
   id: Id; titel: string; tags: string[]; verantwortlich: string; ort: string;
   frist: Datum | null; dringlichkeit: Dringlichkeit | null;
   wiedervorlage: Datum | null; zurueckgestellt: boolean;
-  status: StatusInfo | null; abgeschlossen: boolean;
+  status: StatusInfo | null; abgeschlossen: boolean; archiviert: boolean;
   buchungen: { reservierungen: number; termine: number; gebucht: Minuten };
 };
 
@@ -25,6 +26,8 @@ export type Aufgabenliste = {
   gruppen: ListenGruppe[];
   zurueckgestellt: AufgabeZeile[];
   abgeschlossen: AufgabeZeile[];
+  /** archivierte Aufgaben – verborgen, nur auf Wunsch angezeigt */
+  archiv: AufgabeZeile[];
 };
 
 export type Board = {
@@ -102,6 +105,8 @@ export interface Body {
   aufgabeAbschliessen(c: { aufgabeId: Id }): Promise<CommandStatus>;
   aufgabeWiedereroeffnen(c: { aufgabeId: Id }): Promise<CommandStatus>;
   aufgabeVerwerfen(c: { aufgabeId: Id }): Promise<CommandStatus>;
+  aufgabeArchivieren(c: { aufgabeId: Id }): Promise<CommandStatus>;
+  aufgabeAusArchivHolen(c: { aufgabeId: Id }): Promise<CommandStatus>;
   // ---- Commands: Buchungen
   buchungAnlegen(c: { aufgabeId: Id; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten }): Promise<CommandStatus>;
   buchungEintragen(c: { titel: string; beschreibung?: string; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten }): Promise<CommandStatus>;
@@ -140,7 +145,7 @@ export interface Body {
 /** Namen aller Methoden außer der Benachrichtigung – für die IPC-Brücke */
 export type BodyMethode = Exclude<keyof Body, 'beiAenderung'>;
 export const BODY_METHODEN: readonly BodyMethode[] = [
-  'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen',
+  'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeAusArchivHolen',
   'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung',
   'spalteAnlegen', 'spalteUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',

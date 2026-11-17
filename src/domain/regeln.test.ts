@@ -68,6 +68,25 @@ describe('Aufgaben: Ablehnungen', () => {
   });
 });
 
+describe('Archiv', () => {
+  it('archivieren und zurückholen; archivierte Aufgaben sind gesperrt', () => {
+    for (const f of [d.aufgabeArchivieren, d.aufgabeAusArchivHolen]) expect(f({ aufgabeId: 'fehlt' })).toMatchObject(nein);
+    erfasse();
+    expect(d.aufgabeAusArchivHolen({ aufgabeId: 'a1' })).toMatchObject(ja); // nicht archiviert → nichts
+    d.aufgabeArchivieren({ aufgabeId: 'a1' });
+    d.aufgabeArchivieren({ aufgabeId: 'a1' });
+    expect(d.aufgabe('a1')!.archiviert).toBe(true);
+    expect(d.aufgabeAendern({ aufgabeId: 'a1', aenderungen: { titel: 'X' } })).toMatchObject({ fehler: [expect.stringContaining('archiviert')] });
+    expect(d.aufgabeAbschliessen({ aufgabeId: 'a1' })).toMatchObject(nein);
+    expect(d.aufgabeWiedereroeffnen({ aufgabeId: 'a1' })).toMatchObject(nein);
+    expect(d.buchungAnlegen({ buchungId: 'b', aufgabeId: 'a1', datum: '2026-11-17' })).toMatchObject(nein);
+    d.aufgabeAusArchivHolen({ aufgabeId: 'a1' });
+    expect(neu()).toEqual(['AufgabeErfasst', 'AufgabeArchiviert', 'AufgabeAusArchivGeholt']);
+    d.aufgabeVerwerfen({ aufgabeId: 'a1' });
+    expect(d.aufgabeArchivieren({ aufgabeId: 'a1' })).toMatchObject(nein);
+  });
+});
+
 describe('Buchungen: Ablehnungen und Änderungen', () => {
   it('anlegen: unbekannte/verworfene Aufgabe, doppelte Buchung, eigener Titel', () => {
     expect(d.buchungAnlegen({ buchungId: 'b1', aufgabeId: 'fehlt', datum: '2026-11-17' })).toMatchObject(nein);

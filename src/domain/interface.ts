@@ -16,6 +16,8 @@ export interface DomainInterface {
   aufgabeAbschliessen(c: { aufgabeId: Id }): Ergebnis;
   aufgabeWiedereroeffnen(c: { aufgabeId: Id }): Ergebnis;
   aufgabeVerwerfen(c: { aufgabeId: Id }): Ergebnis;
+  aufgabeArchivieren(c: { aufgabeId: Id }): Ergebnis;
+  aufgabeAusArchivHolen(c: { aufgabeId: Id }): Ergebnis;
   buchungAnlegen(c: { buchungId: Id; aufgabeId: Id; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten; titel?: string }): Ergebnis;
   buchungEintragen(c: { buchungId: Id; titel: string; beschreibung?: string; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten; belegt?: boolean }): Ergebnis;
   buchungAendern(c: { buchungId: Id; aenderungen: BuchungAenderungen }): Ergebnis;
@@ -30,7 +32,7 @@ export interface DomainInterface {
   standarddauerFestlegen(c: { minuten: Minuten }): Ergebnis;
 
   // ---- Queries (aus der Projektion im Speicher)
-  /** alle nicht verworfenen Aufgaben */
+  /** alle nicht verworfenen Aufgaben (auch archivierte), in Erfassungsreihenfolge */
   aufgaben(): AufgabeZ[];
   aufgabe(id: Id): AufgabeZ | null;
   /** nicht stornierte Buchungen, optional auf einen Datumsbereich begrenzt */

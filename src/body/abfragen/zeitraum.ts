@@ -43,8 +43,8 @@ export function zeitraum(x: ZeitraumEingabe): Zeitraum {
     }).sort((a, b) => (a.start ?? -1) - (b.start ?? -1));
     tage.push({
       datum, termine, reservierungen, extern,
-      fristen: x.aufgaben.filter(a => a.frist === datum && !a.abgeschlossen).map(a => ({ aufgabeId: a.id, titel: a.titel, dringlichkeit: dringlichkeit(a.frist, x.heute)! })),
-      wiedervorlagen: x.aufgaben.filter(a => a.wiedervorlage === datum && !a.abgeschlossen).map(a => ({ aufgabeId: a.id, titel: a.titel })),
+      fristen: x.aufgaben.filter(a => a.frist === datum && !a.abgeschlossen && !a.archiviert).map(a => ({ aufgabeId: a.id, titel: a.titel, dringlichkeit: dringlichkeit(a.frist, x.heute)! })),
+      wiedervorlagen: x.aufgaben.filter(a => a.wiedervorlage === datum && !a.abgeschlossen && !a.archiviert).map(a => ({ aufgabeId: a.id, titel: a.titel })),
       auslastung: auslastung(datum, eigene, extern, x.planung),
     });
   }

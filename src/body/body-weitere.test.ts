@@ -98,14 +98,14 @@ describe('Queries über den Body', () => {
 
   it('Dringlichkeit und Filter als pure Funktionen', () => {
     expect(dringlichkeit(null, '2026-11-16')).toBeNull();
-    expect(['2026-11-15', '2026-11-16', '2026-11-18', '2026-11-30'].map(f => dringlichkeit(f, '2026-11-16'))).toEqual(['ueberfaellig', 'heute', 'bald', 'spaeter']);
-    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false };
+    expect(['2026-11-15', '2026-11-16', '2026-11-18', '2026-11-30'].map(f => dringlichkeit(f, '2026-11-16'))).toEqual(['ueberfaellig', 'heute', 'woche', 'spaeter']);
+    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, archiviert: false };
     expect(passtZuFilter(a, '  ')).toBe(true);
     expect(passtZuFilter(a, 'angebot #kunde')).toBe(true);
     expect(passtZuFilter(a, 'angebot #büro')).toBe(false);
   });
 
-  it('sortiert nach Frist (ohne Frist zuletzt), dann nach Titel – in Liste und Board', async () => {
+  it('Liste: neueste Aufgaben oben in jedem Abschnitt; Board: nach Frist, dann Titel', async () => {
     const { body } = aufbau();
     for (const [titel, frist] of [['Ohne B', null], ['Mit', '2026-11-30'], ['Ohne A', null], ['Früh', '2026-11-25']] as const) {
       await body.aufgabeErfassen({ titel, frist, status: 'idee' });
@@ -113,8 +113,23 @@ describe('Queries über den Body', () => {
     const l = await body.liste({});
     expect(l.gruppen.find(g => g.art === 'ohne')!.aufgaben.map(a => a.titel)).toEqual(['Ohne A', 'Ohne B']);
     expect(l.gruppen.find(g => g.art === 'spaeter')!.aufgaben.map(a => a.titel)).toEqual(['Früh', 'Mit']);
+    // (Ohne A wurde nach Ohne B erfasst, Früh nach Mit → jeweils oben)
     const idee = (await body.board()).kategorien[0]!.spalten.find(s => s.id === 'idee')!;
     expect(idee.karten.map(k => k.titel)).toEqual(['Früh', 'Mit', 'Ohne A', 'Ohne B']);
+  });
+
+  it('Archivieren verbirgt die Aufgabe überall (auch unter Abgeschlossen) – sie steht nur im Archiv', async () => {
+    const { body } = aufbau();
+    const a = id(await body.aufgabeErfassen({ titel: 'Alt', status: 'erledigt', frist: '2026-11-18' }), 'aufgabeId');
+    await body.aufgabeAbschliessen({ aufgabeId: a });
+    expect(await body.aufgabeArchivieren({ aufgabeId: a })).toEqual({ ok: true });
+    const l = await body.liste({});
+    expect([l.abgeschlossen.length, l.archiv.map(x => [x.titel, x.archiviert])]).toEqual([0, [['Alt', true]]]);
+    expect((await body.board()).kategorien[2]!.anzahl).toBe(0);
+    expect((await body.zeitraum({ von: '2026-11-18', bis: '2026-11-18' })).tage[0]!.fristen).toEqual([]);
+    expect(await body.aufgabeWiedereroeffnen({ aufgabeId: a })).toMatchObject({ ok: false });
+    expect(await body.aufgabeAusArchivHolen({ aufgabeId: a })).toEqual({ ok: true });
+    expect((await body.liste({})).abgeschlossen.map(x => x.titel)).toEqual(['Alt']);
   });
 
   it('Board zählt Kategorien und stellt Abgeschlossene ans Ende der Spalte', async () => {

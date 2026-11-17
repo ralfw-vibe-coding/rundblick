@@ -16,6 +16,7 @@ export function buchungAnlegen(es: EventStore, c: { buchungId: Id; aufgabeId: Id
     const a = b.aufgaben.get(c.aufgabeId);
     if (!a) return nein('Aufgabe unbekannt.');
     if (a.verworfen) return nein('Aufgabe wurde verworfen.');
+    if (a.archiviert) return nein('Aufgabe ist archiviert.');
     if (a.abgeschlossen) return nein('Aufgabe ist abgeschlossen – erst wieder öffnen.');
     if (b.buchungen.has(c.buchungId)) return nein('Buchung existiert bereits.');
     const p = pruefeBuchung(c);

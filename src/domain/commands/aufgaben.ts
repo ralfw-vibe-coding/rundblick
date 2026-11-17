@@ -30,6 +30,7 @@ const normTags = (t: string[] = []) => [...new Set(t.map(x => x.trim().replace(/
 function bearbeitbar(a: AufgabeZ | undefined): string | null {
   if (!a) return 'Aufgabe unbekannt.';
   if (a.verworfen) return 'Aufgabe wurde verworfen.';
+  if (a.archiviert) return 'Aufgabe ist archiviert – erst aus dem Archiv holen.';
   if (a.abgeschlossen) return 'Aufgabe ist abgeschlossen – erst wieder öffnen.';
   return null;
 }
@@ -116,6 +117,7 @@ export function aufgabeAbschliessen(es: EventStore, c: { aufgabeId: Id }): Ergeb
     const a = b.aufgaben.get(c.aufgabeId);
     if (!a) return { ok: false, fehler: ['Aufgabe unbekannt.'] };
     if (a.verworfen) return { ok: false, fehler: ['Aufgabe wurde verworfen.'] };
+    if (a.archiviert) return { ok: false, fehler: ['Aufgabe ist archiviert.'] };
     if (a.abgeschlossen) return [];
     return [{ typ: 'AufgabeAbgeschlossen', tags: [tag.aufgabe(a.id)], daten: { aufgabeId: a.id } }];
   });
@@ -126,6 +128,7 @@ export function aufgabeWiedereroeffnen(es: EventStore, c: { aufgabeId: Id }): Er
     const a = b.aufgaben.get(c.aufgabeId);
     if (!a) return { ok: false, fehler: ['Aufgabe unbekannt.'] };
     if (a.verworfen) return { ok: false, fehler: ['Aufgabe wurde verworfen.'] };
+    if (a.archiviert) return { ok: false, fehler: ['Aufgabe ist archiviert.'] };
     if (!a.abgeschlossen) return [];
     return [{ typ: 'AufgabeWiedereroeffnet', tags: [tag.aufgabe(a.id)], daten: { aufgabeId: a.id } }];
   });
@@ -137,6 +140,26 @@ export function aufgabeVerwerfen(es: EventStore, c: { aufgabeId: Id }): Ergebnis
     if (!a) return { ok: false, fehler: ['Aufgabe unbekannt.'] };
     if (a.verworfen) return [];
     return [{ typ: 'AufgabeVerworfen', tags: [tag.aufgabe(a.id)], daten: { aufgabeId: a.id } }];
+  });
+}
+
+/** Archivieren: Aufgabe wird verborgen (nicht gelöscht) – auch nicht mehr unter „Abgeschlossen“ */
+export function aufgabeArchivieren(es: EventStore, c: { aufgabeId: Id }): Ergebnis {
+  return ctx(es, [tag.aufgabe(c.aufgabeId)], b => {
+    const a = b.aufgaben.get(c.aufgabeId);
+    if (!a) return { ok: false, fehler: ['Aufgabe unbekannt.'] };
+    if (a.verworfen) return { ok: false, fehler: ['Aufgabe wurde verworfen.'] };
+    if (a.archiviert) return [];
+    return [{ typ: 'AufgabeArchiviert', tags: [tag.aufgabe(a.id)], daten: { aufgabeId: a.id } }];
+  });
+}
+
+export function aufgabeAusArchivHolen(es: EventStore, c: { aufgabeId: Id }): Ergebnis {
+  return ctx(es, [tag.aufgabe(c.aufgabeId)], b => {
+    const a = b.aufgaben.get(c.aufgabeId);
+    if (!a || a.verworfen) return { ok: false, fehler: ['Aufgabe unbekannt.'] };
+    if (!a.archiviert) return [];
+    return [{ typ: 'AufgabeAusArchivGeholt', tags: [tag.aufgabe(a.id)], daten: { aufgabeId: a.id } }];
   });
 }
 

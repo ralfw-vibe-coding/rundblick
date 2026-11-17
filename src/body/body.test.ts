@@ -126,7 +126,7 @@ describe('Zeitraum und Kapazität', () => {
     await body.aufgabeErfassen({ titel: 'Fällig', frist: '2026-11-18' });
     await body.aufgabeErfassen({ titel: 'Kommt wieder', wiedervorlage: '2026-11-18' });
     const t = (await body.zeitraum({ von: '2026-11-18', bis: '2026-11-18' })).tage[0]!;
-    expect(t.fristen).toEqual([{ aufgabeId: 'x1', titel: 'Fällig', dringlichkeit: 'bald' }]);
+    expect(t.fristen).toEqual([{ aufgabeId: 'x1', titel: 'Fällig', dringlichkeit: 'woche' }]);
     expect(t.wiedervorlagen.map(w => w.titel)).toEqual(['Kommt wieder']);
   });
 

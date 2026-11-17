@@ -27,6 +27,8 @@ export type DomainEvent =
   | E<'AufgabeAbgeschlossen', { aufgabeId: Id }>
   | E<'AufgabeWiedereroeffnet', { aufgabeId: Id }>
   | E<'AufgabeVerworfen', { aufgabeId: Id }>
+  | E<'AufgabeArchiviert', { aufgabeId: Id }>
+  | E<'AufgabeAusArchivGeholt', { aufgabeId: Id }>
   // ---- Buchungen (ohne aufgabeId = freie Buchung; ohne start = Reservierung)
   | E<'BuchungAngelegt', {
       buchungId: Id; aufgabeId: Id | null; titel: string; beschreibung: string;

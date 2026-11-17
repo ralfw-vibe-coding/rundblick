@@ -1,13 +1,15 @@
 // Pure Funktionen: aus dem Domain-Zustand werden Liste und Board (relativ zu „heute“).
-import { differenz, montag, plusTage } from '../../basis/datum';
+import { montag, plusTage } from '../../basis/datum';
 import type { AufgabeZ, BuchungZ, SpalteZ } from '../../domain/interface';
 import { KATEGORIEN, type Datum, type Id } from '../../schema/werte';
 import type { AufgabeZeile, Aufgabenliste, Board, Dringlichkeit, ListenGruppe, StatusInfo } from '../interface';
 
+/** Dringlichkeit = Abschnitt der Liste: überfällig · heute · diese Woche (bis Sonntag) · später */
 export function dringlichkeit(frist: Datum | null, heute: Datum): Dringlichkeit | null {
   if (!frist) return null;
-  const n = differenz(heute, frist);
-  return n < 0 ? 'ueberfaellig' : n === 0 ? 'heute' : n <= 2 ? 'bald' : 'spaeter';
+  if (frist < heute) return 'ueberfaellig';
+  if (frist === heute) return 'heute';
+  return frist <= plusTage(montag(heute), 6) ? 'woche' : 'spaeter';
 }
 
 export const istZurueckgestellt = (a: AufgabeZ, heute: Datum) => !!a.wiedervorlage && a.wiedervorlage > heute;
@@ -20,7 +22,7 @@ export function zeile(a: AufgabeZ, buchungen: BuchungZ[], spalten: Map<Id, Spalt
     id: a.id, titel: a.titel, tags: a.tags, verantwortlich: a.verantwortlich, ort: a.ort,
     frist: a.frist, dringlichkeit: a.abgeschlossen ? null : dringlichkeit(a.frist, heute),
     wiedervorlage: a.wiedervorlage, zurueckgestellt: istZurueckgestellt(a, heute),
-    status, abgeschlossen: a.abgeschlossen,
+    status, abgeschlossen: a.abgeschlossen, archiviert: a.archiviert,
     buchungen: {
       reservierungen: eigene.filter(b => !b.start).length,
       termine: eigene.filter(b => b.start).length,
@@ -38,33 +40,29 @@ export function passtZuFilter(a: AufgabeZ, filter: string): boolean {
 
 const nachFrist = (x: AufgabeZeile, y: AufgabeZeile) => (x.frist ?? '9999').localeCompare(y.frist ?? '9999') || x.titel.localeCompare(y.titel, 'de');
 
+/** Liste: in jedem Abschnitt stehen die neuesten Aufgaben oben (Erfassungsreihenfolge rückwärts) */
 export function liste(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: Map<Id, SpalteZ>, heute: Datum, filter = ''): Aufgabenliste {
-  const sonntag = plusTage(montag(heute), 6);
-  const passend = aufgaben.filter(a => passtZuFilter(a, filter));
+  const neuesteZuerst = [...aufgaben].reverse().filter(a => passtZuFilter(a, filter));
   const z = (a: AufgabeZ) => zeile(a, buchungen, spalten, heute);
-  const offen = passend.filter(a => !a.abgeschlossen && !istZurueckgestellt(a, heute)).map(z);
+  const sichtbar = neuesteZuerst.filter(a => !a.archiviert);
+  const offen = sichtbar.filter(a => !a.abgeschlossen && !istZurueckgestellt(a, heute)).map(z);
   const g: Record<ListenGruppe['art'], AufgabeZeile[]> = { ueberfaellig: [], heute: [], woche: [], spaeter: [], ohne: [] };
-  offen.forEach(a => {
-    if (!a.frist) g.ohne.push(a);
-    else if (a.frist < heute) g.ueberfaellig.push(a);
-    else if (a.frist === heute) g.heute.push(a);
-    else if (a.frist <= sonntag) g.woche.push(a);
-    else g.spaeter.push(a);
-  });
-  Object.values(g).forEach(x => x.sort(nachFrist));
+  const abschnitt: Record<Dringlichkeit, ListenGruppe['art']> = { ueberfaellig: 'ueberfaellig', heute: 'heute', woche: 'woche', spaeter: 'spaeter' };
+  offen.forEach(a => g[a.dringlichkeit ? abschnitt[a.dringlichkeit] : 'ohne'].push(a));
   const namen: Record<ListenGruppe['art'], string> = { ueberfaellig: 'Überfällig', heute: 'Heute fällig', woche: 'Diese Woche', spaeter: 'Später', ohne: 'Ohne Frist' };
   return {
     heute, offen: offen.length,
     gruppen: (Object.keys(g) as ListenGruppe['art'][]).map(art => ({ art, name: namen[art], aufgaben: g[art] })),
-    zurueckgestellt: passend.filter(a => !a.abgeschlossen && istZurueckgestellt(a, heute)).map(z).sort((x, y) => x.wiedervorlage!.localeCompare(y.wiedervorlage!)),
-    abgeschlossen: passend.filter(a => a.abgeschlossen).map(z).sort((x, y) => x.titel.localeCompare(y.titel, 'de')),
+    zurueckgestellt: sichtbar.filter(a => !a.abgeschlossen && istZurueckgestellt(a, heute)).map(z),
+    abgeschlossen: sichtbar.filter(a => a.abgeschlossen).map(z),
+    archiv: neuesteZuerst.filter(a => a.archiviert).map(z),
   };
 }
 
-/** Board: alle Aufgaben mit Status – auch abgeschlossene (sie bleiben stehen), aber keine zurückgestellten */
+/** Board: alle Aufgaben mit Status – auch abgeschlossene (sie bleiben stehen), aber keine zurückgestellten oder archivierten */
 export function board(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: SpalteZ[], heute: Datum): Board {
   const map = new Map(spalten.map(s => [s.id, s]));
-  const karten = aufgaben.filter(a => a.status && map.has(a.status) && !istZurueckgestellt(a, heute)).map(a => zeile(a, buchungen, map, heute));
+  const karten = aufgaben.filter(a => a.status && map.has(a.status) && !a.archiviert && !istZurueckgestellt(a, heute)).map(a => zeile(a, buchungen, map, heute));
   return {
     heute,
     kategorien: KATEGORIEN.map(k => {

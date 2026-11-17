@@ -6,7 +6,7 @@ import type { Datum, Id, KategorieId, Minuten, Uhrzeit } from '../schema/werte';
 export type AufgabeZ = {
   id: Id; titel: string; beschreibung: string; ort: string; verantwortlich: string; tags: string[];
   frist: Datum | null; wiedervorlage: Datum | null; status: Id | null;
-  abgeschlossen: boolean; verworfen: boolean;
+  abgeschlossen: boolean; verworfen: boolean; archiviert: boolean;
 };
 
 export type BuchungZ = {
@@ -21,10 +21,10 @@ export const PLANUNG_STANDARD: PlanungZ = { kapazitaet: [360, 360, 360, 360, 300
 
 export function aufgabeEntwickeln(z: AufgabeZ | null, e: DomainEvent): AufgabeZ | null {
   switch (e.typ) {
-    case 'AufgabeErfasst': return { ...e.daten, id: e.daten.aufgabeId, tags: [...e.daten.tags], abgeschlossen: false, verworfen: false };
+    case 'AufgabeErfasst': return { ...e.daten, id: e.daten.aufgabeId, tags: [...e.daten.tags], abgeschlossen: false, verworfen: false, archiviert: false };
     case 'AufgabeAusBuchungErstellt': return {
       id: e.daten.aufgabeId, titel: e.daten.titel, beschreibung: e.daten.beschreibung, ort: '', verantwortlich: '', tags: [],
-      frist: null, wiedervorlage: null, status: e.daten.status, abgeschlossen: false, verworfen: false,
+      frist: null, wiedervorlage: null, status: e.daten.status, abgeschlossen: false, verworfen: false, archiviert: false,
     };
   }
   if (!z) return z;
@@ -44,6 +44,8 @@ export function aufgabeEntwickeln(z: AufgabeZ | null, e: DomainEvent): AufgabeZ 
     case 'AufgabeAbgeschlossen': return { ...z, abgeschlossen: true };
     case 'AufgabeWiedereroeffnet': return { ...z, abgeschlossen: false };
     case 'AufgabeVerworfen': return { ...z, verworfen: true };
+    case 'AufgabeArchiviert': return { ...z, archiviert: true };
+    case 'AufgabeAusArchivGeholt': return { ...z, archiviert: false };
     default: return z;
   }
 }
