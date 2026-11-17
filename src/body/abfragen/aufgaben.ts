@@ -1,7 +1,7 @@
 // Pure Funktionen: aus dem Domain-Zustand werden Liste und Board (relativ zu „heute“).
 import { montag, plusTage } from '../../basis/datum';
 import type { AufgabeZ, BuchungZ, SpalteZ } from '../../domain/interface';
-import { KATEGORIEN, type Datum, type Id } from '../../schema/werte';
+import { KATEGORIEN, type Datum, type Id, type KategorieId } from '../../schema/werte';
 import type { AufgabeZeile, Aufgabenliste, Board, Dringlichkeit, ListenGruppe, StatusInfo } from '../interface';
 
 /** Dringlichkeit = Abschnitt der Liste: überfällig · heute · diese Woche (bis Sonntag) · später */
@@ -61,14 +61,14 @@ export function liste(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: Map<
 
 /** Board: alle Aufgaben mit Status – auch zurückgestellte und abgeschlossene (die Oberfläche zeigt sie in eigenen Bereichen der Spalte), aber keine archivierten.
  *  Reihenfolge je Spalte: offen · zurückgestellt · abgeschlossen, innerhalb davon der manuelle Rang (wie in der Liste). */
-export function board(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: SpalteZ[], heute: Datum): Board {
+export function board(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: SpalteZ[], heute: Datum, kategorien: readonly { id: KategorieId; name: string }[] = KATEGORIEN): Board {
   const map = new Map(spalten.map(s => [s.id, s]));
   const karten = aufgaben.filter(a => a.status && map.has(a.status) && !a.archiviert).map(a => zeile(a, buchungen, map, heute));
   const stufe = (c: AufgabeZeile) => (c.abgeschlossen ? 2 : c.zurueckgestellt ? 1 : 0);
   const rang = new Map(aufgaben.map(a => [a.id, a.rang]));
   return {
     heute,
-    kategorien: KATEGORIEN.map(k => {
+    kategorien: kategorien.map(k => {
       const sp = spalten.filter(s => s.kategorie === k.id).map(s => ({
         id: s.id, name: s.name,
         karten: karten.filter(c => c.status!.id === s.id).sort((x, y) => stufe(x) - stufe(y) || rang.get(x.id)! - rang.get(y.id)!),

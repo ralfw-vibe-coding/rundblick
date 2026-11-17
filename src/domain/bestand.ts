@@ -3,7 +3,7 @@ import type { DomainEvent } from '../schema/events';
 import type { Id } from '../schema/werte';
 import {
   aufgabeEntwickeln, buchungEntwickeln, PLANUNG_STANDARD, planungEntwickeln, spaltenEntwickeln,
-  type AufgabeZ, type BuchungZ, type PlanungZ, type SpalteZ,
+  type AufgabeZ, type BuchungZ, type PlanungZ, type SpalteZ, kategorienEntwickeln, kategorienStandard, type KategorienamenZ,
 } from './zustand';
 
 export type Bestand = {
@@ -11,10 +11,11 @@ export type Bestand = {
   buchungen: Map<Id, BuchungZ>;
   spalten: Map<Id, SpalteZ>;
   planung: PlanungZ;
+  kategorien: KategorienamenZ;
 };
 
 export function leererBestand(): Bestand {
-  return { aufgaben: new Map(), buchungen: new Map(), spalten: new Map(), planung: PLANUNG_STANDARD };
+  return { aufgaben: new Map(), buchungen: new Map(), spalten: new Map(), planung: PLANUNG_STANDARD, kategorien: kategorienStandard() };
 }
 
 export function anwenden(b: Bestand, e: DomainEvent): void {
@@ -36,6 +37,7 @@ export function anwenden(b: Bestand, e: DomainEvent): void {
   }
   spaltenEntwickeln(b.spalten, e);
   b.planung = planungEntwickeln(b.planung, e);
+  b.kategorien = kategorienEntwickeln(b.kategorien, e);
 }
 
 export function aufbauen(events: readonly DomainEvent[]): Bestand {

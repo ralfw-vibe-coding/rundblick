@@ -56,6 +56,9 @@ describe('Commands über den Body', () => {
     expect(await body.spaltenSortieren({ kategorie: 'begonnen', reihenfolge: [s, 'inarbeit', 'blockiert'] })).toEqual({ ok: true });
     expect((await body.einstellungen()).spalten.filter(x => x.kategorie === 'begonnen').map(x => x.name)).toEqual(['Prüfen', 'In Arbeit', 'Blockiert']);
     expect(await body.spalteEntfernen({ statusId: s })).toEqual({ ok: true });
+    expect(await body.kategorieUmbenennen({ kategorie: 'beendet', name: 'Fertig' })).toEqual({ ok: true });
+    expect((await body.board()).kategorien.map(k => k.name)).toEqual(['Nicht begonnen', 'Begonnen', 'Fertig']);
+    expect((await body.einstellungen()).kategorien.at(-1)).toEqual({ id: 'beendet', name: 'Fertig' });
     expect(await body.tageskapazitaetFestlegen({ wochentag: 6, minuten: 120 })).toEqual({ ok: true });
     expect((await body.einstellungen()).kapazitaet[5]).toBe(120);
   });

@@ -669,3 +669,6 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 /* Karten: Person und Ort als Chips wie in der Liste; lange Werte gekürzt */
 .card .meta .chip.person, .card .meta .chip.ort { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .board.compact .card .meta .chip.person, .board.compact .card .meta .chip.ort { display: inline-flex; }
+/* Einstellungen: Name der Spaltengruppe editierbar wie die Spaltennamen */
+.einst .kat-block .kat-name { display: block; width: 100%; margin: 6px 0 2px; font: inherit; font-size: 12px; font-weight: 700; border: 1px solid transparent; border-radius: 5px; padding: 2px 6px; background: transparent; color: var(--ink); }
+.einst .kat-block .kat-name:hover, .einst .kat-block .kat-name:focus { border-color: var(--line2); background: #fff; outline: none; }

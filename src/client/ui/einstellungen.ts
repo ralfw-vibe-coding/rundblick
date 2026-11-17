@@ -1,7 +1,7 @@
 // Einstellungen: externe Kalender (sichtbar / belegt Kapazität), Standarddauer, Tageskapazität, Board-Spalten.
 import { dauerText, WT } from '../../basis/datum';
 import type { EinstellungenDto } from '../../body/interface';
-import { KATEGORIEN, type KategorieId, type Wochentag } from '../../schema/werte';
+import type { KategorieId, Wochentag } from '../../schema/werte';
 import { body } from './body';
 import { esc, pruefe } from './dom';
 import { I } from './icons';
@@ -21,6 +21,7 @@ export async function einstellungenUmschalten(): Promise<void> {
     if (t.dataset.kal) pruefe(await body.kalenderEinstellen({ kalenderId: t.dataset.kal, [t.dataset.f!]: t.checked }));
     if (t.dataset.wt) pruefe(await body.tageskapazitaetFestlegen({ wochentag: Number(t.dataset.wt) as Wochentag, minuten: Math.round(Number(t.value.replace(',', '.')) * 60) }));
     if (t.dataset.spName) pruefe(await body.spalteUmbenennen({ statusId: t.dataset.spName, name: t.value }));
+    if (t.dataset.katName) pruefe(await body.kategorieUmbenennen({ kategorie: t.dataset.katName as KategorieId, name: t.value }));
     void einstellungenZeichnen();
   });
   panel.addEventListener('click', async e => {
@@ -63,7 +64,7 @@ export async function einstellungenZeichnen(): Promise<void> {
     <h4>Tageskapazität (Stunden)</h4>
     <div class="kapgrid">${WT.map((w, i) => `<label>${w}<input type="number" min="0" max="24" step="0.5" data-wt="${i + 1}" value="${e.kapazitaet[i]! / 60}"></label>`).join('')}</div>
     <h4>Board-Spalten</h4>
-    ${KATEGORIEN.map(k => `<div class="kat-block"><b>${k.name}</b>
+    ${e.kategorien.map(k => `<div class="kat-block"><input class="kat-name" value="${esc(k.name)}" data-kat-name="${k.id}" title="Name der Spaltengruppe">
       ${e.spalten.filter(s => s.kategorie === k.id).map(s => `<div class="sp-zeile"><input value="${esc(s.name)}" data-sp-name="${esc(s.id)}"><button data-sp-hoch="${esc(s.id)}" title="nach links">${I.hoch}</button><button data-sp-runter="${esc(s.id)}" title="nach rechts">${I.runter}</button><button data-sp-weg="${esc(s.id)}" title="Spalte entfernen (nur wenn leer)">${I.x}</button></div>`).join('')}
       <button class="btn" data-sp-neu="${k.id}" style="font-size:12px;padding:1px 8px;margin-top:2px">${I.plus} Spalte</button></div>`).join('')}
     <h4>Daten</h4>

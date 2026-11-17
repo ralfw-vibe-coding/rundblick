@@ -186,6 +186,16 @@ describe('Board und Planung: Ablehnungen', () => {
     expect(neu()).toEqual(['StatusspalteUmbenannt']);
   });
 
+  it('Spaltengruppen umbenennen: Standardnamen, neuer Name, Ablehnungen, ohne Wirkung', () => {
+    expect(d.kategorien().map(k => k.name)).toEqual(['Nicht begonnen', 'Begonnen', 'Beendet']);
+    expect(d.kategorieUmbenennen({ kategorie: 'nichtBegonnen', name: ' Vorrat ' })).toMatchObject(ja);
+    expect(d.kategorieUmbenennen({ kategorie: 'nichtBegonnen', name: 'Vorrat' })).toMatchObject(ja);
+    expect(d.kategorieUmbenennen({ kategorie: 'quatsch' as never, name: 'X' })).toMatchObject(nein);
+    expect(d.kategorieUmbenennen({ kategorie: 'begonnen', name: '  ' })).toMatchObject(nein);
+    expect(d.kategorien()).toEqual([{ id: 'nichtBegonnen', name: 'Vorrat' }, { id: 'begonnen', name: 'Begonnen' }, { id: 'beendet', name: 'Beendet' }]);
+    expect(neu()).toEqual(['KategorieUmbenannt']);
+  });
+
   it('Kapazität und Standarddauer: Grenzen und ohne Wirkung', () => {
     expect(d.tageskapazitaetFestlegen({ wochentag: 1, minuten: 25 * 60 })).toMatchObject(nein);
     expect(d.tageskapazitaetFestlegen({ wochentag: 1, minuten: 360 })).toMatchObject(ja);

@@ -1,4 +1,5 @@
 // Implementierung des Domain interface. Kennt nur den Event Store.
+import { KATEGORIEN } from '../schema/werte';
 import type { EventStore } from '../providers/eventstore/interface';
 import type { Datum, Id } from '../schema/werte';
 import { anwenden, aufbauen, type Bestand } from './bestand';
@@ -41,6 +42,7 @@ export class Domain implements DomainInterface {
   standardspaltenEinrichten: DomainInterface['standardspaltenEinrichten'] = () => S.standardspaltenEinrichten(this.es);
   spalteAnlegen: DomainInterface['spalteAnlegen'] = c => S.spalteAnlegen(this.es, c);
   spalteUmbenennen: DomainInterface['spalteUmbenennen'] = c => S.spalteUmbenennen(this.es, c);
+  kategorieUmbenennen: DomainInterface['kategorieUmbenennen'] = c => S.kategorieUmbenennen(this.es, c);
   spaltenSortieren: DomainInterface['spaltenSortieren'] = c => S.spaltenSortieren(this.es, c);
   spalteEntfernen: DomainInterface['spalteEntfernen'] = c => S.spalteEntfernen(this.es, c);
   tageskapazitaetFestlegen: DomainInterface['tageskapazitaetFestlegen'] = c => S.tageskapazitaetFestlegen(this.es, c);
@@ -56,6 +58,7 @@ export class Domain implements DomainInterface {
     return this.buchungen().filter(b => b.aufgabeId === aufgabeId).sort((a, b) => (a.datum + (a.start ?? '')).localeCompare(b.datum + (b.start ?? '')));
   }
   spalten() { return aktiveSpalten(this.bestand.spalten); }
+  kategorien() { return KATEGORIEN.map(k => ({ id: k.id, name: this.bestand.kategorien[k.id] })); }
   planung() { return this.bestand.planung; }
 
   beiAenderung(cb: () => void): () => void {

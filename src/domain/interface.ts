@@ -29,6 +29,7 @@ export interface DomainInterface {
   standardspaltenEinrichten(): Ergebnis;
   spalteAnlegen(c: { statusId: Id; name: string; kategorie: KategorieId }): Ergebnis;
   spalteUmbenennen(c: { statusId: Id; name: string }): Ergebnis;
+  kategorieUmbenennen(c: { kategorie: KategorieId; name: string }): Ergebnis;
   spaltenSortieren(c: { kategorie: KategorieId; reihenfolge: Id[] }): Ergebnis;
   spalteEntfernen(c: { statusId: Id }): Ergebnis;
   tageskapazitaetFestlegen(c: { wochentag: Wochentag; minuten: Minuten }): Ergebnis;
@@ -44,6 +45,8 @@ export interface DomainInterface {
   buchungenDerAufgabe(aufgabeId: Id): BuchungZ[];
   /** aktive Spalten, sortiert nach Kategorie und Rang */
   spalten(): SpalteZ[];
+  /** die drei Kategorien in fester Reihenfolge mit ihren (ggf. umbenannten) Namen */
+  kategorien(): { id: KategorieId; name: string }[];
   planung(): PlanungZ;
 
   /** meldet jede Änderung des Domain state (auch Events anderer Geräte) */

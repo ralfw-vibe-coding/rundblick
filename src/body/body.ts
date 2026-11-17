@@ -118,6 +118,7 @@ export class RundblickBody implements Body {
     return status(this.x.domain.spalteAnlegen({ ...c, statusId }), { statusId });
   }
   async spalteUmbenennen(c: Parameters<Body['spalteUmbenennen']>[0]) { return status(this.x.domain.spalteUmbenennen(c)); }
+  async kategorieUmbenennen(c: Parameters<Body['kategorieUmbenennen']>[0]) { return status(this.x.domain.kategorieUmbenennen(c)); }
   async spaltenSortieren(c: Parameters<Body['spaltenSortieren']>[0]) { return status(this.x.domain.spaltenSortieren(c)); }
   async spalteEntfernen(c: Parameters<Body['spalteEntfernen']>[0]) { return status(this.x.domain.spalteEntfernen(c)); }
   async tageskapazitaetFestlegen(c: Parameters<Body['tageskapazitaetFestlegen']>[0]) { return status(this.x.domain.tageskapazitaetFestlegen(c)); }
@@ -158,7 +159,7 @@ export class RundblickBody implements Body {
 
   async board() {
     const d = this.x.domain;
-    return board(d.aufgaben(), d.buchungen(), d.spalten(), this.x.uhr.heute());
+    return board(d.aufgaben(), d.buchungen(), d.spalten(), this.x.uhr.heute(), d.kategorien());
   }
 
   async zeitraum(q: { von: Datum; bis: Datum }) {
@@ -199,6 +200,7 @@ export class RundblickBody implements Body {
   async einstellungen(): Promise<EinstellungenDto> {
     const d = this.x.domain, p = d.planung(), e = this.kalenderEinstellungen();
     return {
+      kategorien: d.kategorien(),
       spalten: d.spalten().map(s => ({ id: s.id, name: s.name, kategorie: s.kategorie })),
       kapazitaet: p.kapazitaet, standarddauer: p.standarddauer,
       kalender: this.x.cache.kalender().map(k => ({ ...k, ...(e[k.id] ?? KALENDER_STANDARD) })),

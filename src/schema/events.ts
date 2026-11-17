@@ -48,6 +48,7 @@ export type DomainEvent =
   // ---- Board
   | E<'StatusspalteAngelegt', { statusId: Id; name: string; kategorie: KategorieId }>
   | E<'StatusspalteUmbenannt', { statusId: Id; name: string }>
+  | E<'KategorieUmbenannt', { kategorie: KategorieId; name: string }>
   | E<'StatusspaltenSortiert', { kategorie: KategorieId; reihenfolge: Id[] }>
   | E<'StatusspalteEntfernt', { statusId: Id }>
   // ---- Planung

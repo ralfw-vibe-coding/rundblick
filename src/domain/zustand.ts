@@ -1,7 +1,7 @@
 // Reine Entwicklungsfunktionen: aus Events wird Zustand. Genutzt von den Kontextmodellen der
 // Commands und vom Bestand (Projektion für Queries).
 import type { DomainEvent } from '../schema/events';
-import type { Datum, Id, KategorieId, Minuten, Uhrzeit } from '../schema/werte';
+import { KATEGORIEN, type Datum, type Id, type KategorieId, type Minuten, type Uhrzeit } from '../schema/werte';
 
 export type AufgabeZ = {
   id: Id; titel: string; beschreibung: string; ort: string; verantwortlich: string; tags: string[];
@@ -95,6 +95,15 @@ export function planungEntwickeln(p: PlanungZ, e: DomainEvent): PlanungZ {
   }
   if (e.typ === 'StandarddauerFestgelegt') return { ...p, standarddauer: e.daten.minuten };
   return p;
+}
+
+/** Anzeigenamen der drei festen Kategorien; Standard aus dem Schema, umbenennbar */
+export type KategorienamenZ = Record<KategorieId, string>;
+export function kategorienStandard(): KategorienamenZ {
+  return Object.fromEntries(KATEGORIEN.map(k => [k.id, k.name])) as KategorienamenZ;
+}
+export function kategorienEntwickeln(n: KategorienamenZ, e: DomainEvent): KategorienamenZ {
+  return e.typ === 'KategorieUmbenannt' ? { ...n, [e.daten.kategorie]: e.daten.name } : n;
 }
 
 /** Aktive Spalten, sortiert nach Kategorie und Rang */

@@ -49,6 +49,16 @@ export function spalteUmbenennen(es: EventStore, c: { statusId: Id; name: string
   });
 }
 
+/** Benennt eine der drei festen Kategorien (Spaltengruppen) um */
+export function kategorieUmbenennen(es: EventStore, c: { kategorie: KategorieId; name: string }): Ergebnis {
+  return spaltenCtx(es, b => {
+    if (!KATS.includes(c.kategorie)) return nein('Unbekannte Kategorie.');
+    if (!nichtLeer(c.name)) return nein('Name fehlt.');
+    if (b.kategorien[c.kategorie] === c.name.trim()) return [];
+    return [{ typ: 'KategorieUmbenannt', tags: [tag.spalten], daten: { kategorie: c.kategorie, name: c.name.trim() } }];
+  });
+}
+
 /** Sortiert die Spalten einer Kategorie; die Reihenfolge muss genau deren aktive Spalten enthalten */
 export function spaltenSortieren(es: EventStore, c: { kategorie: KategorieId; reihenfolge: Id[] }): Ergebnis {
   return spaltenCtx(es, b => {

@@ -75,6 +75,8 @@ export type BuchungDetails = BuchungDto & { tag: Auslastung };
 export type KalenderEintrag = { id: string; name: string; konto: string; farbe: string; sichtbar: boolean; belegt: boolean };
 
 export type EinstellungenDto = {
+  /** die drei Spaltengruppen in fester Reihenfolge mit ihren (ggf. umbenannten) Namen */
+  kategorien: { id: KategorieId; name: string }[];
   spalten: StatusInfo[];
   kapazitaet: Minuten[];
   standarddauer: Minuten;
@@ -126,6 +128,7 @@ export interface Body {
   // ---- Commands: Board & Planung
   spalteAnlegen(c: { name: string; kategorie: KategorieId }): Promise<CommandStatus>;
   spalteUmbenennen(c: { statusId: Id; name: string }): Promise<CommandStatus>;
+  kategorieUmbenennen(c: { kategorie: KategorieId; name: string }): Promise<CommandStatus>;
   spaltenSortieren(c: { kategorie: KategorieId; reihenfolge: Id[] }): Promise<CommandStatus>;
   spalteEntfernen(c: { statusId: Id }): Promise<CommandStatus>;
   tageskapazitaetFestlegen(c: { wochentag: Wochentag; minuten: Minuten }): Promise<CommandStatus>;
@@ -159,7 +162,7 @@ export type BodyMethode = Exclude<keyof Body, 'beiAenderung'>;
 export const BODY_METHODEN: readonly BodyMethode[] = [
   'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen', 'aufgabeVerschieben',
   'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung',
-  'spalteAnlegen', 'spalteUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen',
+  'spalteAnlegen', 'spalteUmbenennen', 'kategorieUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',
   'liste', 'board', 'zeitraum', 'aufgabe', 'buchung', 'einstellungen', 'erfassungVorschau', 'vorschlaege', 'layout', 'heute', 'anhang',
 ];
