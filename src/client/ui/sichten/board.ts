@@ -1,6 +1,6 @@
 // Sicht: Kanban-Board. Voll = alle Spalten gruppiert nach Kategorie; kompakt = eine Spalte je Kategorie; mini = Balken.
-// Kategorien und Spalten lassen sich per Chevron zuklappen. Abgeschlossene Aufgaben stehen in jeder Spalte
-// unten in einem eigenen, anfangs zugeklappten Bereich „Abgeschlossen“.
+// Kategorien und Spalten lassen sich per Chevron zuklappen. Zurückgestellte und abgeschlossene Aufgaben stehen
+// in jeder Spalte unten in eigenen, anfangs zugeklappten Bereichen „Zurückgestellt“ und „Abgeschlossen“.
 import type { AufgabeZeile, Bereich, Board } from '../../../body/interface';
 import { body } from '../body';
 import { karte, spaltenKategorien, statusPunkt } from '../bausteine';
@@ -12,7 +12,7 @@ import type { Dichte, Sicht } from './sicht';
 export type BoardZustand = {
   /** zugeklappte Kategorien und Spalten */
   zu?: string[];
-  /** Spalten (bzw. Kategorien im kompakten Board), deren Bereich „Abgeschlossen“ offen ist */
+  /** offene Bereiche: „<spalte>“ = Abgeschlossen, „zur:<spalte>“ = Zurückgestellt (im kompakten Board je Kategorie) */
   abgOffen?: string[];
 };
 
@@ -43,17 +43,19 @@ export class BoardSicht implements Sicht {
       const a = s.karten.find(x => x.id === gewaehlt);
       if (!a) continue;
       this.schalten('zu', k.id, false); this.schalten('zu', s.id, false);
-      if (a.abgeschlossen) this.schalten('abgOffen', dichte === 'compact' ? k.id : s.id, true);
+      const schl = dichte === 'compact' ? k.id : s.id;
+      if (a.abgeschlossen) this.schalten('abgOffen', schl, true);
+      else if (a.zurueckgestellt) this.schalten('abgOffen', `zur:${schl}`, true);
     }
 
     const stapel = (schluessel: string, karten: AufgabeZeile[], voll: boolean, mitStatus: boolean) => {
-      const offen = karten.filter(a => !a.abgeschlossen), fertig = karten.filter(a => a.abgeschlossen);
       const k = (a: AufgabeZeile) => karte(a, heute, voll, mitStatus, a.id === gewaehlt);
-      return `<div class="cards">${offen.map(k).join('')}${fertig.length ? `
-        <div class="abg-h ${this.abg(schluessel) ? 'open' : ''}" data-abg="${esc(schluessel)}"><span class="caret">${I.rechts}</span>Abgeschlossen <span class="n">${fertig.length}</span></div>
-        ${this.abg(schluessel) ? fertig.map(k).join('') : ''}` : ''}</div>`;
+      const bereich = (name: string, schl: string, liste: AufgabeZeile[]) => liste.length ? `
+        <div class="abg-h ${this.abg(schl) ? 'open' : ''}" data-abg="${esc(schl)}"><span class="caret">${I.rechts}</span>${name} <span class="n">${liste.length}</span></div>
+        ${this.abg(schl) ? liste.map(k).join('') : ''}` : '';
+      return `<div class="cards">${karten.filter(istOffen).map(k).join('')}${bereich('Zurückgestellt', `zur:${schluessel}`, karten.filter(a => !a.abgeschlossen && a.zurueckgestellt))}${bereich('Abgeschlossen', schluessel, karten.filter(a => a.abgeschlossen))}</div>`;
     };
-    const offenZahl = (karten: AufgabeZeile[]) => karten.filter(a => !a.abgeschlossen).length;
+    const offenZahl = (karten: AufgabeZeile[]) => karten.filter(istOffen).length;
     const caret = `<span class="caret">${I.rechts}</span>`;
 
     if (dichte === 'compact') {
@@ -93,14 +95,17 @@ export class BoardSicht implements Sicht {
   private async neu(): Promise<void> { if (this.el) await this.render(this.el, this.dichte); }
 }
 
+/** auf dem Board „offen“ = weder abgeschlossen noch zurückgestellt */
+const istOffen = (a: AufgabeZeile) => !a.abgeschlossen && !a.zurueckgestellt;
+
 const katKlasse = (k: string) => ({ nichtBegonnen: 'offen', begonnen: 'begonnen', beendet: 'beendet' } as Record<string, string>)[k]!;
 
 function mini(b: Board): string {
-  const offen = (k: Board['kategorien'][number]) => k.spalten.flatMap(s => s.karten).filter(a => !a.abgeschlossen);
+  const offen = (k: Board['kategorien'][number]) => k.spalten.flatMap(s => s.karten).filter(istOffen);
   const max = Math.max(1, ...b.kategorien.map(k => offen(k).length));
   const begonnen = offen(b.kategorien.find(k => k.id === 'begonnen') ?? { id: 'begonnen', name: '', anzahl: 0, spalten: [] });
   return `<div class="mini">${b.kategorien.map(k => `
     <div><div class="mlabel"><span>${k.name}</span><b>${offen(k).length}</b></div><div class="bar"><i class="kat-${katKlasse(k.id)}" style="width:${(offen(k).length / max) * 100}%"></i></div>
-      <div class="muted" style="font-size:11px;margin-top:2px">${k.spalten.map(s => `${esc(s.name)} ${s.karten.filter(a => !a.abgeschlossen).length}`).join(' · ')}</div></div>`).join('')}
+      <div class="muted" style="font-size:11px;margin-top:2px">${k.spalten.map(s => `${esc(s.name)} ${s.karten.filter(istOffen).length}`).join(' · ')}</div></div>`).join('')}
     <div class="peek"><div class="muted">Begonnen:</div>${begonnen.map(a => `<div data-task="${a.id}">${statusPunkt(a.status!.id)} ${esc(a.titel)}</div>`).join('')}</div></div>`;
 }

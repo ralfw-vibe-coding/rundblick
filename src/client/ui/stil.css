@@ -644,3 +644,6 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .abg-h { display: flex; align-items: center; gap: 5px; margin: 6px 2px 2px; padding-top: 6px; border-top: 1px dashed var(--line2); font-size: 11px; color: var(--mute); }
 .abg-h .n { margin-left: auto; }
 .board2 .kat-cols > .col { min-width: 0; }
+.card.zurueck { background: var(--panel2); }
+.card.zurueck .t .tt { color: var(--ink2); }
+.abg-h + .abg-h { margin-top: 2px; }

@@ -106,7 +106,8 @@ async function stufe2({ neu, d, heute, body }: Kontext): Promise<void> {
   if (r.ok) await mit('Review: eigene Spalte (zusätzlich zu den Standardspalten)', r.ids!.statusId!);
 
   // Darf NICHT auf dem Board erscheinen
-  await mit('Zurückgestellt mit Status – NICHT auf dem Board', 'bereit', { wiedervorlage: d(7) });
+  await mit('Zurückgestellt mit Status – im Bereich „Zurückgestellt“ der Spalte', 'bereit', { wiedervorlage: d(7) });
+  await mit('Zurückgestellt in Arbeit – Bereich „Zurückgestellt“, mit Datum', 'inarbeit', { wiedervorlage: d(3), frist: d(10) });
   await body.aufgabeArchivieren({ aufgabeId: await mit('Archiviert mit Status – NICHT auf dem Board', 'inarbeit') });
   await body.aufgabeVerwerfen({ aufgabeId: await mit('Verworfen mit Status – NIRGENDS', 'idee') });
 

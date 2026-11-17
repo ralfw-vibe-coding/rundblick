@@ -133,15 +133,18 @@ describe('Queries über den Body', () => {
     expect((await body.liste({})).abgeschlossen.map(x => x.titel)).toEqual(['Alt']);
   });
 
-  it('Board zählt Kategorien und stellt Abgeschlossene ans Ende der Spalte', async () => {
+  it('Board: offen · zurückgestellt · abgeschlossen je Spalte; archivierte fehlen', async () => {
     const { body } = aufbau();
     const a = id(await body.aufgabeErfassen({ titel: 'A', status: 'bereit' }), 'aufgabeId');
     await body.aufgabeErfassen({ titel: 'B', status: 'bereit', frist: '2026-11-20' });
     await body.aufgabeErfassen({ titel: 'C', status: 'bereit', wiedervorlage: '2026-12-01' });
     await body.aufgabeAbschliessen({ aufgabeId: a });
+    const d = id(await body.aufgabeErfassen({ titel: 'D', status: 'bereit' }), 'aufgabeId');
+    await body.aufgabeArchivieren({ aufgabeId: d });
     const b = await body.board();
-    expect(b.kategorien[0]!.anzahl).toBe(2);
-    expect(b.kategorien[0]!.spalten.find(s => s.id === 'bereit')!.karten.map(k => k.titel)).toEqual(['B', 'A']);
+    expect(b.kategorien[0]!.anzahl).toBe(3);
+    const bereit = b.kategorien[0]!.spalten.find(s => s.id === 'bereit')!.karten;
+    expect(bereit.map(k => [k.titel, k.zurueckgestellt, k.abgeschlossen])).toEqual([['B', false, false], ['C', true, false], ['A', false, true]]);
   });
 
   it('Zeitraum: ganztägige externe Termine zählen nicht zur Auslastung; unbekannter Kalender bekommt Standardwerte', async () => {
