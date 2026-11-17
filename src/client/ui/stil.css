@@ -589,3 +589,31 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .row.einfuegen-oben { box-shadow: inset 0 2px 0 var(--own); }
 .row.einfuegen-unten { box-shadow: inset 0 -2px 0 var(--own); }
 .drawer .fld label { text-transform: none; letter-spacing: 0; font-size: 11px; font-weight: 400; color: #b6b4bb; margin-bottom: 3px; }
+
+/* ===== Board-Karten nach den UI-Regeln der Liste ===== */
+.card .c-kopf { display: flex; align-items: flex-start; gap: 6px; }
+.card .chk { border: 0; background: none; padding: 0; width: 18px; height: 18px; margin-top: 1px; display: grid; place-items: center; color: var(--line2); flex: none; cursor: pointer; }
+.card .chk svg.lu { width: 16px; height: 16px; }
+.card .chk:hover { color: var(--st-fertig); }
+.card.closed .chk { color: var(--st-fertig); }
+.card .t { flex: 1; min-width: 0; line-height: 1.3; }
+.card .t .tt { overflow-wrap: anywhere; }
+.card .t .due { margin-left: 6px; white-space: nowrap; }
+.card .muell { visibility: hidden; margin: -2px -4px 0 0; width: 20px; height: 20px; }
+.card .muell svg { width: 14px; height: 14px; }
+.card:hover .muell, .card .muell.fragen { visibility: visible; }
+.card .meta { margin-top: 5px; padding-left: 24px; }
+.card.closed { opacity: .6; }
+.card.closed .t .tt { text-decoration: line-through; color: var(--mute); }
+.card.gewaehlt { border-color: var(--own); box-shadow: 0 0 0 2px var(--own-soft), inset 3px 0 0 var(--own); }
+.board.compact .card .meta { padding-left: 22px; }
+.board.compact .card .chk { width: 16px; height: 16px; }
+.board.compact .card .chk svg.lu { width: 14px; height: 14px; }
+/* Board: Spalten nie schmaler als 150 px – wird es eng, scrollt das Board waagerecht */
+.board2 { overflow-x: auto; }
+.board2 .kat { min-width: auto; flex-shrink: 0; flex-grow: 1; }
+.board2 .kat-cols { grid-auto-columns: minmax(150px, 1fr); }
+.card { position: relative; padding: 6px 8px; }
+.card .t .tt { overflow-wrap: break-word; hyphens: auto; }
+.card .muell { position: absolute; top: 3px; right: 3px; margin: 0; background: #fff; box-shadow: 0 0 0 3px #fff; }
+.card .meta { padding-left: 24px; }

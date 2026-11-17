@@ -70,8 +70,54 @@ async function stufe1({ neu, heute, d, body }: Kontext): Promise<void> {
   await body.aufgabeVerwerfen({ aufgabeId: await neu({ titel: 'Verworfen – darf NIRGENDS erscheinen' }) });
 }
 
+// ---------------- Stufe 2: Status und Board ----------------
+// Enthält auch Aufgaben ohne Status (nur in der Liste). Keine Buchungen.
+async function stufe2({ neu, d, heute, body }: Kontext): Promise<void> {
+  const mit = (titel: string, status: string, x: Partial<AufgabeEingabe> = {}) => neu({ titel, status, ...x });
+
+  // Nicht begonnen
+  await mit('Idee: nur Titel', 'idee');
+  await mit('Idee: mit Tags und Verantwortlicher', 'idee', { tags: ['blog', 'später'], verantwortlich: 'Lena' });
+  await mit('Backlog: Frist in einem Monat (grau)', 'backlog', { frist: d(30) });
+  await mit('Backlog: ohne Frist', 'backlog');
+  await mit('Bereit: Frist überfällig (hellrot)', 'bereit', { frist: d(-2) });
+  await mit('Bereit: Frist heute (tiefrot)', 'bereit', { frist: heute });
+  await mit('Bereit: Frist morgen (orange, diese Woche)', 'bereit', { frist: d(1) });
+  await mit('Bereit: sehr langer Titel, der auf der Karte umbrechen muss, statt abgeschnitten zu werden – mehrere Zeilen sind hier in Ordnung', 'bereit');
+  for (let i = 1; i <= 9; i++) await mit(`Bereit: viele Karten ${i} von 9 (Spalte muss scrollen)`, 'bereit');
+
+  // Begonnen
+  await mit('In Arbeit: alle Felder', 'inarbeit', {
+    beschreibung: 'Notiz mit **Markdown**\n- [ ] Punkt offen\n- [x] Punkt erledigt', ort: 'Zoom', verantwortlich: 'Ralf', tags: ['kunde', 'wichtig'], frist: d(3),
+  });
+  await mit('In Arbeit: Frist heute', 'inarbeit', { frist: heute });
+  const abgInArbeit = await mit('In Arbeit: abgeschlossen, obwohl Spalte „begonnen“ (bleibt stehen)', 'inarbeit');
+  await body.aufgabeAbschliessen({ aufgabeId: abgInArbeit });
+  await mit('Blockiert: wartet auf Rückmeldung', 'blockiert', { verantwortlich: 'Markus' });
+
+  // Beendet
+  const erl = await mit('Erledigt und abgeschlossen (durchgestrichen, bleibt stehen)', 'erledigt');
+  await body.aufgabeAbschliessen({ aufgabeId: erl });
+  await mit('Erledigt, aber noch NICHT abgeschlossen', 'erledigt', { frist: d(-1) });
+  // „Abgebrochen“ bleibt bewusst leer
+
+  // Eigene Spalte in „Begonnen“
+  const r = await body.spalteAnlegen({ name: 'Review', kategorie: 'begonnen' });
+  if (r.ok) await mit('Review: eigene Spalte (zusätzlich zu den Standardspalten)', r.ids!.statusId!);
+
+  // Darf NICHT auf dem Board erscheinen
+  await mit('Zurückgestellt mit Status – NICHT auf dem Board', 'bereit', { wiedervorlage: d(7) });
+  await body.aufgabeArchivieren({ aufgabeId: await mit('Archiviert mit Status – NICHT auf dem Board', 'inarbeit') });
+  await body.aufgabeVerwerfen({ aufgabeId: await mit('Verworfen mit Status – NIRGENDS', 'idee') });
+
+  // Ohne Status: nur in der Liste
+  await neu({ titel: 'Ohne Status – nur in der Liste, nicht auf dem Board', frist: d(2) });
+  await neu({ titel: 'Ohne Status – zum Testen: auf eine Board-Spalte ziehen' });
+}
+
 const STUFEN: Record<string, { name: string; f: (k: Kontext) => Promise<void> }> = {
   '1': { name: 'Aufgaben in der Liste', f: stufe1 },
+  '2': { name: 'Status und Board', f: stufe2 },
 };
 
 // ---------------- Ablauf ----------------
@@ -103,6 +149,8 @@ async function main(): Promise<void> {
   console.log(`Stufe ${stufe} (${STUFEN[stufe]!.name}) → ${datenordner}/events/${geraet}.jsonl`);
   console.log(`  ${store.lesen().events.length} Events · ${l.offen} offen · ${l.zurueckgestellt.length} zurückgestellt · ${l.abgeschlossen.length} abgeschlossen`);
   for (const gr of l.gruppen) console.log(`  ${gr.name.padEnd(13)} ${gr.aufgaben.length}`);
+  const b = await body.board();
+  for (const k of b.kategorien) console.log(`  Board ${k.name.padEnd(15)} ${k.spalten.map(x => `${x.name} ${x.karten.length}`).join(' · ')}`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

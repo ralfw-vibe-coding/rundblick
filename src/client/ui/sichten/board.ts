@@ -23,6 +23,7 @@ export class BoardSicht implements Sicht {
         return `<div class="col kcol kat-b-${katKlasse(k.id)}" ${erste ? `data-drop-status="${erste.id}"` : ''}><div class="col-h">${k.name}<span class="n">${karten.length}</span></div>
           <div class="cards">${karten.map(a => karte(a, heute, false, true, a.id === gewaehlt)).join('')}</div></div>`;
       }).join('')}</div>`;
+      el.querySelector<HTMLElement>('.card.gewaehlt')?.scrollIntoView({ block: 'nearest' });
       return;
     }
     el.innerHTML = `<div class="board2">${b.kategorien.filter(k => k.spalten.length).map(k => `
@@ -31,6 +32,7 @@ export class BoardSicht implements Sicht {
           <div class="col" data-drop-status="${s.id}"><div class="col-h">${statusPunkt(s.id)}${esc(s.name)}<span class="n">${s.karten.length}</span></div>
             <div class="cards">${s.karten.map(a => karte(a, heute, true, false, a.id === gewaehlt)).join('')}</div></div>`).join('')}
         </div></div>`).join('')}</div>`;
+    el.querySelector<HTMLElement>('.card.gewaehlt')?.scrollIntoView({ block: 'nearest' });
   }
 }
 

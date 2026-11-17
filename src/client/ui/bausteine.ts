@@ -53,12 +53,14 @@ export function zeile(a: AufgabeZeile, heute: string, voll: boolean, frisch = fa
 
 export function karte(a: AufgabeZeile, heute: string, voll: boolean, mitStatus: boolean, gewaehlt = false): string {
   const beendet = a.status?.kategorie === 'beendet';
-  const knopf = a.abgeschlossen
-    ? `<span class="closed-badge">${I.haken}abgeschlossen</span><button class="done-btn" data-act="wiederoeffnen" title="Wieder öffnen" style="color:var(--mute)">${I.zuruecksetzen}</button>`
-    : beendet ? `<button class="done-btn" data-act="abschliessen" title="Abschließen – eigener Zustand, unabhängig von der Spalte">${I.haken}abschließen</button>` : '';
+  const meta = `${mitStatus && a.status ? `<span class="chip">${statusPunkt(a.status.id)}${esc(a.status.name)}</span>` : ''}${anhangSymbol(a)}${buchungsSymbole(a)}${voll ? tagsChips(a) : ''}${avatar(a)}`;
   return `<div class="card ${beendet ? 'ended' : ''} ${a.abgeschlossen ? 'closed' : ''} ${gewaehlt ? 'gewaehlt' : ''}" draggable="true" data-task="${a.id}">
-    <div class="t">${esc(a.titel)}</div>
-    <div class="meta">${mitStatus && a.status ? `<span class="chip">${statusPunkt(a.status.id)}${esc(a.status.name)}</span>` : ''}${frist(a, heute)}${buchungsSymbole(a)}${voll ? tagsChips(a) : ''}${knopf}${avatar(a)}</div>
+    <div class="c-kopf">
+      <button class="chk" data-act="${a.abgeschlossen ? 'wiederoeffnen' : 'abschliessen'}" title="${a.abgeschlossen ? 'Wieder öffnen' : 'Abschließen – eigener Zustand, unabhängig von der Spalte'}">${a.abgeschlossen ? I.erledigt : I.offen}</button>
+      <div class="t"><span class="tt">${esc(a.titel)}</span>${frist(a, heute)}</div>
+      ${muellKnopf('verwerfen', 'Aufgabe verwerfen')}
+    </div>
+    ${meta ? `<div class="meta">${meta}</div>` : ''}
   </div>`;
 }
 
