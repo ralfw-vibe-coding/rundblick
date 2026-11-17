@@ -22,6 +22,8 @@ import { systemUhr } from '../providers/uhr/system';
 import { demoDatenAnlegen } from './demo';
 
 app.setName('Rundblick');
+// RB_PROFIL=ordner: eigenes Profil (Layouts, Geräte-Einstellungen) – z. B. für Tests, ohne das echte Profil zu verändern
+if (process.env.RB_PROFIL) app.setPath('userData', resolve(process.env.RB_PROFIL));
 
 function datenordnerBestimmen(gespeichert: string | null): string {
   if (process.env.RB_DATEN) return resolve(process.env.RB_DATEN);

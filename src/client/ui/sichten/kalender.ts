@@ -176,7 +176,7 @@ const ganztags = (t: Tag) => t.extern.filter(x => x.start === null).map(x => `<d
 function fristMarke(t: Tag): string {
   if (!t.fristen.length) return '';
   const d = t.fristen[0]!.dringlichkeit;
-  const farbe = d === 'ueberfaellig' ? 'var(--over)' : d === 'heute' ? 'var(--today)' : d === 'bald' ? 'var(--soon)' : 'var(--mute)';
+  const farbe = `var(--d-${d})`;
   return `<span class="fr" style="color:${farbe}" title="${esc('Fällig:\n' + t.fristen.map(f => f.titel).join('\n'))}">◆${t.fristen.length}</span>`;
 }
 
@@ -246,7 +246,7 @@ function timeline(z: Zeitraum, pph: number): string {
     const ext = anordnen(t.extern.filter(e => e.start !== null).map(e => ({ kind: 'extern' as const, s: e.start!, e: Math.max(e.ende!, e.start! + 15), lane: 0, n: 1, titel: e.titel, x: e })));
     ext.forEach(e => { maxExt = Math.max(maxExt, e.lane + 1); bahn.ext += `<div class="tl-it extern" style="left:${x(i, e.s)}px;width:${Math.max(6, ((e.e - e.s) / 60) * pph - 2)}px;top:${4 + e.lane * 24}px;--kf:${e.x!.farbe}" title="${esc(`${e.titel} · ${uhrzeit(e.s)} · ${e.x!.kalender}`)}">${esc(e.titel)}</div>`; });
     maxF = Math.max(maxF, t.fristen.length);
-    t.fristen.forEach((f, k) => { const cls = f.dringlichkeit === 'ueberfaellig' ? '' : f.dringlichkeit === 'heute' || f.dringlichkeit === 'bald' ? 'soon' : 'later'; bahn.fristen += `<div class="tl-mark ${cls}" data-task="${f.aufgabeId}" style="left:${x(i, H1 * 60) - 4}px;top:${4 + k * 18}px;flex-direction:row-reverse" title="${esc('Frist: ' + f.titel)}"><span class="dia"></span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(f.titel)}</span>` : ''}</div>`; });
+    t.fristen.forEach((f, k) => { bahn.fristen += `<div class="tl-mark" data-task="${f.aufgabeId}" style="--dfarbe:var(--d-${f.dringlichkeit});left:${x(i, H1 * 60) - 4}px;top:${4 + k * 18}px;flex-direction:row-reverse" title="${esc('Frist: ' + f.titel)}"><span class="dia"></span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(f.titel)}</span>` : ''}</div>`; });
     t.wiedervorlagen.forEach((w, k) => { bahn.wv += `<div class="tl-mark wv" data-task="${w.aufgabeId}" style="left:${x(i, H0 * 60) + 6}px;top:${5 + k * 18}px" title="${esc('Wiedervorlage: ' + w.titel)}"><span class="dia"></span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(w.titel)}</span>` : ''}</div>`; });
     const a = t.auslastung, p = a.kapazitaet ? a.belegt / a.kapazitaet : a.belegt ? 2 : 0;
     bahn.last += `<div title="${esc(`${dauerText(a.belegt)} von ${dauerText(a.kapazitaet)}`)}" style="position:absolute;left:${links + 3}px;width:${dayW - 6}px;bottom:3px;height:${(Math.min(1.15, p) / 1.15) * 30}px;border-radius:3px 3px 0 0;background:${p > 1 ? 'var(--over)' : p > 0.8 ? 'var(--soon)' : '#c9c5bd'};opacity:.75"></div>`

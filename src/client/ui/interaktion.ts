@@ -3,11 +3,45 @@ import { dauerText, plusTage, relativ, uhrzeit } from '../../basis/datum';
 import type { CommandStatus } from '../../body/interface';
 import { body } from './body';
 import { aufgabeOeffnen, buchungOeffnen, schliessen } from './detail';
+import { ICON } from './bausteine';
 import { esc, pruefe, toast } from './dom';
+import { markieren } from './frisch';
 import { H0, H1, SPANMIN } from './sichten/kalender';
 
 let heute = '';
 const heuteLaden = async () => { heute = (await body.heute()).datum; };
+
+// ---- Zwei-Klick-Muster für zerstörende Aktionen: Mülleimer → „?“ → ausführen; Klick woanders oder 5 s → zurück
+const ZWEISTUFIG: Record<string, (id: string) => Promise<void>> = {
+  verwerfen: async id => { pruefe(await body.aufgabeVerwerfen({ aufgabeId: id }), 'Aufgabe verworfen'); },
+  stornieren: async id => { pruefe(await body.buchungStornieren({ buchungId: id }), 'Buchung gelöscht'); },
+};
+let fragenTimer: ReturnType<typeof setTimeout> | undefined;
+function fragenZuruecksetzen(ausser?: Element): void {
+  document.querySelectorAll<HTMLElement>('[data-zweistufig].fragen').forEach(b => {
+    if (b === ausser) return;
+    b.classList.remove('fragen'); b.innerHTML = ICON.muell;
+  });
+}
+export function zweistufigAnbinden(nachAusfuehren?: (act: string, id: string) => void): void {
+  document.addEventListener('click', async e => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-zweistufig]');
+    if (!b) { fragenZuruecksetzen(); return; }
+    e.stopPropagation(); e.preventDefault();
+    const act = b.dataset.zweistufig!, id = b.dataset.id ?? b.closest<HTMLElement>('[data-task]')?.dataset.task ?? '';
+    if (!b.classList.contains('fragen')) {
+      fragenZuruecksetzen(b);
+      b.classList.add('fragen'); b.textContent = '?'; b.title = 'Nochmal klicken zum Ausführen';
+      clearTimeout(fragenTimer);
+      fragenTimer = setTimeout(() => fragenZuruecksetzen(), 5000);
+      return;
+    }
+    clearTimeout(fragenTimer);
+    fragenZuruecksetzen();
+    await ZWEISTUFIG[act]?.(id);
+    nachAusfuehren?.(act, id);
+  }, true);
+}
 
 export function interaktionAnbinden(): void {
   void heuteLaden();
@@ -81,7 +115,7 @@ export function interaktionAnbinden(): void {
     if (z.dataset.dropStatus !== undefined || z.dataset.dropList !== undefined) {
       const status = z.dataset.dropStatus ?? null;
       let r: CommandStatus;
-      if (buchung && frei) { r = await body.aufgabeAusBuchung({ buchungId: buchung, status }); pruefe(r, 'Aufgabe aus Buchung erstellt'); }
+      if (buchung && frei) { r = await body.aufgabeAusBuchung({ buchungId: buchung, status }); if (pruefe(r, 'Aufgabe aus Buchung erstellt') && r.ok) markieren(r.ids!.aufgabeId!); }
       else if (aufgabe && status) pruefe(await body.statusSetzen({ aufgabeId: aufgabe, status }));
     } else if (z.dataset.dropRes) await platzieren(z.dataset.dropRes, null);
     else if (z.dataset.dropDay) {

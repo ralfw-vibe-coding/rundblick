@@ -4,6 +4,7 @@ import type { ErfassungVorschau } from '../../body/interface';
 import { body } from './body';
 import { statusPunkt } from './bausteine';
 import { esc, pruefe } from './dom';
+import { markieren } from './frisch';
 
 const SYNTAX = `<code>#tag</code> <code>@person</code> <code>/ort</code> <code>!fr</code> Frist · <code>^1.12.</code> Wiedervorlage · <code>=inarbeit</code> Status · <code>&gt;do 2h</code> Reservierung · <code>&gt;morgen 14:00 1h</code> Termin<br>Zeile beginnt mit <code>&gt;</code> → nur Buchung ohne Aufgabe, z. B. <code>&gt;fr 17:00 45m Friseur</code><br>Datum: <code>heute</code> <code>morgen</code> <code>mo…so</code> <code>+3</code> <code>+2w</code> <code>24.12.</code>`;
 const tag = (d: string) => `${WT[wochentag(d)]} ${kurz(d)}`;
@@ -43,6 +44,7 @@ export function schnellerfassungAnbinden(root: HTMLElement): HTMLInputElement {
     if (e.key !== 'Enter' || !inp.value.trim()) return;
     const text = inp.value;
     const r = await body.schnellErfassen({ text });
+    if (r.ok && r.ids?.aufgabeId) markieren(r.ids.aufgabeId);
     if (pruefe(r, `Erfasst: ${(await body.erfassungVorschau({ text })).titel}`)) { inp.value = ''; void vorschau(); }
   });
   return inp;

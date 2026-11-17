@@ -1,9 +1,9 @@
 // Einstieg der Oberfläche: Raster, Schnellerfassung, Einstellungen und Tastatur verdrahten.
 import { body } from './body';
-import { auffrischen, offen as schubladeOffen, schliessen as schubladeSchliessen } from './detail';
+import { auffrischen, offen as schubladeOffen, schliessen as schubladeSchliessen, schliessenWenn as schubladeSchliessenWenn } from './detail';
 import { $, tippt } from './dom';
 import { einstellungenOffen, einstellungenSchliessen, einstellungenUmschalten, einstellungenZeichnen } from './einstellungen';
-import { interaktionAnbinden } from './interaktion';
+import { interaktionAnbinden, zweistufigAnbinden } from './interaktion';
 import { Raster } from './raster';
 import { schnellerfassungAnbinden } from './schnellerfassung';
 
@@ -20,6 +20,9 @@ body.beiAenderung(bereiche => {
   void auffrischen();
   if (bereiche.includes('einstellungen') || bereiche.includes('kalender')) void einstellungenZeichnen();
 });
+
+addEventListener('rb-frisch', () => raster.aktualisieren(['aufgaben', 'board']));
+zweistufigAnbinden((act, id) => { if (act === 'verwerfen' || act === 'stornieren') schubladeSchliessenWenn(id); });
 
 document.addEventListener('keydown', e => {
   if (tippt(e)) return;

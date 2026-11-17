@@ -411,3 +411,61 @@ kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ff
 .mo .mc[data-day] { cursor: default; }
 .ev .zieh { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; cursor: ns-resize; }
 .ev .zieh:hover { background: rgba(255,255,255,.35); }
+
+/* ===== Feedback 17.11.: Liste ===== */
+:root { --d-ueberfaellig: #ef5b5b; --d-heute: #b4141c; --d-woche: #e8710a; --d-spaeter: #c99400; }
+.due.d-ueberfaellig, .grp-h.ueberfaellig { color: var(--d-ueberfaellig); }
+.due.d-heute, .grp-h.heute { color: var(--d-heute); }
+.due.d-woche, .grp-h.woche { color: var(--d-woche); }
+.due.d-spaeter, .grp-h.spaeter { color: var(--d-spaeter); }
+.due.d-ueberfaellig, .due.d-heute { font-weight: 600; }
+.tl-mark .dia { background: var(--dfarbe, #9ca3af); }
+/* Fälligkeit direkt hinter dem Titel */
+.row .t { display: flex; align-items: baseline; gap: 8px; min-width: 0; overflow: visible; }
+.row .t .tt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.row .t .due { flex: none; }
+.row.done .t .tt { text-decoration: line-through; color: var(--mute); }
+.row.done .t { text-decoration: none; }
+/* Abschnitte auf/zu */
+.grp-h { cursor: pointer; }
+.grp-h::before { content: '▸'; font-size: 10px; transition: transform .15s; display: inline-block; }
+.grp-h.open::before { transform: rotate(90deg); }
+.grp-h.toggle::before { content: '▸'; }
+.grp-h.toggle.open::before { transform: rotate(90deg); }
+.list-h .archivbtn { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 2px 6px; color: var(--mute); display: grid; place-items: center; }
+.list-h .archivbtn.on { background: var(--bg); color: var(--ink); border-color: var(--line2); }
+.list-h .archivbtn svg { width: 15px; height: 15px; }
+/* Mülleimer: erscheint beim Überfahren; 1. Klick → „?“ */
+.muell { border: 0; background: none; color: var(--mute); width: 22px; height: 22px; border-radius: 5px; padding: 0; display: grid; place-items: center; flex: none; font-weight: 700; font-size: 13px; }
+.muell svg { width: 15px; height: 15px; }
+.row .muell { visibility: hidden; }
+.row:hover .muell, .row .muell.fragen { visibility: visible; }
+.muell:hover { color: var(--over); background: #fdecec; }
+.muell.fragen { color: #fff; background: var(--over); }
+/* frisch angelegte Aufgabe: 5 s hervorgehoben */
+@keyframes frisch { 0%, 70% { background: #fff3c4; box-shadow: inset 3px 0 0 #e8a700; } 100% { background: transparent; box-shadow: inset 3px 0 0 transparent; } }
+.row.frisch { animation: frisch 5s ease-out forwards; }
+/* Schublade, Panels und Popover liegen über der Fenster-Ziehleiste → klickbar machen */
+.drawer, .einst, .pop, .toast, .qc-preview { -webkit-app-region: no-drag; }
+/* ===== Feedback 17.11.: Schublade ===== */
+.drawer { width: 420px; }
+.drawer .dh { align-items: center; gap: 6px; }
+.drawer .dh .chk { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line2); background: #fff; flex: none; padding: 0; }
+.drawer .dh .chk:hover:not(:disabled) { border-color: var(--st-fertig); background: #e9f7ee; }
+.drawer .dh .chk.an { background: var(--st-fertig); border-color: var(--st-fertig); }
+.drawer .dh .titel-input { flex: 1; min-width: 0; }
+.kopfknopf { border: 0; background: none; color: var(--mute); width: 26px; height: 26px; border-radius: 6px; padding: 0; display: grid; place-items: center; flex: none; }
+.kopfknopf svg { width: 16px; height: 16px; }
+.kopfknopf:hover { background: var(--bg); color: var(--ink); }
+.drawer .dh .muell { width: 26px; height: 26px; }
+.drawer .dh .muell svg { width: 16px; height: 16px; }
+.drawer .dh button { font-size: inherit; }
+.statuschips { display: flex; flex-wrap: wrap; gap: 5px; }
+.schip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line2); background: #fff; border-radius: 12px; padding: 2px 9px; font-size: 12px; color: var(--ink2); }
+.schip:hover:not(:disabled) { border-color: var(--own); }
+.schip.an { background: var(--ink); border-color: var(--ink); color: #fff; }
+.schip:disabled { opacity: .55; }
+.db.aufgabe .fld textarea { flex: 1; min-height: 110px; }
+.buchen { display: grid; grid-template-columns: 1.3fr 1fr 1fr auto; gap: 6px; }
+.buchen input, .buchen select { min-width: 0; }
+.drawer .bk-list { max-height: 180px; overflow: auto; }

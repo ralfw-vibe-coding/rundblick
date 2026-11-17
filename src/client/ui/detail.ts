@@ -1,9 +1,12 @@
 // Detail-Schublade: Aufgabe oder Buchung ansehen und direkt bearbeiten.
 // Jede Feldänderung wird sofort als Command an den Body geschickt.
+// Kopf: [Abschließen-Kreis] Titel … [Archiv] [Mülleimer] [×]
 import { dauerText, kurz, plusTage, WT, wochentag } from '../../basis/datum';
+import type { AufgabeDetails } from '../../body/interface';
 import { body } from './body';
-import { buchungArt, kapazitaetsBalken } from './bausteine';
+import { buchungArt, ICON, kapazitaetsBalken, muellKnopf, statusPunkt } from './bausteine';
 import { esc, pruefe } from './dom';
+import { markieren } from './frisch';
 
 let schublade: HTMLDivElement | null = null;
 let aktuell: { art: 'aufgabe' | 'buchung'; id: string } | null = null;
@@ -18,6 +21,8 @@ function el(): HTMLDivElement {
 
 export function schliessen(): void { schublade?.classList.remove('open'); aktuell = null; }
 export const offen = () => !!schublade?.classList.contains('open');
+/** schließt die Schublade, falls sie gerade dieses Objekt zeigt (z. B. nach dem Verwerfen) */
+export function schliessenWenn(id: string): void { if (aktuell?.id === id) schliessen(); }
 
 /** Nach Änderungen: offene Schublade aktualisieren (ohne Fokus aus einem Feld zu reißen) */
 export async function auffrischen(): Promise<void> {
@@ -26,58 +31,82 @@ export async function auffrischen(): Promise<void> {
   if (aktuell.art === 'aufgabe') await aufgabeOeffnen(aktuell.id); else await buchungOeffnen(aktuell.id);
 }
 
-const feld = (label: string, inhalt: string) => `<div class="fld"><label>${label}</label>${inhalt}</div>`;
+const feld = (label: string, inhalt: string, extra = '') => `<div class="fld" ${extra}><label>${label}</label>${inhalt}</div>`;
+const knopf = (d: string, icon: string, titel: string) => `<button class="kopfknopf" data-d="${d}" title="${esc(titel)}">${icon}</button>`;
 
 export async function aufgabeOeffnen(id: string): Promise<void> {
-  const [a, e] = await Promise.all([body.aufgabe({ aufgabeId: id }), body.einstellungen()]);
+  const [a, e, h] = await Promise.all([body.aufgabe({ aufgabeId: id }), body.einstellungen(), body.heute()]);
   if (!a) { schliessen(); return; }
   aktuell = { art: 'aufgabe', id };
   const s = el();
-  const zu = a.abgeschlossen ? 'disabled' : '';
-  s.innerHTML = `<div class="dh"><input class="titel-input" data-f="titel" value="${esc(a.titel)}" ${zu}>${a.abgeschlossen ? '<span class="zustand">✓ abgeschlossen</span>' : ''}<button data-d="zu" title="Schließen (Esc)">×</button></div>
-    <div class="db">
-      ${feld('Beschreibung', `<textarea data-f="beschreibung" ${zu}>${esc(a.beschreibung)}</textarea>`)}
+  const gesperrt = a.abgeschlossen || a.archiviert;
+  const zu = gesperrt ? 'disabled' : '';
+  const morgen = plusTage(h.datum, 1);
+  s.innerHTML = `
+    <div class="dh">
+      <button class="chk ${a.abgeschlossen ? 'an' : ''}" data-d="${a.abgeschlossen ? 'auf' : 'ab'}" title="${a.abgeschlossen ? 'Wieder öffnen' : 'Abschließen'}" ${a.archiviert ? 'disabled' : ''}></button>
+      <input class="titel-input" data-f="titel" value="${esc(a.titel)}" ${zu}>
+      ${a.archiviert ? knopf('ausArchiv', ICON.ausArchiv, 'Aus dem Archiv holen') : knopf('archiv', ICON.archiv, 'Archivieren – verbergen, nicht löschen')}
+      ${muellKnopf('verwerfen', 'Aufgabe verwerfen', id)}
+      ${knopf('zu', ICON.zu, 'Schließen (Esc)')}
+    </div>
+    <div class="db aufgabe">
+      ${a.archiviert ? '<div class="hinweis">Archiviert – überall verborgen. Zum Bearbeiten erst aus dem Archiv holen.</div>' : a.abgeschlossen ? '<div class="hinweis" style="background:#e9f7ee;color:#1f6b46">✓ Abgeschlossen – zum Bearbeiten wieder öffnen (Kreis links oben).</div>' : ''}
+      ${feld('Status', `<div class="statuschips">
+        <button class="schip ${a.status ? '' : 'an'}" data-status="" ${zu}>ohne</button>
+        ${e.spalten.map(sp => `<button class="schip ${a.status?.id === sp.id ? 'an' : ''}" data-status="${sp.id}" ${zu}>${statusPunkt(sp.id)}${esc(sp.name)}</button>`).join('')}
+      </div>`)}
       <div class="fld-grid">
-        ${feld('Status (Board)', `<select data-f="status" ${zu}><option value="">– ohne (nicht auf dem Board) –</option>${e.spalten.map(sp => `<option value="${sp.id}" ${a.status?.id === sp.id ? 'selected' : ''}>${esc(sp.name)}</option>`).join('')}</select>`)}
-        ${feld('Verantwortlich', `<input type="text" data-f="verantwortlich" value="${esc(a.verantwortlich)}" list="dl-person" ${zu}>`)}
         ${feld('Frist', `<div class="inl"><input type="date" data-f="frist" value="${a.frist ?? ''}" ${zu}><button data-leer="frist" title="Frist entfernen">×</button></div>`)}
         ${feld('Wiedervorlage', `<div class="inl"><input type="date" data-f="wiedervorlage" value="${a.wiedervorlage ?? ''}" ${zu}><button data-leer="wiedervorlage" title="Wiedervorlage aufheben">×</button></div>`)}
+        ${feld('Verantwortlich', `<input type="text" data-f="verantwortlich" value="${esc(a.verantwortlich)}" list="dl-person" ${zu}>`)}
         ${feld('Ort', `<input type="text" data-f="ort" value="${esc(a.ort)}" list="dl-ort" ${zu}>`)}
-        ${feld('Tags', `<input type="text" data-f="tags" value="${esc(a.tags.join(', '))}" placeholder="kunde, büro" ${zu}>`)}
       </div>
+      ${feld('Tags', `<input type="text" data-f="tags" value="${esc(a.tags.join(', '))}" placeholder="kunde, büro" ${zu}>`)}
       ${a.zurueckgestellt ? `<div class="muted" style="font-size:12px">↩ Bis ${WT[wochentag(a.wiedervorlage!)]} ${kurz(a.wiedervorlage!)} zurückgestellt – bis dahin in der Liste eingeklappt.</div>` : ''}
-      ${feld(`Buchungen · gebucht ${dauerText(a.buchungen.gebucht)}`, `<div class="bk-list">
-        ${a.buchungsliste.map(b => `<div class="bk-item" data-booking="${b.id}"><span class="k ${b.start ? 'term' : 'res'}">${buchungArt(b)}</span><span class="tt">${WT[wochentag(b.datum)]} ${kurz(b.datum)}${b.start ? ' · ' + b.start : ''}${b.titel !== a.titel ? ` <span class="muted">· ${esc(b.titel)}</span>` : ''}</span><span class="muted">${dauerText(b.dauer)}${b.belegt ? '' : ' (frei)'}</span></div>`).join('') || '<div class="muted">Noch keine Buchung. Aufgabe in den Kalender ziehen oder:</div>'}
-        ${a.abgeschlossen ? '' : `<button class="btn" data-d="res" style="align-self:flex-start">+ Reservierung morgen · Standarddauer</button>`}</div>`)}
+      ${feld('Notiz', `<textarea data-f="beschreibung" placeholder="Notizen, Details, Links …" ${zu}>${esc(a.beschreibung)}</textarea>`, 'style="flex:1;display:flex;flex-direction:column;min-height:120px"')}
+      ${gesperrt ? '' : feld('Buchung hinzufügen', `<div class="buchen">
+        <input type="date" data-b="datum" value="${morgen}" title="Datum">
+        <input type="time" data-b="start" title="Uhrzeit – leer lassen für eine Reservierung">
+        <select data-b="dauer" title="Dauer">${[15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 480].map(m => `<option value="${m}" ${m === e.standarddauer ? 'selected' : ''}>${dauerText(m)}</option>`).join('')}</select>
+        <button class="btn primary" data-d="buchen">Buchen</button></div>`)}
+      ${feld(`Buchungen · gebucht ${dauerText(a.buchungen.gebucht)}`, `<div class="bk-list">${buchungsliste(a)}</div>`)}
     </div>
-    <div class="df">${a.abgeschlossen ? '<button class="btn" data-d="auf">↺ Wieder öffnen</button>' : '<button class="btn ok" data-d="ab">✓ Abschließen</button>'}<span class="spacer"></span><button class="btn danger" data-d="weg" title="Aufgabe verwerfen (verschwindet überall)">Verwerfen</button></div>
     ${datalisten()}`;
   void vorschlaegeLaden(s);
   s.onchange = async ev => {
     const t = ev.target as HTMLInputElement;
     const f = t.dataset.f;
     if (!f) return;
-    if (f === 'status') { pruefe(await body.statusSetzen({ aufgabeId: id, status: t.value || null })); return; }
     const wert = f === 'tags' ? t.value.split(/[,\s]+/).filter(Boolean) : (f === 'frist' || f === 'wiedervorlage') ? (t.value || null) : t.value;
     pruefe(await body.aufgabeAendern({ aufgabeId: id, aenderungen: { [f]: wert } }));
   };
   s.onclick = async ev => {
     const t = ev.target as HTMLElement;
+    const st = t.closest<HTMLElement>('[data-status]');
+    if (st && !gesperrt) { if (pruefe(await body.statusSetzen({ aufgabeId: id, status: st.dataset.status || null }))) void aufgabeOeffnen(id); return; }
     const leer = t.closest<HTMLElement>('[data-leer]');
-    if (leer && !a.abgeschlossen) { pruefe(await body.aufgabeAendern({ aufgabeId: id, aenderungen: { [leer.dataset.leer!]: null } })); return; }
+    if (leer && !gesperrt) { pruefe(await body.aufgabeAendern({ aufgabeId: id, aenderungen: { [leer.dataset.leer!]: null } })); return; }
     const bk = t.closest<HTMLElement>('.bk-item[data-booking]');
     if (bk) { void buchungOeffnen(bk.dataset.booking!); return; }
     const d = t.closest<HTMLElement>('[data-d]')?.dataset.d;
     if (d === 'zu') schliessen();
     if (d === 'ab' && pruefe(await body.aufgabeAbschliessen({ aufgabeId: id }), 'Abgeschlossen')) void aufgabeOeffnen(id);
     if (d === 'auf' && pruefe(await body.aufgabeWiedereroeffnen({ aufgabeId: id }))) void aufgabeOeffnen(id);
-    if (d === 'weg' && confirm(`„${a.titel}“ verwerfen? Die Aufgabe verschwindet aus allen Sichten.`) && pruefe(await body.aufgabeVerwerfen({ aufgabeId: id }), 'Verworfen')) schliessen();
-    if (d === 'res') {
-      const morgen = plusTage((await body.liste({})).heute, 1);
-      if (pruefe(await body.buchungAnlegen({ aufgabeId: id, datum: morgen }), 'Reservierung für morgen angelegt')) void aufgabeOeffnen(id);
+    if (d === 'archiv' && pruefe(await body.aufgabeArchivieren({ aufgabeId: id }), 'Archiviert')) schliessen();
+    if (d === 'ausArchiv' && pruefe(await body.aufgabeAusArchivHolen({ aufgabeId: id }), 'Aus dem Archiv geholt')) { markieren(id); void aufgabeOeffnen(id); }
+    if (d === 'buchen') {
+      const w = (k: string) => s.querySelector<HTMLInputElement>(`[data-b="${k}"]`)!.value;
+      const r = await body.buchungAnlegen({ aufgabeId: id, datum: w('datum'), start: w('start') || null, dauer: Number(w('dauer')) });
+      if (pruefe(r, `${w('start') ? 'Termin' : 'Reservierung'} gebucht`)) void aufgabeOeffnen(id);
     }
   };
   s.classList.add('open');
+}
+
+function buchungsliste(a: AufgabeDetails): string {
+  return a.buchungsliste.map(b => `<div class="bk-item" data-booking="${b.id}"><span class="k ${b.start ? 'term' : 'res'}">${buchungArt(b)}</span><span class="tt">${WT[wochentag(b.datum)]} ${kurz(b.datum)}${b.start ? ' · ' + b.start : ''}${b.titel !== a.titel ? ` <span class="muted">· ${esc(b.titel)}</span>` : ''}</span><span class="muted">${dauerText(b.dauer)}${b.belegt ? '' : ' (frei)'}</span></div>`).join('')
+    || '<div class="muted" style="font-size:12px">Noch keine Buchung. Oben buchen oder die Aufgabe in den Kalender ziehen.</div>';
 }
 
 export async function buchungOeffnen(id: string): Promise<void> {
@@ -85,9 +114,8 @@ export async function buchungOeffnen(id: string): Promise<void> {
   if (!b) { schliessen(); return; }
   aktuell = { art: 'buchung', id };
   const s = el();
-  s.innerHTML = `<div class="dh"><input class="titel-input" data-f="titel" value="${esc(b.titel)}"><button data-d="zu" title="Schließen (Esc)">×</button></div>
+  s.innerHTML = `<div class="dh"><input class="titel-input" data-f="titel" value="${esc(b.titel)}">${muellKnopf('stornieren', 'Buchung löschen', id)}${knopf('zu', ICON.zu, 'Schließen (Esc)')}</div>
     <div class="db">
-      ${feld('Beschreibung', `<textarea data-f="beschreibung">${esc(b.beschreibung)}</textarea>`)}
       <div class="fld-grid">
         ${feld('Datum', `<input type="date" data-f="datum" value="${b.datum}">`)}
         ${feld('Uhrzeit', `<div class="inl"><input type="time" data-f="start" value="${b.start ?? ''}"><button data-leer="start" title="Uhrzeit entfernen → Reservierung">×</button></div>`)}
@@ -97,10 +125,11 @@ export async function buchungOeffnen(id: string): Promise<void> {
       <div class="muted" style="font-size:12px">${buchungArt(b)} · ${b.start ? 'mit Uhrzeit' : 'ohne Uhrzeit – erscheint im Reservierungsband'}</div>
       ${b.aufgabeId
         ? feld('Gehört zu Aufgabe', `<a href="#" data-d="aufgabe" style="color:var(--own)">${esc(b.aufgabentitel)}</a>`)
-        : '<div class="muted" style="line-height:1.5;font-size:12px">Freie Buchung ohne Aufgabe. Wird mehr daraus: „→ Aufgabe daraus machen“ – Titel und Beschreibung wandern mit, die Buchung bleibt und gehört dann zur Aufgabe. Oder die Buchung auf Liste/Board ziehen.</div>'}
+        : '<div class="muted" style="line-height:1.5;font-size:12px">Freie Buchung ohne Aufgabe. Wird mehr daraus: „→ Aufgabe daraus machen“ – Titel und Notiz wandern mit, die Buchung bleibt und gehört dann zur Aufgabe. Oder die Buchung auf Liste/Board ziehen.</div>'}
+      ${feld('Notiz', `<textarea data-f="beschreibung">${esc(b.beschreibung)}</textarea>`)}
       ${feld('Tagesauslastung', `<div>${dauerText(b.tag.belegt)} von ${dauerText(b.tag.kapazitaet)}${kapazitaetsBalken(b.tag, true)}</div>`)}
     </div>
-    <div class="df">${b.aufgabeId ? '' : '<button class="btn primary" data-d="aufgabeMachen">→ Aufgabe daraus machen</button>'}<span class="spacer"></span><button class="btn danger" data-d="storno">Buchung löschen</button></div>`;
+    ${b.aufgabeId ? '' : '<div class="df"><button class="btn primary" data-d="aufgabeMachen">→ Aufgabe daraus machen</button></div>'}`;
   const aendern = async (x: Parameters<typeof body.buchungAendern>[0]) => { if (pruefe(await body.buchungAendern(x))) void buchungOeffnen(id); };
   s.onchange = async ev => {
     const t = ev.target as HTMLInputElement;
@@ -120,9 +149,8 @@ export async function buchungOeffnen(id: string): Promise<void> {
     if (d === 'aufgabe') { ev.preventDefault(); void aufgabeOeffnen(b.aufgabeId!); }
     if (d === 'aufgabeMachen') {
       const r = await body.aufgabeAusBuchung({ buchungId: id });
-      if (pruefe(r, 'Aufgabe erstellt') && r.ok) void aufgabeOeffnen(r.ids!.aufgabeId!);
+      if (pruefe(r, 'Aufgabe erstellt') && r.ok) { markieren(r.ids!.aufgabeId!); void aufgabeOeffnen(r.ids!.aufgabeId!); }
     }
-    if (d === 'storno' && pruefe(await body.buchungStornieren({ buchungId: id }), 'Buchung gelöscht')) schliessen();
   };
   s.classList.add('open');
 }
@@ -134,4 +162,3 @@ async function vorschlaegeLaden(s: HTMLElement): Promise<void> {
   if (dp) dp.innerHTML = p.map(x => `<option value="${esc(x)}">`).join('');
   if (dor) dor.innerHTML = o.map(x => `<option value="${esc(x)}">`).join('');
 }
-
