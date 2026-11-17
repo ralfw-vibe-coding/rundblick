@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Rundblick – Architektur des Quellcodes</title>
+<style>
+  :root { --ink:#1d1d1f; --ink2:#44444a; --mute:#8a8890; --line:#e7e4de; --bg:#f7f6f3;
+    --c-client:#0ea5e9; --c-body:#4f46e5; --c-domain:#16a34a; --c-prov:#d97706; --c-state:#64748b; --c-ext:#94a3b8; --c-note:#a21caf;
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; color: var(--ink); }
+  body { margin: 0; background: var(--bg); }
+  .wrap { display: grid; grid-template-columns: 220px minmax(0, 1fr); max-width: 1500px; margin: 0 auto; }
+  nav { position: sticky; top: 0; height: 100vh; overflow: auto; padding: 36px 16px 30px 26px; font-size: 13px; }
+  nav b { display: block; margin-bottom: 10px; font-size: 14px; }
+  nav a { display: block; color: var(--ink2); text-decoration: none; padding: 3px 0; }
+  nav a:hover { color: var(--c-body); }
+  main { padding: 36px 40px 100px; min-width: 0; }
+  h1 { font-size: 30px; letter-spacing: -.02em; margin: 0 0 4px; }
+  h2 { font-size: 21px; margin: 48px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); letter-spacing: -.01em; }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  p, li { color: var(--ink2); }
+  .lead { font-size: 16px; max-width: 900px; }
+  .meta { color: var(--mute); font-size: 13px; margin-bottom: 18px; }
+  code { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ecebe7; padding: 1px 5px; border-radius: 4px; color: #2b2b30; }
+  table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; margin: 10px 0; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #fbfaf8; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); }
+  td code { white-space: nowrap; }
+  tr.grp td { background: #f4f3ef; font-weight: 600; color: var(--ink); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .figure { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 14px; overflow-x: auto; }
+  .figure svg { display: block; width: 100%; min-width: 1100px; height: auto; }
+  .legend { display: flex; gap: 22px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink2); margin: 10px 4px 0; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; border-radius: 4px; border: 2px solid; background: #fff; display: inline-block; }
+  .note { background: #fff; border-left: 4px solid var(--c-body); padding: 10px 16px; border-radius: 0 10px 10px 0; margin: 14px 0; font-size: 14px; }
+  .ev { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; display: inline-block; padding: 0 6px; margin: 1px 2px 1px 0; border-radius: 5px; background: #ecfdf3; color: #166534; border: 1px solid #bbf7d0; white-space: nowrap; }
+  .ev.b { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+  .ev.s { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+  .ev.p { background: #f1f5f9; color: #334155; border-color: #cbd5e1; }
+  .no { color: var(--mute); font-style: italic; }
+  .pill { display: inline-block; font-size: 11px; padding: 0 7px; border-radius: 9px; color: #fff; }
+  .pc { background: var(--c-client); } .pb { background: var(--c-body); } .pd { background: var(--c-domain); } .pp { background: var(--c-prov); }
+  .seq { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 12px 0; font-size: 13.5px; }
+  .seq ol { margin: 6px 0 0; padding-left: 22px; } .seq li { margin: 3px 0; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 1100px) { .cols { grid-template-columns: 1fr; } .wrap { grid-template-columns: 1fr; } nav { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <b>Rundblick · Architektur</b>
+  <a href="#module">1 Module &amp; Laufzeitabhängigkeiten</a>
+  <a href="#ablauf">2 Ablauf eines Commands</a>
+  <a href="#commands">3 Commands</a>
+  <a href="#queries">4 Queries</a>
+  <a href="#events">5 Events</a>
+  <a href="#regeln">6 Schichtregeln (Übersetzungszeit)</a>
+</nav>
+<main>
+<h1>Architektur des Quellcodes</h1>
+<div class="meta">Stand: Commit <code>49a6ba0</code> · aus <code>src/</code> abgeleitet · Ergänzung zu <code>requirements/design.html</code></div>
+<p class="lead">Rundblick ist eine Electron-App mit drei Prozessen. Die Oberfläche im Renderer kennt nur das <b>Body interface</b>. Der Body koordiniert alle Commands und Queries. Die <b>Domain</b> entscheidet über Commands und schreibt Events in den <b>Event Store</b>. Uhr, IDs, Einstellungen und externe Kalender stellen <b>Provider</b> bereit.</p>
+
+<!-- ================================================================== -->
+<h2 id="module">1 Module &amp; Laufzeitabhängigkeiten</h2>
+<p>Durchgezogene Pfeile zeigen Aufrufe zur Laufzeit, vom Aufrufer zum Aufgerufenen. Gestrichelte violette Pfeile zeigen den Rückweg der Änderungsmeldungen (Callbacks/Abos). Graue Rahmen sind Prozessgrenzen.</p>
+
+<div class="figure">
+<svg viewBox="0 0 1260 900" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif">
+  <defs>
+    <marker id="pf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3f3f46"/></marker>
+    <marker id="pn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#a21caf"/></marker>
+    <style>
+      .lane { fill: none; stroke: #c9c6bf; stroke-width: 1.5; stroke-dasharray: 6 5; }
+      .lanet { font-size: 12px; font-weight: 600; fill: #8a8890; letter-spacing: .05em; text-transform: uppercase; }
+      .bx { fill: #fff; stroke-width: 2; rx: 10; }
+      .t { font-size: 13.5px; font-weight: 700; }
+      .s { font-size: 11.5px; fill: #44444a; }
+      .xs { font-size: 10.5px; fill: #44444a; }
+      .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .call { stroke: #3f3f46; stroke-width: 1.6; fill: none; marker-end: url(#pf); }
+      .ntf { stroke: #a21caf; stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; marker-end: url(#pn); }
+      .lbl { font-size: 10.5px; fill: #6b6b73; }
+      .lbln { font-size: 10.5px; fill: #a21caf; }
+    </style>
+  </defs>
+
+  <!-- Prozessgrenzen -->
+  <rect class="lane" x="20" y="20" width="1220" height="180" rx="14"/>
+  <text class="lanet" x="36" y="40">Renderer-Prozess</text>
+  <rect class="lane" x="20" y="212" width="1220" height="76" rx="14"/>
+  <text class="lanet" x="36" y="232">Preload (contextIsolation)</text>
+  <rect class="lane" x="20" y="300" width="1220" height="445" rx="14"/>
+  <text class="lanet" x="36" y="320">Main-Prozess (Node · Electron)</text>
+  <rect class="lane" x="20" y="758" width="1220" height="122" rx="14"/>
+  <text class="lanet" x="36" y="778">Außerhalb: Dateien &amp; Systemdienste</text>
+
+  <!-- Renderer -->
+  <rect class="bx" x="40" y="52" width="800" height="130" stroke="#0ea5e9"/>
+  <text class="t" x="56" y="76" fill="#0369a1">client/ui — Oberfläche</text>
+  <text class="s m" x="56" y="100">main.ts · raster.ts (Arbeitsbereiche, Zellen, Trenner) · bausteine.ts · dom.ts</text>
+  <text class="s m" x="56" y="120">sichten/liste.ts · sichten/board.ts · sichten/kalender.ts</text>
+  <text class="s m" x="56" y="140">detail.ts (Schublade) · einstellungen.ts · schnellerfassung.ts · interaktion.ts (Ziehen &amp; Ablegen)</text>
+  <text class="xs" x="56" y="166">ruft ausschließlich Methoden des Body interface; zeichnet neu, wenn beiAenderung(bereiche) meldet</text>
+
+  <rect class="bx" x="900" y="68" width="320" height="97" stroke="#0ea5e9"/>
+  <text class="t" x="916" y="92" fill="#0369a1">client/ui/body.ts</text>
+  <text class="s" x="916" y="114">Body-Proxy: implementiert Body,</text>
+  <text class="s" x="916" y="132">leitet jeden Aufruf an window.rb weiter</text>
+
+  <path class="call" d="M840,104 L898,104"/>
+  <path class="ntf" d="M900,146 L842,146"/>
+
+  <!-- Preload -->
+  <rect class="bx" x="900" y="236" width="320" height="42" stroke="#0ea5e9"/>
+  <text class="t" x="916" y="254" fill="#0369a1">client/bridge/preload.ts</text>
+  <text class="xs m" x="916" y="270">window.rb = { aufruf, beiAenderung }</text>
+
+  <path class="call" d="M1010,165 L1010,234"/>
+  <path class="ntf" d="M1140,236 L1140,167"/>
+  <text class="lbl" x="1018" y="188">aufruf(methode, arg)</text>
+
+  <!-- Main: IPC-Adapter -->
+  <rect class="bx" x="900" y="330" width="320" height="50" stroke="#0ea5e9"/>
+  <text class="t" x="916" y="351" fill="#0369a1">client/adapter/ipc.ts</text>
+  <text class="xs m" x="916" y="369">ipcMain.handle · webContents.send</text>
+
+  <path class="call" d="M1010,278 L1010,328"/>
+  <path class="ntf" d="M1140,330 L1140,280"/>
+  <text class="lbl" x="1018" y="320">IPC rb:aufruf</text>
+  <text class="lbln" x="1148" y="320">IPC rb:geaendert</text>
+
+  <!-- Composition Root -->
+  <rect class="bx" x="40" y="330" width="340" height="130" stroke="#64748b"/>
+  <text class="t" x="56" y="353" fill="#334155">main/index.ts — Composition Root</text>
+  <text class="s" x="56" y="375">erzeugt Provider → Domain → Body → IPC → Fenster</text>
+  <text class="s" x="56" y="394">Fenster-Fokus &amp; alle 15 min → synchronisieren()</text>
+  <text class="s" x="56" y="413">Minutentakt, neues Datum → tageswechsel()</text>
+  <text class="s" x="56" y="432">beim Start → einrichten() (Standardspalten)</text>
+  <text class="xs m" x="56" y="451">main/demo.ts: Beispieldaten bei RB_DEMO=1</text>
+  <path class="call" d="M380,430 L418,430"/>
+
+  <!-- Schema / Basis -->
+  <rect x="40" y="478" width="340" height="70" rx="10" fill="#fbfaf8" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text class="t" x="56" y="500" fill="#475569">schema/ · basis/</text>
+  <text class="xs m" x="56" y="518">events.ts · werte.ts · extern.ts · datum.ts</text>
+  <text class="xs" x="56" y="536">reine Typen &amp; Helfer, von allen Schichten genutzt</text>
+
+  <!-- Body -->
+  <rect class="bx" x="420" y="405" width="800" height="100" stroke="#4f46e5"/>
+  <text class="t" x="436" y="429" fill="#4f46e5">body/body.ts — RundblickBody (implementiert Body)</text>
+  <text class="s" x="436" y="451">Commands: IDs vergeben, an die Domain delegieren, Kalender synchronisieren, Geräte-Einstellungen schreiben</text>
+  <text class="s m" x="436" y="471">abfragen/aufgaben.ts (liste, board, zeile) · abfragen/zeitraum.ts (Tage, Auslastung) · schnellerfassung/parse.ts</text>
+  <text class="xs" x="436" y="492">übersetzt Domain-/Kalender-Änderungen in Bereiche: aufgaben · board · kalender · einstellungen</text>
+
+  <path class="call" d="M1010,380 L1010,403"/>
+  <path class="ntf" d="M1140,405 L1140,382"/>
+
+  <!-- Domain -->
+  <rect class="bx" x="420" y="550" width="280" height="105" stroke="#16a34a"/>
+  <text class="t" x="436" y="573" fill="#15803d">domain/domain.ts — Domain</text>
+  <text class="s m" x="436" y="594">commands/aufgaben · buchungen · board</text>
+  <text class="s" x="436" y="612">commands/basis: entscheide()</text>
+  <text class="xs" x="436" y="629">lesen → Kontextmodell → entscheiden → anhängen</text>
+  <text class="s m" x="436" y="646">bestand.ts + zustand.ts: Projektion</text>
+
+  <path class="call" d="M540,505 L540,548"/>
+  <path class="ntf" d="M650,550 L650,507"/>
+  <text class="lbl" x="534" y="532" text-anchor="end">Commands</text>
+  <text class="lbl" x="534" y="544" text-anchor="end">&amp; Queries</text>
+  <text class="lbln" x="658" y="532">beiAenderung</text>
+
+  <!-- Event Store -->
+  <rect class="bx" x="420" y="680" width="280" height="55" stroke="#d97706"/>
+  <text class="t" x="436" y="701" fill="#b45309">providers/eventstore</text>
+  <text class="xs m" x="436" y="720">jsonl.ts ⊃ speicher.ts · hlc.ts</text>
+
+  <path class="call" d="M540,655 L540,678"/>
+  <path class="ntf" d="M650,680 L650,657"/>
+  <text class="lbl" x="534" y="671" text-anchor="end">lesen · anhängen</text>
+  <text class="lbln" x="658" y="671">abonnieren</text>
+
+  <!-- Provider-Reihe -->
+  <rect class="bx" x="720" y="550" width="60" height="80" stroke="#d97706"/>
+  <text class="t" x="728" y="572" fill="#b45309" font-size="11.5">Uhr</text>
+  <text class="xs m" x="728" y="592">uhr/</text>
+  <text class="xs m" x="728" y="607">system</text>
+
+  <rect class="bx" x="788" y="550" width="85" height="80" stroke="#d97706"/>
+  <text class="t" x="796" y="572" fill="#b45309" font-size="11.5">IdGenerator</text>
+  <text class="xs m" x="796" y="592">ids/</text>
+  <text class="xs m" x="796" y="607">ulid.ts</text>
+
+  <rect class="bx" x="881" y="550" width="100" height="80" stroke="#d97706"/>
+  <text class="t" x="889" y="572" fill="#b45309" font-size="11.5">Einstellungen</text>
+  <text class="xs m" x="889" y="592">einstellungen/</text>
+  <text class="xs m" x="889" y="607">json.ts</text>
+
+  <rect class="bx" x="989" y="550" width="112" height="80" stroke="#d97706"/>
+  <text class="t" x="997" y="572" fill="#b45309" font-size="11.5">Kalenderquelle</text>
+  <text class="xs m" x="997" y="592">kalender/</text>
+  <text class="xs m" x="997" y="607">eventkit.ts</text>
+  <text class="xs m" x="997" y="621">| fake.ts</text>
+
+  <rect class="bx" x="1109" y="550" width="111" height="80" stroke="#d97706"/>
+  <text class="t" x="1117" y="572" fill="#b45309" font-size="11.5">KalenderCache</text>
+  <text class="xs m" x="1117" y="592">kalender/</text>
+  <text class="xs m" x="1117" y="607">cache.ts</text>
+
+  <path class="call" d="M750,505 L750,548"/>
+  <path class="call" d="M830,505 L830,548"/>
+  <path class="call" d="M931,505 L931,548"/>
+  <path class="call" d="M1030,505 L1030,548"/>
+  <path class="ntf" d="M1080,550 L1080,507"/>
+  <path class="call" d="M1162,505 L1162,548"/>
+
+  <!-- Extern -->
+  <rect x="420" y="790" width="280" height="75" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+  <text class="t" x="436" y="811" fill="#475569">~/Dropbox/Apps/Rundblick/events/</text>
+  <text class="xs m" x="436" y="830">&lt;gerät&gt;.jsonl – eine Datei je Gerät</text>
+  <text class="xs" x="436" y="848">Dropbox gleicht zwischen Macs ab</text>
+
+  <path class="call" d="M540,735 L540,788"/>
+  <path class="ntf" d="M650,790 L650,737"/>
+  <text class="lbl" x="534" y="778" text-anchor="end">anhängen (fsync)</text>
+  <text class="lbln" x="658" y="778">fs.watch (fremde Dateien)</text>
+
+  <rect x="881" y="790" width="100" height="75" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+  <text class="t" x="889" y="811" fill="#475569" font-size="11.5">geraet.json</text>
+  <text class="xs" x="889" y="829">Layout, Kalender-</text>
+  <text class="xs" x="889" y="843">auswahl, Gerät,</text>
+  <text class="xs" x="889" y="857">Datenordner</text>
+  <path class="call" d="M931,630 L931,788"/>
+
+  <rect x="989" y="790" width="112" height="75" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+  <text class="t" x="997" y="811" fill="#475569" font-size="11.5">rb-kalender</text>
+  <text class="xs" x="997" y="829">Swift-Helfer, stdio</text>
+  <text class="xs" x="997" y="843">(JSON-Zeilen)</text>
+  <text class="xs" x="997" y="857">→ macOS EventKit</text>
+  <path class="call" d="M1030,630 L1030,788"/>
+  <path class="ntf" d="M1080,790 L1080,632"/>
+  <text class="lbl" x="1024" y="700" text-anchor="end">spawn</text>
+
+  <rect x="1109" y="790" width="111" height="75" rx="10" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+  <text class="t" x="1117" y="811" fill="#475569" font-size="11.5">kalendercache</text>
+  <text class="t" x="1117" y="826" fill="#475569" font-size="11.5">.json</text>
+  <text class="xs" x="1117" y="845">externe Termine</text>
+  <path class="call" d="M1162,630 L1162,788"/>
+
+  <!-- Hinweis Uhr/IDs -->
+  <text class="xs" x="722" y="650">Uhr und IDs:</text>
+  <text class="xs" x="722" y="664">keine Ressourcen,</text>
+  <text class="xs" x="722" y="678">nur der Body ruft sie</text>
+  <text class="xs" x="722" y="702">Event Store bekommt</text>
+  <text class="xs" x="722" y="716">ulid + Uhr direkt aus</text>
+  <text class="xs" x="722" y="730">der Composition Root</text>
+</svg>
+<div class="legend">
+  <span><i class="sw" style="border-color:#0ea5e9"></i>Client</span>
+  <span><i class="sw" style="border-color:#4f46e5"></i>Body</span>
+  <span><i class="sw" style="border-color:#16a34a"></i>Domain</span>
+  <span><i class="sw" style="border-color:#d97706"></i>Provider</span>
+  <span><i class="sw" style="border-color:#94a3b8"></i>Datei / Systemdienst</span>
+  <span><svg width="34" height="10"><path d="M2,5 L30,5" stroke="#3f3f46" stroke-width="1.6" marker-end="url(#pf)"/></svg>Aufruf (Laufzeitabhängigkeit)</span>
+  <span><svg width="34" height="10"><path d="M2,5 L30,5" stroke="#a21caf" stroke-width="1.6" stroke-dasharray="5 4"/></svg>Änderungsmeldung (Callback)</span>
+</div>
+</div>
+
+<h3>Wer hängt zur Laufzeit von wem ab?</h3>
+<table>
+  <tr><th>Modul</th><th>bekommt injiziert / ruft</th><th>wird gerufen von</th><th>meldet Änderungen an</th></tr>
+  <tr><td><span class="pill pc">client</span> <code>ui/*</code></td><td>Body-Proxy (<code>ui/body.ts</code>)</td><td>Nutzer (DOM-Ereignisse, Tasten)</td><td>–</td></tr>
+  <tr><td><span class="pill pc">client</span> <code>ui/body.ts</code></td><td><code>window.rb</code> (Preload)</td><td>alle UI-Module</td><td>UI (<code>main.ts</code> → Raster, Schublade, Einstellungen)</td></tr>
+  <tr><td><span class="pill pc">client</span> <code>bridge/preload.ts</code></td><td><code>ipcRenderer</code></td><td>Body-Proxy</td><td>Body-Proxy</td></tr>
+  <tr><td><span class="pill pc">client</span> <code>adapter/ipc.ts</code></td><td><code>Body</code> (RundblickBody), <code>ipcMain</code></td><td>Preload über IPC</td><td>alle Fenster (<code>rb:geaendert</code>)</td></tr>
+  <tr><td><span class="pill pb">body</span> <code>RundblickBody</code></td><td>DomainInterface, Uhr, IdGenerator, Einstellungen, Kalenderquelle, KalenderCache</td><td>IPC-Adapter, Composition Root (Zeitgeber, Start)</td><td>IPC-Adapter (<code>Bereich[]</code>)</td></tr>
+  <tr><td><span class="pill pd">domain</span> <code>Domain</code></td><td>EventStore</td><td>Body</td><td>Body (<code>beiAenderung</code>)</td></tr>
+  <tr><td><span class="pill pp">provider</span> <code>JsonlEventStore</code></td><td>Dateisystem, ulid, Uhr (als Funktionen)</td><td>Domain (Commands lesen und hängen bedingt an)</td><td>Domain (<code>abonnieren</code>, mit <code>fremd</code>-Flag)</td></tr>
+  <tr><td><span class="pill pp">provider</span> <code>eventKitKalender</code> / <code>beispielKalender</code></td><td>Kindprozess <code>rb-kalender</code></td><td>Body (<code>zugriff</code>, <code>kalender</code>, <code>termine</code>)</td><td>Body → löst <code>synchronisieren()</code> aus</td></tr>
+  <tr><td><span class="pill pp">provider</span> <code>kalenderCache</code>, <code>jsonEinstellungen</code></td><td>JSON-Datei</td><td>Body (Einstellungen auch die Composition Root)</td><td>–</td></tr>
+  <tr><td><span class="pill pp">provider</span> <code>systemUhr</code>, <code>ulidGenerator</code></td><td>–</td><td>Body, Composition Root, Event Store</td><td>–</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="ablauf">2 Ablauf eines Commands und Rückmeldung</h2>
+<div class="cols">
+<div class="seq"><b>Beispiel: Aufgabe aufs Board ziehen → <code>statusSetzen</code></b>
+<ol>
+  <li><span class="pill pc">client</span> <code>interaktion.ts</code> ruft <code>body.statusSetzen({aufgabeId, status})</code></li>
+  <li>Der Proxy ruft <code>window.rb.aufruf('statusSetzen', arg)</code> auf, das läuft als IPC <code>rb:aufruf</code> zum Main-Prozess</li>
+  <li><code>ipc.ts</code> prüft den Methodennamen gegen <code>BODY_METHODEN</code> und ruft <code>RundblickBody.statusSetzen</code></li>
+  <li><span class="pill pb">body</span> delegiert an <code>Domain.statusSetzen</code></li>
+  <li><span class="pill pd">domain</span> <code>entscheide()</code>: liest Events mit den Tags <code>aufgabe:&lt;id&gt;</code> und <code>spalten</code>, baut daraus das Kontextmodell, prüft die Regeln und erzeugt <span class="ev">StatusGesetzt</span></li>
+  <li><span class="pill pp">eventstore</span> <code>anhaengen(events, {abfrage, nachPosition})</code>: optimistische Sperre. Bei Konflikt versucht es die Domain bis zu 3×</li>
+  <li>Die Zeile landet in <code>&lt;gerät&gt;.jsonl</code> (mit fsync). <code>CommandStatus {ok:true}</code> geht zurück an die UI</li>
+</ol></div>
+<div class="seq"><b>Rückweg: Änderungsmeldung</b>
+<ol>
+  <li><span class="pill pp">eventstore</span> meldet seinen Abonnenten <code>{events, fremd:false}</code></li>
+  <li><span class="pill pd">domain</span> wendet die Events auf die Projektion <code>bestand</code> an und ruft <code>beiAenderung</code>-Callbacks</li>
+  <li><span class="pill pb">body</span> meldet <code>['aufgaben','board','kalender']</code></li>
+  <li><code>ipc.ts</code> sendet <code>rb:geaendert</code> an alle Fenster, Preload und Proxy reichen das an <code>main.ts</code> weiter</li>
+  <li><span class="pill pc">client</span> Raster frischt die betroffenen Sichten auf, und zwar per <b>Query</b> (<code>liste</code>, <code>board</code>, <code>zeitraum</code> …)</li>
+</ol>
+<p style="margin:10px 0 0;font-size:13px"><b>Fremde Geräte:</b> <code>fs.watch</code> sieht eine geänderte fremde <code>.jsonl</code> und liest sie nach 300 ms ein. Ab da gilt <code>fremd:true</code>: Die Domain baut die Projektion komplett neu auf, weil sich Events per HLC dazwischen einsortieren können. Danach läuft alles wie oben ab Schritt 2.<br>
+<b>Kalender:</b> EventKit meldet eine Änderung, der Body ruft <code>synchronisieren()</code>, der Cache wird ersetzt und der Body meldet <code>['kalender','einstellungen']</code>.</p>
+</div>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="commands">3 Commands</h2>
+<p>Alle Commands laufen über <code>Body</code> (<code>src/body/interface.ts</code>) und liefern nur einen <code>CommandStatus</code>, bei neuen Objekten mit deren IDs. Die IDs vergibt der Body über den <code>IdGenerator</code>, nicht die Domain. Die Spalte <b>Kontext</b> zeigt die Abfrage, mit der die Domain ihr Kontextmodell liest. Dieselbe Abfrage dient als Bedingung beim Anhängen.</p>
+<table>
+  <tr><th>Body-Command</th><th>delegiert an</th><th>Kontext (Event-Abfrage)</th><th>mögliche Events</th><th>Meldung (Bereiche)</th></tr>
+  <tr class="grp"><td colspan="5">Aufgaben</td></tr>
+  <tr><td><code>aufgabeErfassen</code></td><td>Domain <code>aufgabeErfassen</code> (+ IDs)</td><td><code>aufgabe:id</code>, <code>spalten</code>, <code>planung</code></td><td><span class="ev">AufgabeErfasst</span> <span class="ev b">BuchungAngelegt</span><span class="no">(optional)</span></td><td rowspan="7">über Domain:<br><code>aufgaben</code>, <code>board</code>, <code>kalender</code></td></tr>
+  <tr><td><code>schnellErfassen</code></td><td><code>parse.ts</code>, dann <code>aufgabeErfassen</code> bzw. bei <code>&gt;…</code> <code>buchungEintragen</code></td><td>wie dort</td><td><span class="ev">AufgabeErfasst</span> <span class="ev b">BuchungAngelegt</span></td></tr>
+  <tr><td><code>aufgabeAendern</code></td><td>Domain <code>aufgabeAendern</code></td><td><code>aufgabe:id</code></td><td><span class="ev">AufgabeUmbenannt</span> <span class="ev">BeschreibungGeaendert</span> <span class="ev">OrtGeaendert</span> <span class="ev">VerantwortlicherGeaendert</span> <span class="ev">AufgabeGetaggt</span> <span class="ev">TagEntfernt</span> <span class="ev">FristGesetzt</span> <span class="ev">FristEntfernt</span> <span class="ev">WiedervorlageGesetzt</span> <span class="ev">WiedervorlageAufgehoben</span></td></tr>
+  <tr><td><code>statusSetzen</code></td><td>Domain <code>statusSetzen</code></td><td><code>aufgabe:id</code>, <code>spalten</code></td><td><span class="ev">StatusGesetzt</span> <span class="ev">StatusEntfernt</span></td></tr>
+  <tr><td><code>aufgabeAbschliessen</code></td><td>Domain</td><td><code>aufgabe:id</code></td><td><span class="ev">AufgabeAbgeschlossen</span></td></tr>
+  <tr><td><code>aufgabeWiedereroeffnen</code></td><td>Domain</td><td><code>aufgabe:id</code></td><td><span class="ev">AufgabeWiedereroeffnet</span></td></tr>
+  <tr><td><code>aufgabeVerwerfen</code></td><td>Domain</td><td><code>aufgabe:id</code></td><td><span class="ev">AufgabeVerworfen</span></td></tr>
+  <tr class="grp"><td colspan="5">Buchungen (Reservierung = ohne Startzeit, Termin = mit Startzeit)</td></tr>
+  <tr><td><code>buchungAnlegen</code></td><td>Domain (+ ID)</td><td><code>aufgabe:id</code>, <code>buchung:id</code>, <code>planung</code></td><td><span class="ev b">BuchungAngelegt</span></td><td rowspan="5">über Domain:<br><code>aufgaben</code>, <code>board</code>, <code>kalender</code></td></tr>
+  <tr><td><code>buchungEintragen</code> <span class="no">(freie Buchung)</span></td><td>Domain (+ ID)</td><td><code>buchung:id</code>, <code>planung</code></td><td><span class="ev b">BuchungAngelegt</span> <span class="no">aufgabeId = null</span></td></tr>
+  <tr><td><code>buchungAendern</code></td><td>Domain</td><td><code>buchung:id</code></td><td><span class="ev b">BuchungUmbenannt</span> <span class="ev b">BuchungsbeschreibungGeaendert</span> <span class="ev b">BuchungsbelegungGeaendert</span> <span class="ev b">BuchungVerschoben</span> <span class="ev b">BuchungsdauerGeaendert</span></td></tr>
+  <tr><td><code>buchungStornieren</code></td><td>Domain</td><td><code>buchung:id</code></td><td><span class="ev b">BuchungStorniert</span></td></tr>
+  <tr><td><code>aufgabeAusBuchung</code></td><td>Domain (+ ID)</td><td><code>buchung:id</code>, <code>aufgabe:id</code>, <code>spalten</code></td><td><span class="ev b">AufgabeAusBuchungErstellt</span></td></tr>
+  <tr class="grp"><td colspan="5">Board &amp; Planung</td></tr>
+  <tr><td><code>spalteAnlegen</code></td><td>Domain (+ ID)</td><td><code>spalten</code></td><td><span class="ev s">StatusspalteAngelegt</span></td><td rowspan="7">über Domain:<br><code>aufgaben</code>, <code>board</code>, <code>kalender</code></td></tr>
+  <tr><td><code>spalteUmbenennen</code></td><td>Domain</td><td><code>spalten</code></td><td><span class="ev s">StatusspalteUmbenannt</span></td></tr>
+  <tr><td><code>spaltenSortieren</code></td><td>Domain</td><td><code>spalten</code></td><td><span class="ev s">StatusspaltenSortiert</span></td></tr>
+  <tr><td><code>spalteEntfernen</code></td><td>Domain</td><td>Typen: Spalten-Events + <code>AufgabeErfasst</code>, <code>AufgabeAusBuchungErstellt</code>, <code>StatusGesetzt/Entfernt</code>, <code>AufgabeVerworfen</code></td><td><span class="ev s">StatusspalteEntfernt</span> <span class="no">nur wenn leer</span></td></tr>
+  <tr><td><code>tageskapazitaetFestlegen</code></td><td>Domain</td><td><code>planung</code></td><td><span class="ev p">TageskapazitaetFestgelegt</span></td></tr>
+  <tr><td><code>standarddauerFestlegen</code></td><td>Domain</td><td><code>planung</code></td><td><span class="ev p">StandarddauerFestgelegt</span></td></tr>
+  <tr><td><code>einrichten()</code> <span class="no">intern, beim Start</span></td><td>Domain <code>standardspaltenEinrichten</code></td><td><code>spalten</code></td><td>7 × <span class="ev s">StatusspalteAngelegt</span> <span class="no">nur beim allerersten Mal</span></td></tr>
+  <tr class="grp"><td colspan="5">Externe Kalender &amp; Gerät (ohne Domain, ohne Events)</td></tr>
+  <tr><td><code>kalenderEinstellen</code></td><td>Einstellungen <code>schreiben('kalender')</code></td><td>–</td><td class="no">keine Events (gerätelokal)</td><td><code>kalender</code>, <code>einstellungen</code></td></tr>
+  <tr><td><code>kalenderZugriffAnfragen</code></td><td>Kalenderquelle <code>zugriff()</code>, dann <code>synchronisieren</code></td><td>–</td><td class="no">keine Events</td><td><code>einstellungen</code> (+ wie synchronisieren)</td></tr>
+  <tr><td><code>synchronisieren</code></td><td>Kalenderquelle <code>kalender()</code>/<code>termine()</code> (−35 … +200 Tage), dann KalenderCache <code>ersetzen</code></td><td>–</td><td class="no">keine Events</td><td><code>kalender</code>, <code>einstellungen</code></td></tr>
+  <tr><td><code>layoutSpeichern</code></td><td>Einstellungen <code>schreiben('layout')</code></td><td>–</td><td class="no">keine Events (gerätelokal)</td><td class="no">keine</td></tr>
+  <tr><td><code>tageswechsel()</code> <span class="no">intern, Zeitgeber</span></td><td>–</td><td>–</td><td class="no">keine Events</td><td><code>aufgaben</code>, <code>board</code>, <code>kalender</code></td></tr>
+</table>
+<div class="note">Domain-Commands erzeugen nur Events für tatsächliche Änderungen. Ist ein Command schon erfüllt, etwa weil die Aufgabe bereits abgeschlossen ist, liefert er <code>[]</code> und <code>ok</code>. Verletzt er eine Regel, gibt er <code>{ok:false, fehler}</code> zurück, ohne Events zu schreiben.</div>
+
+<!-- ================================================================== -->
+<h2 id="queries">4 Queries</h2>
+<p>Queries ändern nichts. Sie lesen aus der Domain-Projektion im Speicher, aus dem Kalender-Cache und aus den Geräte-Einstellungen und warten nie auf EventKit.</p>
+<table>
+  <tr><th>Query</th><th>liest aus</th><th>Aufbereitung im Body</th><th>Ergebnis (DTO)</th><th>genutzt von (client/ui)</th></tr>
+  <tr><td><code>liste({filter})</code></td><td>Domain <code>aufgaben</code>, <code>buchungen</code>, <code>spalten</code> · Uhr</td><td><code>abfragen/aufgaben.liste</code></td><td><code>Aufgabenliste</code></td><td><code>sichten/liste</code>, <code>detail</code></td></tr>
+  <tr><td><code>board()</code></td><td>Domain <code>aufgaben</code>, <code>buchungen</code>, <code>spalten</code> · Uhr</td><td><code>abfragen/aufgaben.board</code></td><td><code>Board</code></td><td><code>sichten/board</code></td></tr>
+  <tr><td><code>zeitraum({von,bis})</code></td><td>Domain <code>aufgaben</code>, <code>buchungen(von,bis)</code>, <code>planung</code> · KalenderCache · Einstellungen <code>kalender</code> · Uhr</td><td><code>abfragen/zeitraum.zeitraum</code>. Liegt der Bereich außerhalb des Cache-Fensters, lädt er im Hintergrund nach (höchstens ±2 Jahre)</td><td><code>Zeitraum</code> (Tage mit Terminen, Reservierungen, extern, Fristen, Auslastung)</td><td><code>sichten/kalender</code></td></tr>
+  <tr><td><code>aufgabe({aufgabeId})</code></td><td>Domain <code>aufgabe</code>, <code>buchungenDerAufgabe</code>, <code>spalten</code> · Uhr</td><td><code>zeile</code> + <code>buchungDto</code></td><td><code>AufgabeDetails | null</code></td><td><code>detail</code></td></tr>
+  <tr><td><code>buchung({buchungId})</code></td><td>Domain <code>buchung</code> + intern <code>zeitraum</code> des Tages</td><td><code>buchungDto</code> + Tagesauslastung</td><td><code>BuchungDetails | null</code></td><td><code>detail</code></td></tr>
+  <tr><td><code>einstellungen()</code></td><td>Domain <code>spalten</code>, <code>planung</code> · KalenderCache · Einstellungen · Zugriffsstand</td><td>zusammenführen</td><td><code>EinstellungenDto</code></td><td><code>einstellungen</code>, <code>detail</code></td></tr>
+  <tr><td><code>erfassungVorschau({text})</code></td><td>Domain <code>spalten</code>, <code>planung</code> · Uhr</td><td><code>schnellerfassung/parse</code></td><td><code>ErfassungVorschau</code></td><td><code>schnellerfassung</code></td></tr>
+  <tr><td><code>vorschlaege({art,praefix})</code></td><td>Domain <code>aufgaben</code></td><td>nach Häufigkeit, höchstens 12</td><td><code>string[]</code></td><td><code>detail</code></td></tr>
+  <tr><td><code>layout()</code></td><td>Einstellungen <code>layout</code></td><td>–</td><td><code>Layout</code></td><td><code>raster</code></td></tr>
+  <tr><td><code>heute()</code></td><td>Uhr</td><td>–</td><td><code>{datum, minute}</code></td><td><code>interaktion</code>, <code>sichten/kalender</code></td></tr>
+  <tr><td><code>beiAenderung(cb)</code> <span class="no">Abo</span></td><td colspan="3">liefert <code>Bereich[]</code> = <code>aufgaben | board | kalender | einstellungen</code>. Der Client fragt danach per Query neu ab</td><td><code>main.ts</code></td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="events">5 Events (Domain state)</h2>
+<p>Definiert in <code>src/schema/events.ts</code>, <code>SCHEMA_VERSION = 1</code>. Jede Zeile in der JSONL-Datei ist ein Event mit <code>{ id, typ, daten, tags, zeit, meta: { schema, geraet, hlc } }</code>. Die Sortierung über Geräte hinweg regelt die Hybrid Logical Clock (<code>providers/eventstore/hlc.ts</code>). Events werden nie umgeschrieben; ältere Formate rechnet ein Upcaster beim Lesen hoch (<code>jsonl.ts › hochrechnen</code>).</p>
+<p>Tag-Konvention: <code>aufgabe:&lt;id&gt;</code> · <code>buchung:&lt;id&gt;</code> · <code>spalten</code> · <code>planung</code>. Über diese Tags schneidet die Domain je Command ihr Kontextmodell zu.</p>
+
+<table>
+  <tr><th>Event</th><th>Daten</th><th>Tags</th><th>erzeugt von</th></tr>
+  <tr class="grp"><td colspan="4">Aufgaben (16)</td></tr>
+  <tr><td><span class="ev">AufgabeErfasst</span></td><td><code>aufgabeId, titel, beschreibung, ort, verantwortlich, tags[], frist, wiedervorlage, status</code></td><td><code>aufgabe:id</code></td><td><code>aufgabeErfassen</code></td></tr>
+  <tr><td><span class="ev">AufgabeUmbenannt</span></td><td><code>aufgabeId, titel</code></td><td rowspan="10"><code>aufgabe:id</code></td><td rowspan="10"><code>aufgabeAendern</code></td></tr>
+  <tr><td><span class="ev">BeschreibungGeaendert</span></td><td><code>aufgabeId, beschreibung</code></td></tr>
+  <tr><td><span class="ev">OrtGeaendert</span></td><td><code>aufgabeId, ort</code></td></tr>
+  <tr><td><span class="ev">VerantwortlicherGeaendert</span></td><td><code>aufgabeId, verantwortlich</code></td></tr>
+  <tr><td><span class="ev">AufgabeGetaggt</span></td><td><code>aufgabeId, tag</code></td></tr>
+  <tr><td><span class="ev">TagEntfernt</span></td><td><code>aufgabeId, tag</code></td></tr>
+  <tr><td><span class="ev">FristGesetzt</span></td><td><code>aufgabeId, frist</code></td></tr>
+  <tr><td><span class="ev">FristEntfernt</span></td><td><code>aufgabeId</code></td></tr>
+  <tr><td><span class="ev">WiedervorlageGesetzt</span></td><td><code>aufgabeId, datum</code></td></tr>
+  <tr><td><span class="ev">WiedervorlageAufgehoben</span></td><td><code>aufgabeId</code></td></tr>
+  <tr><td><span class="ev">StatusGesetzt</span></td><td><code>aufgabeId, status</code></td><td rowspan="2"><code>aufgabe:id</code></td><td rowspan="2"><code>statusSetzen</code></td></tr>
+  <tr><td><span class="ev">StatusEntfernt</span></td><td><code>aufgabeId</code></td></tr>
+  <tr><td><span class="ev">AufgabeAbgeschlossen</span></td><td><code>aufgabeId</code></td><td><code>aufgabe:id</code></td><td><code>aufgabeAbschliessen</code></td></tr>
+  <tr><td><span class="ev">AufgabeWiedereroeffnet</span></td><td><code>aufgabeId</code></td><td><code>aufgabe:id</code></td><td><code>aufgabeWiedereroeffnen</code></td></tr>
+  <tr><td><span class="ev">AufgabeVerworfen</span></td><td><code>aufgabeId</code></td><td><code>aufgabe:id</code></td><td><code>aufgabeVerwerfen</code></td></tr>
+  <tr class="grp"><td colspan="4">Buchungen (8) – ohne <code>aufgabeId</code> = freie Buchung, ohne <code>start</code> = Reservierung</td></tr>
+  <tr><td><span class="ev b">BuchungAngelegt</span></td><td><code>buchungId, aufgabeId|null, titel, beschreibung, datum, dauer, start|null, belegt</code></td><td><code>buchung:id</code> (+ <code>aufgabe:id</code>)</td><td><code>aufgabeErfassen</code>, <code>buchungAnlegen</code>, <code>buchungEintragen</code></td></tr>
+  <tr><td><span class="ev b">BuchungUmbenannt</span></td><td><code>buchungId, titel</code></td><td rowspan="5"><code>buchung:id</code> (+ <code>aufgabe:id</code>)</td><td rowspan="5"><code>buchungAendern</code></td></tr>
+  <tr><td><span class="ev b">BuchungsbeschreibungGeaendert</span></td><td><code>buchungId, beschreibung</code></td></tr>
+  <tr><td><span class="ev b">BuchungsbelegungGeaendert</span></td><td><code>buchungId, belegt</code></td></tr>
+  <tr><td><span class="ev b">BuchungVerschoben</span></td><td><code>buchungId, datum, start|null</code></td></tr>
+  <tr><td><span class="ev b">BuchungsdauerGeaendert</span></td><td><code>buchungId, dauer</code></td></tr>
+  <tr><td><span class="ev b">BuchungStorniert</span></td><td><code>buchungId</code></td><td><code>buchung:id</code> (+ <code>aufgabe:id</code>)</td><td><code>buchungStornieren</code></td></tr>
+  <tr><td><span class="ev b">AufgabeAusBuchungErstellt</span></td><td><code>aufgabeId, buchungId, titel, beschreibung, status</code></td><td><code>aufgabe:id</code>, <code>buchung:id</code></td><td><code>aufgabeAusBuchung</code></td></tr>
+  <tr class="grp"><td colspan="4">Board (4)</td></tr>
+  <tr><td><span class="ev s">StatusspalteAngelegt</span></td><td><code>statusId, name, kategorie</code></td><td rowspan="4"><code>spalten</code></td><td><code>spalteAnlegen</code>, <code>standardspaltenEinrichten</code></td></tr>
+  <tr><td><span class="ev s">StatusspalteUmbenannt</span></td><td><code>statusId, name</code></td><td><code>spalteUmbenennen</code></td></tr>
+  <tr><td><span class="ev s">StatusspaltenSortiert</span></td><td><code>kategorie, reihenfolge[]</code></td><td><code>spaltenSortieren</code></td></tr>
+  <tr><td><span class="ev s">StatusspalteEntfernt</span></td><td><code>statusId</code></td><td><code>spalteEntfernen</code></td></tr>
+  <tr class="grp"><td colspan="4">Planung (2)</td></tr>
+  <tr><td><span class="ev p">TageskapazitaetFestgelegt</span></td><td><code>wochentag (1–7), minuten</code></td><td rowspan="2"><code>planung</code></td><td><code>tageskapazitaetFestlegen</code></td></tr>
+  <tr><td><span class="ev p">StandarddauerFestgelegt</span></td><td><code>minuten</code></td><td><code>standarddauerFestlegen</code></td></tr>
+</table>
+<div class="note">Nicht im Event-Strom, sondern gerätelokal in <code>geraet.json</code>: Layout und Arbeitsbereiche, Kalenderauswahl (sichtbar/belegt), Gerätename, Datenordner. Externe Termine liegen nur im <code>kalendercache.json</code>.</div>
+
+<!-- ================================================================== -->
+<h2 id="regeln">6 Schichtregeln zur Übersetzungszeit</h2>
+<p>Zur Laufzeit erreichen Aufrufe die Implementierungen (Abschnitt 1). Im Quelltext importiert jede Schicht aber nur <b>Interfaces</b>. Konkrete Klassen kennt allein die Composition Root. <code>npm run lint:deps</code> prüft das (<code>.dependency-cruiser.cjs</code>):</p>
+<table>
+  <tr><th>Von</th><th>darf importieren</th></tr>
+  <tr><td><code>src/client/</code></td><td><code>body/interface.ts</code>, <code>schema/</code>, <code>basis/</code></td></tr>
+  <tr><td><code>src/body/</code></td><td><code>domain/interface.ts</code>, <code>providers/*/interface.ts</code>, <code>schema/</code>, <code>basis/</code></td></tr>
+  <tr><td><code>src/domain/</code></td><td><code>providers/eventstore/interface.ts</code>, <code>schema/</code>, <code>basis/</code></td></tr>
+  <tr><td><code>src/providers/&lt;x&gt;/</code></td><td>nur das eigene Verzeichnis, <code>schema/</code>, <code>basis/</code></td></tr>
+  <tr><td><code>src/schema/</code>, <code>src/basis/</code></td><td>Blätter, kein Node, kein Electron (gilt auch für body und domain)</td></tr>
+  <tr><td><code>src/main/</code></td><td>alles (Composition Root)</td></tr>
+</table>
+</main>
+</div>
+</body>
+</html>
