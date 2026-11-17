@@ -680,3 +680,11 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .einst .kat-plus svg.lu { width: 15px; height: 15px; }
 .einst .sp-zeile.neu input { border-color: var(--own); background: #fff; }
 .einst .kat-zeile .kat-name { flex: none; field-sizing: content; min-width: 4ch; max-width: calc(100% - 26px); }
+/* „+“ im Gruppenkopf des Boards: erscheint beim Überfahren */
+.kat-h .kat-plus { border: 0; background: none; color: var(--mute); width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; padding: 0; flex: none; margin-left: 2px; visibility: hidden; cursor: pointer; }
+.kat-h:hover .kat-plus { visibility: visible; }
+.kat-h .kat-plus:hover { color: var(--own); background: var(--own-soft); }
+.kat-h .kat-plus svg.lu { width: 14px; height: 14px; }
+.board2 .col.neu { border-style: dashed; background: #fff; }
+.board2 .col.neu .col-h input { width: 100%; border: 1px solid var(--line2); border-radius: 6px; padding: 3px 7px; font: inherit; font-weight: 600; outline: none; }
+.board2 .col.neu .col-h input:focus { border-color: var(--own); box-shadow: 0 0 0 3px var(--own-soft); }

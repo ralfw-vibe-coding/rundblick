@@ -40,6 +40,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - Karte wie Listenzeile: Abschließen-Kreis vor dem Titel, Frist dahinter, darunter Chips für Tags, @Verantwortlich und Ort (wie in der Liste); Mülleimer (zweistufig) schwebt beim Überfahren oben rechts.
 - Spalten mindestens 150 px breit; Breite per Griff am rechten Spaltenrand einstellbar (Doppelklick = automatisch), wird im Board-Zustand gespeichert; wird es eng, scrollt das Board waagerecht.
 - Zahlen in zugeklappten (senkrechten) Streifen stehen aufrecht.
+- Neue Spalte direkt auf dem Board: „+“ hinter dem Gruppennamen (erscheint beim Überfahren) → am Ende der Gruppe eine Spalte mit Eingabefeld und Cursor; ↵ legt an, Esc/leer verwirft (wie in den Einstellungen, kein Dialog).
 - Offene Karten lassen sich senkrecht verschieben (Einfügelinie wie in der Liste), auch in eine andere Spalte (setzt dann zusätzlich den Status). Reihenfolge = derselbe manuelle Rang wie in der Liste.
 
 **Schublade (Aufgabe)**

@@ -2,9 +2,10 @@
 // Kategorien und Spalten lassen sich per Chevron zuklappen. Zurückgestellte und abgeschlossene Aufgaben stehen
 // in jeder Spalte unten in eigenen, anfangs zugeklappten Bereichen „Zurückgestellt“ und „Abgeschlossen“.
 import type { AufgabeZeile, Bereich, Board } from '../../../body/interface';
+import type { KategorieId } from '../../../schema/werte';
 import { body } from '../body';
 import { karte, spaltenKategorien, statusPunkt } from '../bausteine';
-import { esc } from '../dom';
+import { esc, pruefe } from '../dom';
 import { ausgewaehlt } from '../detail';
 import { I } from '../icons';
 import type { Dichte, Sicht } from './sicht';
@@ -74,7 +75,7 @@ export class BoardSicht implements Sicht {
       el.innerHTML = `<div class="board2">${b.kategorien.filter(k => k.spalten.length).map(k => {
         const kzu = this.zu(k.id);
         const offenSpalten = kzu ? 0 : k.spalten.filter(s => !this.zu(s.id)).length;
-        const kopf = `<div class="kat-h kat-b-${katKlasse(k.id)} ${kzu ? '' : 'open'}" data-zu="${k.id}" title="${kzu ? 'Aufklappen' : 'Zuklappen'}">${caret}<span class="nm">${k.name}</span> <span class="n">${offenZahl(k.spalten.flatMap(s => s.karten))}</span></div>`;
+        const kopf = `<div class="kat-h kat-b-${katKlasse(k.id)} ${kzu ? '' : 'open'}" data-zu="${k.id}" title="${kzu ? 'Aufklappen' : 'Zuklappen'}">${caret}<span class="nm">${k.name}</span> <span class="n">${offenZahl(k.spalten.flatMap(s => s.karten))}</span>${kzu ? '' : `<button class="kat-plus" data-sp-neu="${k.id}" title="Neue Spalte in „${esc(k.name)}“">${I.plus}</button>`}</div>`;
         if (kzu) return `<div class="kat zu">${kopf}</div>`;
         const offene = kzu ? [] : k.spalten.filter(s => !this.zu(s.id));
         const fest = offene.filter(s => this.z.breiten![s.id]), frei = offene.length - fest.length;
@@ -90,6 +91,9 @@ export class BoardSicht implements Sicht {
     }
     el.onclick = e => {
       const t = e.target as HTMLElement;
+      const plus = t.closest<HTMLElement>('[data-sp-neu]');
+      if (plus) { e.stopPropagation(); neueSpalteZeile(plus.closest<HTMLElement>('.kat')!, plus.dataset.spNeu as KategorieId); return; }
+      if (t.closest('.col.neu')) return;
       const zu = t.closest<HTMLElement>('[data-zu]'), abg = t.closest<HTMLElement>('[data-abg]');
       if (zu) { this.schalten('zu', zu.dataset.zu!); void this.neu(); }
       if (abg) { this.schalten('abgOffen', abg.dataset.abg!); void this.neu(); }
@@ -128,6 +132,35 @@ export class BoardSicht implements Sicht {
   }
 
   private async neu(): Promise<void> { if (this.el) await this.render(this.el, this.dichte); }
+}
+
+// ---------- Neue Spalte direkt auf dem Board ----------
+// „+“ im Gruppenkopf: am Ende der Gruppe erscheint eine Spalte mit Eingabefeld und Cursor.
+// ↵ legt sie an (das Board zeichnet sich danach neu), Esc oder leeres Verlassen verwirft sie.
+function neueSpalteZeile(kat: HTMLElement, kategorie: KategorieId): void {
+  const cols = kat.querySelector<HTMLElement>('.kat-cols')!;
+  let col = cols.querySelector<HTMLElement>('.col.neu');
+  if (!col) {
+    col = document.createElement('div');
+    col.className = 'col neu';
+    col.innerHTML = '<div class="col-h open"><input placeholder="Name der neuen Spalte"></div>';
+    cols.appendChild(col);
+    kat.style.minWidth = `${kat.getBoundingClientRect().width + MIN + LUECKE}px`;
+    const inp = col.querySelector('input')!;
+    let fertig = false;
+    const weg = () => { fertig = true; col!.remove(); kat.style.minWidth = ''; };
+    inp.addEventListener('keydown', async ev => {
+      if (ev.key === 'Escape') { ev.stopPropagation(); weg(); }
+      if (ev.key !== 'Enter') return;
+      const name = inp.value.trim();
+      if (!name) { weg(); return; }
+      fertig = true;
+      if (!pruefe(await body.spalteAnlegen({ name, kategorie }))) fertig = false;
+    });
+    inp.addEventListener('blur', () => { if (!fertig && !inp.value.trim()) weg(); });
+  }
+  col.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  col.querySelector('input')!.focus();
 }
 
 // ---------- Karten senkrecht verschieben (manuelle Reihenfolge = derselbe Rang wie in der Liste) ----------
