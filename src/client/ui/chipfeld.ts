@@ -21,7 +21,7 @@ export function chipFeld(root: HTMLElement, o: {
     // Das Eingabefeld bleibt immer da – sonst verliert es nach ↵ den Fokus. Bei Einzelwerten ersetzt eine neue Eingabe den Chip.
     const eingabeSichtbar = !o.gesperrt;
     root.innerHTML = werte.map((w, i) => `<span class="chip ${KLASSE[o.art]}">${VORZEICHEN[o.art]}${esc(w)}${o.gesperrt ? '' : `<button class="chip-x" data-weg="${i}" title="entfernen">${I.x}</button>`}</span>`).join('')
-      + (eingabeSichtbar ? `<input type="text" placeholder="${esc(!werte.length ? o.platzhalter : o.mehrfach ? '' : 'ersetzen …')}">` : '')
+      + (eingabeSichtbar ? `<input type="text" placeholder="${esc(werte.length ? '' : o.platzhalter)}">` : '')
       + '<div class="vorschl"></div>';
     const inp = root.querySelector('input');
     if (inp) binden(inp);
