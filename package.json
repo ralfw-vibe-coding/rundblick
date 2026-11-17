@@ -64,5 +64,8 @@
         "NSCalendarsFullAccessUsageDescription": "Rundblick zeigt Termine aus deinen Kalendern neben deinen Aufgaben."
       }
     }
+  },
+  "dependencies": {
+    "lucide": "^1.74.0"
   }
 }

@@ -499,3 +499,62 @@ kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ff
 .notiz:hover .md-bearbeiten { opacity: 1; }
 .notiz .md-bearbeiten:hover { color: var(--ink); }
 .notiz .md { padding-right: 36px; }
+
+/* ===== Lucide-Icons ===== */
+svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
+.due svg.lu, .fr svg.lu, .chip svg.lu { width: 11px; height: 11px; margin-right: 3px; vertical-align: -1px; }
+.due svg.lu { fill: currentColor; stroke-width: 2.5; }
+.fr svg.lu { fill: currentColor; margin-right: 1px; }
+.bk-i { display: inline-flex; align-items: center; gap: 2px; }
+.bk-i svg.lu { width: 12px; height: 12px; }
+.bk-i + .bk-i { margin-left: 4px; }
+/* Abschließen-Kreis: Lucide circle / circle-check */
+.row .chk, .drawer .dh .chk { border: 0 !important; background: none !important; display: grid; place-items: center; color: var(--line2); width: 20px; height: 20px; }
+.row .chk svg.lu { width: 18px; height: 18px; }
+.drawer .dh .chk svg.lu { width: 22px; height: 22px; }
+.row .chk:hover, .drawer .dh .chk:hover:not(:disabled) { color: var(--st-fertig); }
+.row.done .chk, .drawer .dh .chk.an { color: var(--st-fertig); }
+/* Klapp-Pfeil der Abschnitte */
+.grp-h::before, .grp-h.toggle::before { content: none !important; }
+.grp-h .caret { display: inline-grid; place-items: center; transition: transform .15s; }
+.grp-h .caret svg.lu { width: 12px; height: 12px; }
+.grp-h.open .caret { transform: rotate(90deg); }
+/* Fristraute in der Timeline */
+.tl-mark .dia { width: auto !important; height: auto !important; background: none !important; border: 0 !important; transform: none !important; border-radius: 0 !important; color: var(--dfarbe, #9ca3af); display: grid; }
+.tl-mark .dia svg.lu { width: 12px; height: 12px; fill: currentColor; }
+.tl-mark.wv .dia { color: #64748b; }
+.tl-mark.wv .dia svg.lu { fill: none; }
+/* Knöpfe mit Icons */
+.kopfknopf svg.lu, .drawer .dh .muell svg.lu { width: 17px; height: 17px; }
+.muell svg.lu { width: 15px; height: 15px; }
+.ch .tools button svg.lu { width: 15px; height: 15px; }
+.ws .add { display: inline-grid; place-items: center; }
+.ws .add svg.lu { width: 14px; height: 14px; }
+#einstBtn { display: grid; place-items: center; padding: 5px 7px; }
+#einstBtn svg.lu { width: 16px; height: 16px; }
+.cal-tb .nav button { display: inline-grid; place-items: center; }
+.cal-tb .nav button svg.lu { width: 14px; height: 14px; }
+.qc .plus { display: grid; top: 10px; }
+.qc .plus svg.lu { width: 15px; height: 15px; }
+.ch .sicht-icon { display: grid; place-items: center; color: var(--ink2); margin-right: -2px; }
+.ch .sicht-icon svg.lu { width: 15px; height: 15px; }
+.picker button b svg.lu { width: 22px; height: 22px; }
+.chipfeld .chip-x { display: inline-grid; place-items: center; }
+.chipfeld .chip-x svg.lu { width: 11px; height: 11px; margin: 0; }
+.fld .inl button { display: grid; place-items: center; }
+.fld .inl button svg.lu { width: 13px; height: 13px; }
+.dur button { display: inline-grid; place-items: center; height: 22px; }
+.dur button svg.lu { width: 12px; height: 12px; }
+.notiz .md-bearbeiten { display: grid; place-items: center; }
+.notiz .md-bearbeiten svg.lu { width: 13px; height: 13px; }
+.closed-badge, .card .done-btn { display: inline-flex; align-items: center; gap: 3px; }
+.closed-badge svg.lu, .card .done-btn svg.lu { width: 12px; height: 12px; }
+.hinweis svg.lu, .hinweis-zeile svg.lu { width: 14px; height: 14px; }
+.hinweis-zeile { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.einst .sp-zeile button { display: inline-grid; place-items: center; }
+.einst .sp-zeile button svg.lu { width: 13px; height: 13px; }
+.einst .btn { display: inline-flex; align-items: center; gap: 4px; }
+.einst .btn svg.lu { width: 13px; height: 13px; }
+.mini .peek svg.lu { width: 10px; height: 10px; fill: currentColor; }
+.day-side svg.lu { width: 11px; height: 11px; }
+.leer svg.lu { width: 14px; height: 14px; }

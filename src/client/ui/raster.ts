@@ -3,6 +3,7 @@
 import type { Bereich, Layout } from '../../body/interface';
 import { body } from './body';
 import { esc } from './dom';
+import { I } from './icons';
 import { BoardSicht } from './sichten/board';
 import { KalenderSicht, type KalZustand } from './sichten/kalender';
 import { ListenSicht, type ListeZustand } from './sichten/liste';
@@ -15,11 +16,11 @@ type Knoten = Zelle | Split;
 type Arbeitsbereich = { name: string; wurzel: Knoten };
 
 export const SICHTEN: Record<SichtArt, { name: string; icon: string }> = {
-  liste: { name: 'Aufgabenliste', icon: '☰' },
-  board: { name: 'Kanban-Board', icon: '▥' },
-  tag: { name: 'Tageskalender', icon: '▯' },
-  mehrtage: { name: 'Mehrtageskalender', icon: '▦' },
-  timeline: { name: 'Timeline', icon: '⟷' },
+  liste: { name: 'Aufgabenliste', icon: I.liste },
+  board: { name: 'Kanban-Board', icon: I.board },
+  tag: { name: 'Tageskalender', icon: I.tag },
+  mehrtage: { name: 'Mehrtageskalender', icon: I.mehrtage },
+  timeline: { name: 'Timeline', icon: I.timeline },
 };
 
 const uid = () => 'z' + Math.random().toString(36).slice(2, 8);
@@ -46,13 +47,7 @@ function sichtErzeugen(z: Zelle): Sicht | null {
   }
 }
 
-const ICON = {
-  row: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M8 2.5v11"/></svg>',
-  col: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M1.5 8h13"/></svg>',
-  max: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5 9 7M2.5 13.5 7 9"/></svg>',
-  min: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M13 7H9V3M3 9h4v4M9 7l4.5-4.5M7 9l-4.5 4.5"/></svg>',
-  x: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
-};
+const ICON = { row: I.nebeneinander, col: I.untereinander, max: I.maximieren, min: I.minimieren, x: I.x };
 
 export class Raster {
   private bereiche: Arbeitsbereich[] = vorlagen();
@@ -129,7 +124,8 @@ export class Raster {
     el.className = 'cell' + (this.maxId === z.id ? ' maxed' : '');
     el.dataset.id = z.id;
     el.innerHTML = `<div class="ch">
-      <select title="Sicht wählen">${z.sicht ? '' : '<option value="">Sicht wählen …</option>'}${(Object.keys(SICHTEN) as SichtArt[]).map(k => `<option value="${k}" ${z.sicht === k ? 'selected' : ''}>${SICHTEN[k].icon}  ${SICHTEN[k].name}</option>`).join('')}</select>
+      <span class="sicht-icon">${z.sicht ? SICHTEN[z.sicht].icon : ''}</span>
+      <select title="Sicht wählen">${z.sicht ? '' : '<option value="">Sicht wählen …</option>'}${(Object.keys(SICHTEN) as SichtArt[]).map(k => `<option value="${k}" ${z.sicht === k ? 'selected' : ''}>${SICHTEN[k].name}</option>`).join('')}</select>
       <span class="info"></span>
       <span class="tools">
         <button data-op="row" title="Nebeneinander teilen">${ICON.row}</button>
@@ -251,9 +247,9 @@ export class Raster {
   // ---------- Arbeitsbereiche ----------
   private tabsZeichnen(): void {
     this.tabs.innerHTML = this.bereiche.map((w, i) => `<button data-ws="${i}" class="${i === this.aktiv ? 'on' : ''}" title="Taste ${i + 1} · Doppelklick: umbenennen">${esc(w.name)}</button>`).join('')
-      + '<button class="add" data-ws="neu" title="Neuer Arbeitsbereich">＋</button>'
-      + (this.bereiche.length > 1 ? '<button class="add" data-ws="weg" title="Diesen Arbeitsbereich löschen">−</button>' : '')
-      + '<button class="add" data-ws="reset" title="Arbeitsbereiche auf Vorlagen zurücksetzen">↺</button>';
+      + `<button class="add" data-ws="neu" title="Neuer Arbeitsbereich">${I.plus}</button>`
+      + (this.bereiche.length > 1 ? `<button class="add" data-ws="weg" title="Diesen Arbeitsbereich löschen">${I.minus}</button>` : '')
+      + `<button class="add" data-ws="reset" title="Arbeitsbereiche auf Vorlagen zurücksetzen">${I.zuruecksetzen}</button>`;
   }
   private tabKlick(e: Event): void {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-ws]'); if (!b) return;

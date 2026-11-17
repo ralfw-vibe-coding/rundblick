@@ -2,12 +2,13 @@
 // In der Ansicht: ✎ oder Doppelklick → Bearbeiten. Verlassen des Feldes (oder ⌘↵ / Esc) speichert und zeigt die Ansicht.
 import { checkboxUmschalten, markdownHtml } from '../../basis/markdown';
 import { esc } from './dom';
+import { I } from './icons';
 
 export function notizFeld(root: HTMLElement, o: { text: string; gesperrt: boolean; fokus: boolean; speichern(text: string): Promise<void> }): void {
   let text = o.text;
   root.classList.add('notiz');
   const ansicht = () => {
-    root.innerHTML = `<div class="md">${markdownHtml(text)}</div>${o.gesperrt ? '' : '<button class="md-bearbeiten" title="Bearbeiten (Doppelklick)">✎</button>'}`;
+    root.innerHTML = `<div class="md">${markdownHtml(text)}</div>${o.gesperrt ? '' : `<button class="md-bearbeiten" title="Bearbeiten (Doppelklick)">${I.bearbeiten}</button>`}`;
   };
   const bearbeiten = (fokus: boolean) => {
     root.innerHTML = `<textarea placeholder="Notizen … Markdown: **fett**, *kursiv*, [Link](https://…), - Liste, - [ ] Aufgabe" ${o.gesperrt ? 'disabled' : ''}>${esc(text)}</textarea>`;

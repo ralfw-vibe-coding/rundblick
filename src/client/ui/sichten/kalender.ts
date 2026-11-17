@@ -7,6 +7,7 @@ import type { Bereich, BuchungDto, ExternDto, Tag, Zeitraum } from '../../../bod
 import { body } from '../body';
 import { kapazitaetsBalken } from '../bausteine';
 import { esc } from '../dom';
+import { I } from '../icons';
 import type { Dichte, Sicht } from './sicht';
 
 export type KalAnsicht = 'tag' | 'tage3' | 'woche' | 'monat' | 'monate3' | 'timeline';
@@ -63,7 +64,7 @@ export class KalenderSicht implements Sicht {
     el.innerHTML = `<div class="cal ${dichte}">
       <div class="cal-tb">
         ${this.ansichten.length > 1 ? `<div class="seg">${this.ansichten.map(v => `<button data-cal-view="${v}" class="${this.z.ansicht === v ? 'on' : ''}">${NAMEN[v]}</button>`).join('')}</div>` : ''}
-        <div class="nav"><button data-cal-nav="-1" title="zurück">‹</button><button data-cal-nav="0">Heute</button><button data-cal-nav="1" title="vor">›</button></div>
+        <div class="nav"><button data-cal-nav="-1" title="zurück">${I.links}</button><button data-cal-nav="0">Heute</button><button data-cal-nav="1" title="vor">${I.rechts}</button></div>
         ${this.z.ansicht !== 'timeline' ? `<span class="title">${titel(this.z.ansicht, anker)}</span>`
           : `<span class="zoom">Zoom <input type="range" min="2" max="48" value="${this.z.pph}" data-cal-zoom /> <span>${this.z.pph < 6 ? 'Wochen' : this.z.pph < 20 ? 'Tage' : 'Stunden'}</span></span>`}
         <span class="spacer"></span>
@@ -177,7 +178,7 @@ function fristMarke(t: Tag): string {
   if (!t.fristen.length) return '';
   const d = t.fristen[0]!.dringlichkeit;
   const farbe = `var(--d-${d})`;
-  return `<span class="fr" style="color:${farbe}" title="${esc('Fällig:\n' + t.fristen.map(f => f.titel).join('\n'))}">◆${t.fristen.length}</span>`;
+  return `<span class="fr" style="color:${farbe}" title="${esc('Fällig:\n' + t.fristen.map(f => f.titel).join('\n'))}">${I.frist}${t.fristen.length}</span>`;
 }
 
 function woche(z: Zeitraum, tage: Tag[], dichte: Dichte): string {
@@ -200,10 +201,10 @@ function woche(z: Zeitraum, tage: Tag[], dichte: Dichte): string {
 function tagSeite(t: Tag): string {
   const ev = ereignisse(t);
   return `<div class="day-side">
-    <div><h4>Fällig</h4>${t.fristen.length ? t.fristen.map(f => `<div class="row" data-task="${f.aufgabeId}"><div class="main"><div class="t">◆ ${esc(f.titel)}</div></div></div>`).join('') : '<div class="muted">nichts</div>'}</div>
+    <div><h4>Fällig</h4>${t.fristen.length ? t.fristen.map(f => `<div class="row" data-task="${f.aufgabeId}"><div class="main"><div class="t">${I.frist} ${esc(f.titel)}</div></div></div>`).join('') : '<div class="muted">nichts</div>'}</div>
     <div><h4>Reservierungen</h4>${t.reservierungen.length ? `<div style="display:flex;flex-direction:column;gap:4px">${t.reservierungen.map(resHtml).join('')}</div>` : '<div class="muted">keine</div>'}</div>
     <div><h4>Termine</h4>${ev.map(e => `<div style="font-size:12px;padding:2px 0" ${e.b ? `data-booking="${e.b.id}"` : ''}><span class="muted">${uhrzeit(e.s)}</span> ${esc(e.titel)}${e.x ? ` <span class="legend"><i style="background:${e.x.farbe}"></i></span>` : ''}</div>`).join('') || '<div class="muted">keine</div>'}</div>
-    ${t.wiedervorlagen.length ? `<div><h4>Taucht wieder auf</h4>${t.wiedervorlagen.map(w => `<div data-task="${w.aufgabeId}" style="font-size:12px">↩ ${esc(w.titel)}</div>`).join('')}</div>` : ''}
+    ${t.wiedervorlagen.length ? `<div><h4>Taucht wieder auf</h4>${t.wiedervorlagen.map(w => `<div data-task="${w.aufgabeId}" style="font-size:12px">${I.wiedervorlage} ${esc(w.titel)}</div>`).join('')}</div>` : ''}
     <div><h4>Auslastung</h4>${dauerText(t.auslastung.belegt)} von ${dauerText(t.auslastung.kapazitaet)}${kapazitaetsBalken(t.auslastung, true)}</div>
   </div>`;
 }
@@ -246,8 +247,8 @@ function timeline(z: Zeitraum, pph: number): string {
     const ext = anordnen(t.extern.filter(e => e.start !== null).map(e => ({ kind: 'extern' as const, s: e.start!, e: Math.max(e.ende!, e.start! + 15), lane: 0, n: 1, titel: e.titel, x: e })));
     ext.forEach(e => { maxExt = Math.max(maxExt, e.lane + 1); bahn.ext += `<div class="tl-it extern" style="left:${x(i, e.s)}px;width:${Math.max(6, ((e.e - e.s) / 60) * pph - 2)}px;top:${4 + e.lane * 24}px;--kf:${e.x!.farbe}" title="${esc(`${e.titel} · ${uhrzeit(e.s)} · ${e.x!.kalender}`)}">${esc(e.titel)}</div>`; });
     maxF = Math.max(maxF, t.fristen.length);
-    t.fristen.forEach((f, k) => { bahn.fristen += `<div class="tl-mark" data-task="${f.aufgabeId}" style="--dfarbe:var(--d-${f.dringlichkeit});left:${x(i, H1 * 60) - 4}px;top:${4 + k * 18}px;flex-direction:row-reverse" title="${esc('Frist: ' + f.titel)}"><span class="dia"></span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(f.titel)}</span>` : ''}</div>`; });
-    t.wiedervorlagen.forEach((w, k) => { bahn.wv += `<div class="tl-mark wv" data-task="${w.aufgabeId}" style="left:${x(i, H0 * 60) + 6}px;top:${5 + k * 18}px" title="${esc('Wiedervorlage: ' + w.titel)}"><span class="dia"></span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(w.titel)}</span>` : ''}</div>`; });
+    t.fristen.forEach((f, k) => { bahn.fristen += `<div class="tl-mark" data-task="${f.aufgabeId}" style="--dfarbe:var(--d-${f.dringlichkeit});left:${x(i, H1 * 60) - 4}px;top:${4 + k * 18}px;flex-direction:row-reverse" title="${esc('Frist: ' + f.titel)}"><span class="dia">${I.frist}</span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(f.titel)}</span>` : ''}</div>`; });
+    t.wiedervorlagen.forEach((w, k) => { bahn.wv += `<div class="tl-mark wv" data-task="${w.aufgabeId}" style="left:${x(i, H0 * 60) + 6}px;top:${5 + k * 18}px" title="${esc('Wiedervorlage: ' + w.titel)}"><span class="dia">${I.frist}</span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(w.titel)}</span>` : ''}</div>`; });
     const a = t.auslastung, p = a.kapazitaet ? a.belegt / a.kapazitaet : a.belegt ? 2 : 0;
     bahn.last += `<div title="${esc(`${dauerText(a.belegt)} von ${dauerText(a.kapazitaet)}`)}" style="position:absolute;left:${links + 3}px;width:${dayW - 6}px;bottom:3px;height:${(Math.min(1.15, p) / 1.15) * 30}px;border-radius:3px 3px 0 0;background:${p > 1 ? 'var(--over)' : p > 0.8 ? 'var(--soon)' : '#c9c5bd'};opacity:.75"></div>`
       + (dayW >= 60 && (a.belegt || a.kapazitaet) ? `<span style="position:absolute;left:${links + 6}px;top:3px;font-size:10px;color:${p > 1 ? 'var(--over)' : 'var(--mute)'}">${dauerText(a.belegt).replace(' ', '')} / ${dauerText(a.kapazitaet).replace(' ', '')}</span>` : '');

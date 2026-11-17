@@ -4,6 +4,7 @@ import type { EinstellungenDto } from '../../body/interface';
 import { KATEGORIEN, type KategorieId, type Wochentag } from '../../schema/werte';
 import { body } from './body';
 import { esc, pruefe } from './dom';
+import { I } from './icons';
 
 let panel: HTMLDivElement | null = null;
 export const einstellungenOffen = () => !!panel;
@@ -49,9 +50,9 @@ export async function einstellungenZeichnen(): Promise<void> {
   const e: EinstellungenDto = await body.einstellungen();
   const zugriff = { erlaubt: ['#16a34a', 'Zugriff erlaubt'], verweigert: ['#d92d20', 'Zugriff verweigert – Systemeinstellungen › Datenschutz › Kalender'], unbestimmt: ['#d97706', 'Noch nicht freigegeben'], nichtVerfuegbar: ['#9ca3af', 'Kalender-Helfer fehlt (npm run build:helfer)'] }[e.zugriff];
   const aktiv = panel.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset : null;
-  panel.innerHTML = `<div style="display:flex;align-items:center"><h4 style="margin:0">Externe Kalender <span style="text-transform:none;letter-spacing:0">(macOS / EventKit)</span></h4><span class="spacer"></span><button class="btn" data-zu="1" style="padding:0 8px">×</button></div>
+  panel.innerHTML = `<div style="display:flex;align-items:center"><h4 style="margin:0">Externe Kalender <span style="text-transform:none;letter-spacing:0">(macOS / EventKit)</span></h4><span class="spacer"></span><button class="btn" data-zu="1" style="padding:2px 6px">${I.x}</button></div>
     <div class="zugriff" style="margin-top:8px"><span class="dot" style="background:${zugriff[0]}"></span>${zugriff[1]}<span class="spacer"></span>
-      ${e.zugriff === 'erlaubt' ? '<button class="btn" data-sync="1">↻ Aktualisieren</button>' : e.zugriff === 'nichtVerfuegbar' ? '' : '<button class="btn primary" data-zugriff="1">Zugriff anfragen</button>'}</div>
+      ${e.zugriff === 'erlaubt' ? `<button class="btn" data-sync="1">${I.aktualisieren} Aktualisieren</button>` : e.zugriff === 'nichtVerfuegbar' ? '' : '<button class="btn primary" data-zugriff="1">Zugriff anfragen</button>'}</div>
     ${e.kalender.length ? `<table><tr><th style="text-align:left">Kalender</th><th>sichtbar</th><th>belegt Kapazität</th></tr>
       ${e.kalender.map(k => `<tr><td><span class="legend"><i style="background:${k.farbe}"></i></span>${esc(k.name)} <span class="muted">· ${esc(k.konto)}</span></td>
         <td class="c"><input type="checkbox" data-kal="${esc(k.id)}" data-f="sichtbar" ${k.sichtbar ? 'checked' : ''}></td>
@@ -63,8 +64,8 @@ export async function einstellungenZeichnen(): Promise<void> {
     <div class="kapgrid">${WT.map((w, i) => `<label>${w}<input type="number" min="0" max="24" step="0.5" data-wt="${i + 1}" value="${e.kapazitaet[i]! / 60}"></label>`).join('')}</div>
     <h4>Board-Spalten</h4>
     ${KATEGORIEN.map(k => `<div class="kat-block"><b>${k.name}</b>
-      ${e.spalten.filter(s => s.kategorie === k.id).map(s => `<div class="sp-zeile"><input value="${esc(s.name)}" data-sp-name="${esc(s.id)}"><button data-sp-hoch="${esc(s.id)}" title="nach links">↑</button><button data-sp-runter="${esc(s.id)}" title="nach rechts">↓</button><button data-sp-weg="${esc(s.id)}" title="Spalte entfernen (nur wenn leer)">×</button></div>`).join('')}
-      <button class="btn" data-sp-neu="${k.id}" style="font-size:12px;padding:1px 8px;margin-top:2px">+ Spalte</button></div>`).join('')}
+      ${e.spalten.filter(s => s.kategorie === k.id).map(s => `<div class="sp-zeile"><input value="${esc(s.name)}" data-sp-name="${esc(s.id)}"><button data-sp-hoch="${esc(s.id)}" title="nach links">${I.hoch}</button><button data-sp-runter="${esc(s.id)}" title="nach rechts">${I.runter}</button><button data-sp-weg="${esc(s.id)}" title="Spalte entfernen (nur wenn leer)">${I.x}</button></div>`).join('')}
+      <button class="btn" data-sp-neu="${k.id}" style="font-size:12px;padding:1px 8px;margin-top:2px">${I.plus} Spalte</button></div>`).join('')}
     <h4>Daten</h4>
     <div class="info">Ordner: ${esc(e.datenordner)}<br>Gerät: ${esc(e.geraet)} (eigene Event-Datei: events/${esc(e.geraet)}.jsonl)</div>`;
   if (aktiv?.wt) panel.querySelector<HTMLInputElement>(`[data-wt="${aktiv.wt}"]`)?.focus();

@@ -4,6 +4,7 @@ import { body } from '../body';
 import { karte, spaltenKategorien, statusPunkt } from '../bausteine';
 import { esc } from '../dom';
 import { ausgewaehlt } from '../detail';
+import { I } from '../icons';
 import type { Dichte, Sicht } from './sicht';
 
 export class BoardSicht implements Sicht {
@@ -14,7 +15,7 @@ export class BoardSicht implements Sicht {
     const b = await body.board(), heute = b.heute, gewaehlt = ausgewaehlt();
     spaltenKategorien(Object.fromEntries(b.kategorien.flatMap(k => k.spalten.map(s => [s.id, k.id]))));
     if (dichte === 'mini') { el.innerHTML = mini(b); return; }
-    if (b.kategorien.every(k => !k.spalten.length)) { el.innerHTML = '<div class="leer">Keine Board-Spalten. ⚙︎ Einstellungen → Board-Spalten.</div>'; return; }
+    if (b.kategorien.every(k => !k.spalten.length)) { el.innerHTML = `<div class="leer">Keine Board-Spalten. ${I.einstellungen} Einstellungen → Board-Spalten.</div>`; return; }
     if (dichte === 'compact') {
       el.innerHTML = `<div class="board compact">${b.kategorien.map(k => {
         const erste = k.spalten.find(s => /bereit|inarbeit|erledigt/.test(s.id)) ?? k.spalten[0];

@@ -4,12 +4,14 @@ import { auffrischen, offen as schubladeOffen, schliessen as schubladeSchliessen
 import { $, tippt } from './dom';
 import { einstellungenOffen, einstellungenSchliessen, einstellungenUmschalten, einstellungenZeichnen } from './einstellungen';
 import { interaktionAnbinden, zweistufigAnbinden } from './interaktion';
+import { I } from './icons';
 import { Raster } from './raster';
 import { schnellerfassungAnbinden } from './schnellerfassung';
 
 const raster = new Raster($('#area'), $('#ws'));
 const erfassung = schnellerfassungAnbinden($('#qc'));
 interaktionAnbinden();
+$('#einstBtn').innerHTML = I.einstellungen;
 $('#einstBtn').onclick = () => void einstellungenUmschalten();
 document.addEventListener('mousedown', e => {
   if (einstellungenOffen() && !(e.target as HTMLElement).closest('.einst, #einstBtn')) einstellungenSchliessen();

@@ -3,6 +3,7 @@
 import type { AufgabeZeile, Bereich } from '../../../body/interface';
 import { body } from '../body';
 import { ICON, zeile } from '../bausteine';
+import { I } from '../icons';
 import { esc } from '../dom';
 import { alter, einmalZeigen, istFrisch } from '../frisch';
 import { ausgewaehlt } from '../detail';
@@ -52,7 +53,7 @@ export class ListenSicht implements Sicht {
     for (const a of abschnitte) {
       if (!a.aufgaben.length && a.k !== 'archiv') continue;
       const offen = !this.istZu(a.k);
-      h += `<div class="grp-h ${a.klasse ?? ''} ${offen ? 'open' : ''}" data-grp="${a.k}">${esc(a.name)} <span class="n">${a.aufgaben.length}</span></div>`;
+      h += `<div class="grp-h ${a.klasse ?? ''} ${offen ? 'open' : ''}" data-grp="${a.k}"><span class="caret">${I.rechts}</span>${esc(a.name)} <span class="n">${a.aufgaben.length}</span></div>`;
       if (offen) h += a.aufgaben.map(x => zeile(x, l.heute, voll, istFrisch(x.id), x.id === gewaehlt)).join('') || '<div class="leer" style="padding:6px 12px;text-align:left">leer</div>';
     }
     if (!h) h = this.z.filter ? '<div class="leer">Nichts gefunden.</div>' : '<div class="leer">Noch keine Aufgaben.<br>Oben eintippen und ↵ – oder <kbd>N</kbd>.</div>';
@@ -79,7 +80,7 @@ export class ListenSicht implements Sicht {
         <div class="kpi"><b>${n('woche')}</b> diese Woche</div>
         <div class="kpi"><b>${l.offen}</b> offen</div>
       </div>
-      <div class="peek">${vorn.map(a => `<div data-task="${a.id}">◆ ${esc(a.titel)}</div>`).join('')}</div>
+      <div class="peek">${vorn.map(a => `<div data-task="${a.id}">${I.frist} ${esc(a.titel)}</div>`).join('')}</div>
     </div>`;
   }
 }

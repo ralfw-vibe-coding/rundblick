@@ -7,6 +7,7 @@ import { body } from './body';
 import { buchungArt, ICON, kapazitaetsBalken, muellKnopf, statusPunkt } from './bausteine';
 import { esc, pruefe } from './dom';
 import { markieren } from './frisch';
+import { I } from './icons';
 import { chipFeld } from './chipfeld';
 import { notizFeld } from './notiz';
 
@@ -50,26 +51,26 @@ export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
   const morgen = plusTage(h.datum, 1);
   s.innerHTML = `
     <div class="dh">
-      <button class="chk ${a.abgeschlossen ? 'an' : ''}" data-d="${a.abgeschlossen ? 'auf' : 'ab'}" title="${a.abgeschlossen ? 'Wieder öffnen' : 'Abschließen'}" ${a.archiviert ? 'disabled' : ''}></button>
+      <button class="chk ${a.abgeschlossen ? 'an' : ''}" data-d="${a.abgeschlossen ? 'auf' : 'ab'}" title="${a.abgeschlossen ? 'Wieder öffnen' : 'Abschließen'}" ${a.archiviert ? 'disabled' : ''}>${a.abgeschlossen ? I.erledigt : I.offen}</button>
       <input class="titel-input" data-f="titel" value="${esc(a.titel)}" ${zu}>
       ${a.archiviert ? knopf('ausArchiv', ICON.ausArchiv, 'Aus dem Archiv holen') : knopf('archiv', ICON.archiv, 'Archivieren – verbergen, nicht löschen')}
       ${muellKnopf('verwerfen', 'Aufgabe verwerfen', id)}
       ${knopf('zu', ICON.zu, 'Schließen (Esc)')}
     </div>
     <div class="db aufgabe">
-      ${a.archiviert ? '<div class="hinweis">Archiviert – überall verborgen. Zum Bearbeiten erst aus dem Archiv holen.</div>' : a.abgeschlossen ? '<div class="hinweis" style="background:#e9f7ee;color:#1f6b46">✓ Abgeschlossen – zum Bearbeiten wieder öffnen (Kreis links oben).</div>' : ''}
+      ${a.archiviert ? '<div class="hinweis">Archiviert – überall verborgen. Zum Bearbeiten erst aus dem Archiv holen.</div>' : a.abgeschlossen ? `<div class="hinweis" style="background:#e9f7ee;color:#1f6b46">${I.erledigt} Abgeschlossen – zum Bearbeiten wieder öffnen (Kreis links oben).</div>` : ''}
       ${feld('Status', `<div class="statuschips">
         <button class="schip ${a.status ? '' : 'an'}" data-status="" ${zu}>ohne</button>
         ${e.spalten.map(sp => `<button class="schip ${a.status?.id === sp.id ? 'an' : ''}" data-status="${sp.id}" ${zu}>${statusPunkt(sp.id)}${esc(sp.name)}</button>`).join('')}
       </div>`)}
       <div class="fld-grid">
-        ${feld('Frist', `<div class="inl"><input type="date" data-f="frist" value="${a.frist ?? ''}" ${zu}><button data-leer="frist" title="Frist entfernen">×</button></div>`)}
-        ${feld('Wiedervorlage', `<div class="inl"><input type="date" data-f="wiedervorlage" value="${a.wiedervorlage ?? ''}" ${zu}><button data-leer="wiedervorlage" title="Wiedervorlage aufheben">×</button></div>`)}
+        ${feld('Frist', `<div class="inl"><input type="date" data-f="frist" value="${a.frist ?? ''}" ${zu}><button data-leer="frist" title="Frist entfernen">${I.x}</button></div>`)}
+        ${feld('Wiedervorlage', `<div class="inl"><input type="date" data-f="wiedervorlage" value="${a.wiedervorlage ?? ''}" ${zu}><button data-leer="wiedervorlage" title="Wiedervorlage aufheben">${I.x}</button></div>`)}
         ${feld('Verantwortlich', '<div data-chips="person"></div>')}
         ${feld('Ort', '<div data-chips="ort"></div>')}
       </div>
       ${feld('Tags', '<div data-chips="tag"></div>')}
-      ${a.zurueckgestellt ? `<div class="muted" style="font-size:12px">↩ Bis ${WT[wochentag(a.wiedervorlage!)]} ${kurz(a.wiedervorlage!)} zurückgestellt – bis dahin in der Liste eingeklappt.</div>` : ''}
+      ${a.zurueckgestellt ? `<div class="muted hinweis-zeile">${I.wiedervorlage} Bis ${WT[wochentag(a.wiedervorlage!)]} ${kurz(a.wiedervorlage!)} zurückgestellt – bis dahin in der Liste eingeklappt.</div>` : ''}
       ${feld('Notiz', '<div data-notiz></div>', 'style="flex:1;display:flex;flex-direction:column;min-height:140px"')}
       ${gesperrt ? '' : feld('Buchung hinzufügen', `<div class="buchen">
         <input type="date" data-b="datum" value="${morgen}" title="Datum">
@@ -129,9 +130,9 @@ export async function buchungOeffnen(id: string): Promise<void> {
     <div class="db">
       <div class="fld-grid">
         ${feld('Datum', `<input type="date" data-f="datum" value="${b.datum}">`)}
-        ${feld('Uhrzeit', `<div class="inl"><input type="time" data-f="start" value="${b.start ?? ''}"><button data-leer="start" title="Uhrzeit entfernen → Reservierung">×</button></div>`)}
+        ${feld('Uhrzeit', `<div class="inl"><input type="time" data-f="start" value="${b.start ?? ''}"><button data-leer="start" title="Uhrzeit entfernen → Reservierung">${I.x}</button></div>`)}
       </div>
-      ${feld('Dauer', `<span class="dur"><button data-dur="-15">−</button><b>${dauerText(b.dauer)}</b><button data-dur="15">+</button></span><span class="durq">${[30, 45, 60, 90, 120, 180, 240].map(m => `<button data-dauer="${m}" class="${b.dauer === m ? 'on' : ''}">${dauerText(m).replace(' ', '')}</button>`).join('')}</span>`)}
+      ${feld('Dauer', `<span class="dur"><button data-dur="-15">${I.minus}</button><b>${dauerText(b.dauer)}</b><button data-dur="15">${I.plus}</button></span><span class="durq">${[30, 45, 60, 90, 120, 180, 240].map(m => `<button data-dauer="${m}" class="${b.dauer === m ? 'on' : ''}">${dauerText(m).replace(' ', '')}</button>`).join('')}</span>`)}
       ${feld('Kapazität', `<label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)"><input type="checkbox" data-f="belegt" ${b.belegt ? 'checked' : ''}> belegt ${dauerText(b.dauer)} der Tageskapazität</label>`)}
       <div class="muted" style="font-size:12px">${buchungArt(b)} · ${b.start ? 'mit Uhrzeit' : 'ohne Uhrzeit – erscheint im Reservierungsband'}</div>
       ${b.aufgabeId

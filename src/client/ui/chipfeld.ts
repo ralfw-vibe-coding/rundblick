@@ -2,10 +2,11 @@
 // Einzelwert (Verantwortlich, Ort) oder mehrere Werte (Tags). ⌫ im leeren Feld entfernt den letzten Chip.
 import { body } from './body';
 import { esc } from './dom';
+import { I } from './icons';
 
 export type ChipArt = 'tag' | 'person' | 'ort';
 const KLASSE: Record<ChipArt, string> = { tag: 'tag', person: 'person', ort: 'ort' };
-const VORZEICHEN: Record<ChipArt, string> = { tag: '#', person: '@', ort: '⌖ ' };
+const VORZEICHEN: Record<ChipArt, string> = { tag: '#', person: '@', ort: I.ort };
 
 export function chipFeld(root: HTMLElement, o: {
   art: ChipArt; werte: string[]; mehrfach: boolean; gesperrt: boolean; platzhalter: string;
@@ -17,7 +18,7 @@ export function chipFeld(root: HTMLElement, o: {
   root.classList.add('chipfeld');
   const zeichnen = () => {
     const eingabeSichtbar = !o.gesperrt && (o.mehrfach || werte.length === 0);
-    root.innerHTML = werte.map((w, i) => `<span class="chip ${KLASSE[o.art]}">${VORZEICHEN[o.art]}${esc(w)}${o.gesperrt ? '' : `<button class="chip-x" data-weg="${i}" title="entfernen">×</button>`}</span>`).join('')
+    root.innerHTML = werte.map((w, i) => `<span class="chip ${KLASSE[o.art]}">${VORZEICHEN[o.art]}${esc(w)}${o.gesperrt ? '' : `<button class="chip-x" data-weg="${i}" title="entfernen">${I.x}</button>`}</span>`).join('')
       + (eingabeSichtbar ? `<input type="text" placeholder="${esc(werte.length ? '' : o.platzhalter)}">` : '')
       + '<div class="vorschl"></div>';
     const inp = root.querySelector('input');
