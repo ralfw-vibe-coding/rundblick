@@ -565,3 +565,4 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .drawer .db .chipfeld input[type=text] { min-width: 24px; }
 .drawer .db .chipfeld input[type=text] { flex: 1 1 24px; }
 .chipfeld .chip { gap: 0; } .chipfeld .chip-x { margin-left: 4px; }
+.list-b .grp-h:not(:first-child) { border-top: 1px solid var(--line); margin: 6px 10px 0; padding-left: 2px; padding-right: 2px; }
