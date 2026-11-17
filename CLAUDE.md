@@ -24,6 +24,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - **Nur Lucide-Icons** (`src/client/ui/icons.ts`, Objekt `I`). Keine Unicode-Symbole als Icons, keine eigenen SVGs. `<select>`-Optionen können kein SVG → Icon daneben.
 - **Zerstörende Aktionen zweistufig, keine Bestätigungsdialoge:** Symbol (Mülleimer, bei Bildern „×“) → 1. Klick verwandelt es in ein rotes „?“ → 2. Klick führt aus. Klick woanders oder 5 s ohne Klick → zurück. Umsetzung: `data-zweistufig="<aktion>"` + Handler `ZWEISTUFIG` in `interaktion.ts`.
 - Oberfläche = frei teilbares Raster mit Arbeitsbereichen; Überblick ist King.
+- Scrollbalken überall schmal (6 px) und dezent (hellgrau, ohne Spur) – global in `stil.css`.
 
 **Aufgabenliste**
 - Abschnitte: Überfällig (hellrot) · Heute fällig (tiefrot) · Diese Woche bis Sonntag (orange) · Später (gelb) · Ohne Frist · Zurückgestellt · Abgeschlossen · (Archiv nur auf Wunsch). Alle klappbar, feine Trennlinie zwischen Abschnitten.

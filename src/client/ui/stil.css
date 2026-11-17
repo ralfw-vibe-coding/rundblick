@@ -659,3 +659,10 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 }
 .board2 .card.einfuegen-oben::before { top: -5px; }
 .board2 .card.einfuegen-unten::after { bottom: -5px; }
+
+/* ===== Scrollbalken überall schmal und dezent ===== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, .14); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, .3); }
+::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
