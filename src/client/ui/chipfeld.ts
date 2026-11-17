@@ -1,5 +1,6 @@
 // Eingabe als Chips: Tippen zeigt passende Vorschläge, ↵ macht aus der Eingabe einen Chip mit ×.
-// Einzelwert (Verantwortlich, Ort) oder mehrere Werte (Tags). ⌫ im leeren Feld entfernt den letzten Chip.
+// Einzelwert (Verantwortlich, Ort – neue Eingabe ersetzt den Chip) oder mehrere Werte (Tags).
+// Der Cursor bleibt nach ↵ im Feld. ⌫ im leeren Feld entfernt den letzten Chip.
 import { body } from './body';
 import { esc } from './dom';
 import { I } from './icons';
@@ -17,9 +18,10 @@ export function chipFeld(root: HTMLElement, o: {
   let markiert = -1;
   root.classList.add('chipfeld');
   const zeichnen = () => {
-    const eingabeSichtbar = !o.gesperrt && (o.mehrfach || werte.length === 0);
+    // Das Eingabefeld bleibt immer da – sonst verliert es nach ↵ den Fokus. Bei Einzelwerten ersetzt eine neue Eingabe den Chip.
+    const eingabeSichtbar = !o.gesperrt;
     root.innerHTML = werte.map((w, i) => `<span class="chip ${KLASSE[o.art]}">${VORZEICHEN[o.art]}${esc(w)}${o.gesperrt ? '' : `<button class="chip-x" data-weg="${i}" title="entfernen">${I.x}</button>`}</span>`).join('')
-      + (eingabeSichtbar ? `<input type="text" placeholder="${esc(werte.length ? '' : o.platzhalter)}">` : '')
+      + (eingabeSichtbar ? `<input type="text" placeholder="${esc(!werte.length ? o.platzhalter : o.mehrfach ? '' : 'ersetzen …')}">` : '')
       + '<div class="vorschl"></div>';
     const inp = root.querySelector('input');
     if (inp) binden(inp);
