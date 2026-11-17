@@ -54,7 +54,11 @@ export function schliessenWenn(id: string): void { if (aktuell?.id === id) schli
 /** Nach Änderungen: offene Schublade aktualisieren (ohne Fokus aus einem Feld zu reißen) */
 export async function auffrischen(): Promise<void> {
   if (!aktuell || !offen()) return;
-  if (schublade!.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement!.tagName)) return;
+  // Wird gerade getippt, nur die Teile ohne Eingabefelder auffrischen (Bilder, Buchungen) – der Cursor bleibt, wo er ist
+  if (schublade!.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement!.tagName)) {
+    if (aktuell.art === 'aufgabe') await teileAuffrischen(aktuell.id);
+    return;
+  }
   if (aktuell.art === 'aufgabe') await aufgabeOeffnen(aktuell.id); else await buchungOeffnen(aktuell.id);
 }
 
@@ -138,6 +142,16 @@ export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
   };
   s.classList.add('open');
   auswahlMelden();
+}
+
+async function teileAuffrischen(id: string): Promise<void> {
+  const a = await body.aufgabe({ aufgabeId: id });
+  if (!a || aktuell?.id !== id || !schublade) return;
+  const gesperrt = a.abgeschlossen || a.archiviert;
+  const anh = schublade.querySelector('.anhaenge');
+  if (anh) { anh.outerHTML = anhaengeHtml(a.anhangliste, id, gesperrt); vorschauenLaden(schublade); }
+  const bl = schublade.querySelector('.bk-list');
+  if (bl) bl.innerHTML = buchungsliste(a);
 }
 
 function buchungsliste(a: AufgabeDetails): string {
