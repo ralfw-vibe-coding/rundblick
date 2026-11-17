@@ -5,7 +5,7 @@ import {
 } from '../../../basis/datum';
 import type { Bereich, BuchungDto, ExternDto, Tag, Zeitraum } from '../../../body/interface';
 import { body } from '../body';
-import { kapazitaetsBalken } from '../bausteine';
+import { auslastungsAnteil, auslastungsStufe, kapazitaetsBalken } from '../bausteine';
 import { esc } from '../dom';
 import { I } from '../icons';
 import type { Dichte, Sicht } from './sicht';
@@ -249,9 +249,10 @@ function timeline(z: Zeitraum, pph: number): string {
     maxF = Math.max(maxF, t.fristen.length);
     t.fristen.forEach((f, k) => { bahn.fristen += `<div class="tl-mark" data-task="${f.aufgabeId}" style="--dfarbe:var(--d-${f.dringlichkeit});left:${x(i, H1 * 60) - 4}px;top:${4 + k * 18}px;flex-direction:row-reverse" title="${esc('Frist: ' + f.titel)}"><span class="dia">${I.frist}</span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(f.titel)}</span>` : ''}</div>`; });
     t.wiedervorlagen.forEach((w, k) => { bahn.wv += `<div class="tl-mark wv" data-task="${w.aufgabeId}" style="left:${x(i, H0 * 60) + 6}px;top:${5 + k * 18}px" title="${esc('Wiedervorlage: ' + w.titel)}"><span class="dia">${I.frist}</span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(w.titel)}</span>` : ''}</div>`; });
-    const a = t.auslastung, p = a.kapazitaet ? a.belegt / a.kapazitaet : a.belegt ? 2 : 0;
-    bahn.last += `<div title="${esc(`${dauerText(a.belegt)} von ${dauerText(a.kapazitaet)}`)}" style="position:absolute;left:${links + 3}px;width:${dayW - 6}px;bottom:3px;height:${(Math.min(1.15, p) / 1.15) * 30}px;border-radius:3px 3px 0 0;background:${p > 1 ? 'var(--over)' : p > 0.8 ? 'var(--soon)' : '#c9c5bd'};opacity:.75"></div>`
-      + (dayW >= 60 && (a.belegt || a.kapazitaet) ? `<span style="position:absolute;left:${links + 6}px;top:3px;font-size:10px;color:${p > 1 ? 'var(--over)' : 'var(--mute)'}">${dauerText(a.belegt).replace(' ', '')} / ${dauerText(a.kapazitaet).replace(' ', '')}</span>` : '');
+    const a = t.auslastung, p = auslastungsAnteil(a), stufe = auslastungsStufe(p);
+    bahn.last += `<div class="tl-last st-${stufe}" title="${esc(`${dauerText(a.belegt)} von ${dauerText(a.kapazitaet)}${stufe === 'ueber' ? ' – überbucht!' : ''}`)}" style="left:${links + 3}px;width:${dayW - 6}px;height:${(Math.min(1.15, p) / 1.15) * 30}px"></div>`
+      + (dayW >= 60 && (a.belegt || a.kapazitaet) ? `<span class="tl-last-text st-${stufe}" style="left:${links + 6}px">${stufe === 'ueber' ? I.warnung : ''}${dauerText(a.belegt).replace(' ', '')} / ${dauerText(a.kapazitaet).replace(' ', '')}</span>`
+        : stufe === 'ueber' ? `<span class="tl-last-text st-ueber" style="left:${links + 4}px">${I.warnung}</span>` : '');
   });
   const iHeute = differenz(start, z.heute);
   const jetzt = iHeute >= 0 && iHeute < N ? `<div class="tl-now" style="left:${x(iHeute, Math.min(Math.max(z.jetzt, H0 * 60), H1 * 60))}px"></div>` : '';

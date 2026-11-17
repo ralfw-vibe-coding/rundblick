@@ -64,10 +64,19 @@ export function karte(a: AufgabeZeile, heute: string, voll: boolean, mitStatus: 
   </div>`;
 }
 
+/** Stufen der Auslastung: grün bis 66 %, gelb bis 85 %, rot bis 100 %, darüber rot mit Warndreieck */
+export type AuslastungsStufe = 'gruen' | 'gelb' | 'rot' | 'ueber';
+export function auslastungsAnteil(x: { belegt: number; kapazitaet: number }): number {
+  return x.kapazitaet ? x.belegt / x.kapazitaet : x.belegt ? Infinity : 0;
+}
+export function auslastungsStufe(p: number): AuslastungsStufe {
+  return p > 1 ? 'ueber' : p > 0.85 ? 'rot' : p > 0.66 ? 'gelb' : 'gruen';
+}
+
 export function kapazitaetsBalken(x: Auslastung, gross = false): string {
-  const p = x.kapazitaet ? x.belegt / x.kapazitaet : x.belegt ? 2 : 0;
+  const p = auslastungsAnteil(x), stufe = auslastungsStufe(p);
   const tip = `${dauerText(x.belegt)} von ${dauerText(x.kapazitaet)} belegt${p > 1 ? ' – überbucht!' : ''}\n· eigene Buchungen: ${dauerText(x.eigene)}\n· externe Kalender: ${dauerText(x.extern)}${x.nichtBelegend ? `\n(nicht belegend: ${dauerText(x.nichtBelegend)})` : ''}`;
-  return `<div class="cap ${p > 1 ? 'overbooked' : p > 0.8 ? 'full' : ''} ${x.kapazitaet ? '' : 'nocap'}" title="${esc(tip)}"${gross ? ' style="height:6px;margin-top:4px"' : ''}><i style="width:${Math.min(100, p * 100)}%"></i></div>`;
+  return `<div class="cap-w ${gross ? 'gross' : ''}" title="${esc(tip)}"><div class="cap st-${stufe} ${x.kapazitaet ? '' : 'nocap'}"><i style="width:${Math.min(100, p * 100)}%"></i></div>${stufe === 'ueber' ? `<span class="cap-warn">${I.warnung}</span>` : ''}</div>`;
 }
 
 export function buchungArt(b: BuchungDto): string { return b.start ? 'Termin' : 'Reservierung'; }

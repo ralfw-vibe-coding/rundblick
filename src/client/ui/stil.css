@@ -693,3 +693,21 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .einfuegemarke { position: absolute; left: 0; right: 0; z-index: 8; pointer-events: none; border-top: 2px solid var(--own); background: color-mix(in srgb, var(--own) 10%, transparent); border-radius: 0 0 4px 4px; }
 .einfuegemarke::before { content: ''; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--own); }
 .einfuegemarke .zeit { position: absolute; top: -9px; right: 4px; font-size: 11px; font-weight: 600; color: #fff; background: var(--own); border-radius: 4px; padding: 0 5px; line-height: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Auslastung in Stufen: grün bis 66 %, gelb bis 85 %, rot bis 100 %, darüber rot mit Warndreieck */
+:root { --last-gruen: #22a55a; --last-gelb: #e6b417; --last-rot: #dc2f2f; }
+.cap-w { display: flex; align-items: center; gap: 3px; margin-top: auto; flex: none; }
+.cap-w .cap { flex: 1; margin: 0; }
+.cap-w.gross { margin-top: 4px; }
+.cap-w.gross .cap { height: 6px; }
+.cap.st-gruen i { background: var(--last-gruen); }
+.cap.st-gelb i { background: var(--last-gelb); }
+.cap.st-rot i, .cap.st-ueber i { background: var(--last-rot); }
+.cap-warn { display: inline-grid; place-items: center; color: var(--last-rot); flex: none; line-height: 0; }
+.cap-warn svg.lu { width: 12px; height: 12px; }
+.cap-w.gross .cap-warn svg.lu { width: 15px; height: 15px; }
+.tl-last { position: absolute; bottom: 3px; border-radius: 3px 3px 0 0; opacity: .8; }
+.tl-last.st-gruen { background: var(--last-gruen); } .tl-last.st-gelb { background: var(--last-gelb); }
+.tl-last.st-rot, .tl-last.st-ueber { background: var(--last-rot); }
+.tl-last-text { position: absolute; top: 3px; font-size: 10px; color: var(--mute); display: inline-flex; align-items: center; gap: 3px; }
+.tl-last-text.st-ueber { color: var(--last-rot); font-weight: 600; }
+.tl-last-text svg.lu { width: 12px; height: 12px; }

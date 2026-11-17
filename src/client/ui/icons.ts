@@ -2,7 +2,7 @@
 import {
   Archive, ArchiveRestore, ArrowDown, ArrowUp, Calendar, CalendarClock, CalendarRange, ChartGantt, Check, ChevronLeft,
   ChevronRight, Circle, CircleCheck, Clock, Columns2, Diamond, Hourglass, List, MapPin, Maximize2, Minimize2, Minus,
-  Paperclip, Pencil, Plus, ImagePlus, RefreshCw, RotateCcw, Rows2, Settings, SquareKanban, Trash2, X,
+  Paperclip, Pencil, Plus, ImagePlus, RefreshCw, RotateCcw, Rows2, Settings, SquareKanban, Trash2, TriangleAlert, X,
 } from 'lucide';
 
 type Knoten = [string, Record<string, string | number | undefined>][];
@@ -15,7 +15,7 @@ function svg(knoten: Knoten): string {
 const k = (n: unknown) => svg(n as Knoten);
 
 export const I = {
-  muell: k(Trash2), archiv: k(Archive), ausArchiv: k(ArchiveRestore), x: k(X),
+  muell: k(Trash2), warnung: k(TriangleAlert), archiv: k(Archive), ausArchiv: k(ArchiveRestore), x: k(X),
   nebeneinander: k(Columns2), untereinander: k(Rows2), maximieren: k(Maximize2), minimieren: k(Minimize2),
   bearbeiten: k(Pencil), einstellungen: k(Settings), plus: k(Plus), minus: k(Minus), zuruecksetzen: k(RotateCcw),
   wiedervorlage: k(CalendarClock), frist: k(Diamond), ort: k(MapPin),
