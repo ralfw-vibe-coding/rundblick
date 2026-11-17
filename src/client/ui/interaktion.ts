@@ -81,18 +81,32 @@ export function interaktionAnbinden(): void {
   });
 
   // ---- Drag & Drop
-  type Zug = { aufgabe: string | null; buchung: string | null; frei: boolean };
+  // dauer: Länge des künftigen Termins (Standarddauer bzw. Dauer der Buchung); versatz: Minuten zwischen
+  // Oberkante des gezogenen Termins und Mauszeiger – so folgt die Einfügemarke dem Terminbeginn.
+  type Zug = { aufgabe: string | null; buchung: string | null; frei: boolean; dauer: number; versatz: number };
   let zug: Zug | null = null;
+  let standarddauer = 60;
+  const standarddauerLaden = async () => { standarddauer = (await body.einstellungen()).standarddauer; };
+  void standarddauerLaden();
+  body.beiAenderung(b => { if (b.includes('einstellungen')) void standarddauerLaden(); });
   const ZIELE = '[data-drop-status],[data-drop-res],[data-drop-day],[data-drop-tl],[data-drop-list]';
   document.addEventListener('dragstart', e => {
     const t = e.target as HTMLElement;
     const b = t.closest<HTMLElement>('[data-booking]'), a = t.closest<HTMLElement>('[data-task]');
     if (!a && !b) return;
-    zug = { aufgabe: a?.dataset.task ?? null, buchung: b?.dataset.booking ?? null, frei: !!b && !b.dataset.task };
+    zug = { aufgabe: a?.dataset.task ?? null, buchung: b?.dataset.booking ?? null, frei: !!b && !b.dataset.task, dauer: standarddauer, versatz: 0 };
+    if (b) {
+      const z = zug;
+      void body.buchung({ buchungId: b.dataset.booking! }).then(x => { if (x) z.dauer = x.dauer; });
+      const spalte = b.closest<HTMLElement>('.dcol');
+      if (spalte && b.classList.contains('ev')) {
+        z.versatz = ((e.clientY - b.getBoundingClientRect().top) / spalte.getBoundingClientRect().height) * SPANMIN;
+      }
+    }
     e.dataTransfer!.setData('text/plain', JSON.stringify(zug));
     e.dataTransfer!.effectAllowed = 'copyMove';
   });
-  document.addEventListener('dragend', () => { zug = null; document.querySelectorAll('.over').forEach(x => x.classList.remove('over')); });
+  document.addEventListener('dragend', () => { zug = null; markeWeg(); document.querySelectorAll('.over').forEach(x => x.classList.remove('over')); });
   document.addEventListener('dragover', e => {
     const z = (e.target as HTMLElement).closest<HTMLElement>(ZIELE);
     if (!z || !zug) return;
@@ -101,13 +115,19 @@ export function interaktionAnbinden(): void {
     if (z.dataset.dropList !== undefined && !zug.frei) return;
     e.preventDefault();
     document.querySelectorAll('.over').forEach(x => x !== z && x.classList.remove('over'));
-    z.classList.add('over');
+    if (z.dataset.dropDay) { z.classList.remove('over'); marke(z, startImRaster(z, e.clientY, zug), zug.dauer); }
+    else { markeWeg(); z.classList.add('over'); }
+  });
+  document.addEventListener('dragleave', e => {
+    const z = (e.target as HTMLElement).closest<HTMLElement>('.dcol[data-drop-day]');
+    if (z && !z.contains(e.relatedTarget as Node | null)) markeWeg();
   });
   document.addEventListener('drop', async e => {
     const z = (e.target as HTMLElement).closest<HTMLElement>(ZIELE);
     if (!z || !zug) return;
     e.preventDefault();
     z.classList.remove('over');
+    markeWeg();
     const { aufgabe, buchung, frei } = zug;
     const platzieren = async (datum: string, start: string | null) => {
       const ort = `${relativ(datum, heute || datum)}${start ? ' ' + start : ''}`;
@@ -120,11 +140,7 @@ export function interaktionAnbinden(): void {
       if (buchung && frei) { r = await body.aufgabeAusBuchung({ buchungId: buchung, status }); if (pruefe(r, 'Aufgabe aus Buchung erstellt') && r.ok) markieren(r.ids!.aufgabeId!); }
       else if (aufgabe && status) pruefe(await body.statusSetzen({ aufgabeId: aufgabe, status }));
     } else if (z.dataset.dropRes) await platzieren(z.dataset.dropRes, null);
-    else if (z.dataset.dropDay) {
-      const r = z.getBoundingClientRect();
-      const min = Math.round((H0 * 60 + ((e.clientY - r.top) / r.height) * SPANMIN) / 15) * 15;
-      await platzieren(z.dataset.dropDay, uhrzeit(Math.max(H0 * 60, Math.min(H1 * 60 - 15, min))));
-    } else if (z.dataset.dropTl) {
+    else if (z.dataset.dropDay) await platzieren(z.dataset.dropDay, uhrzeit(startImRaster(z, e.clientY, zug))); else if (z.dataset.dropTl) {
       let host: HTMLElement | null = z;
       while (host && !(host as HTMLElement & { _tl?: unknown })._tl) host = host.parentElement;
       if (!host) return;
@@ -170,6 +186,26 @@ export function interaktionAnbinden(): void {
     if (id) document.querySelectorAll(`[data-task="${CSS.escape(id)}"]`).forEach(x => x.classList.add('hl'));
   });
 }
+
+// ---------- Einfügemarke beim Ziehen in Tages-, 3-Tages- und Wochenansicht ----------
+/** Startminute (15-Minuten-Raster) für die Mausposition in einer Tagesspalte */
+function startImRaster(spalte: HTMLElement, clientY: number, z: { dauer: number; versatz: number }): number {
+  const r = spalte.getBoundingClientRect();
+  const roh = H0 * 60 + ((clientY - r.top) / r.height) * SPANMIN - z.versatz;
+  return Math.max(H0 * 60, Math.min(H1 * 60 - 15, Math.round(roh / 15) * 15));
+}
+
+let markeEl: HTMLDivElement | null = null;
+function marke(spalte: HTMLElement, start: number, dauer: number): void {
+  if (!markeEl) { markeEl = document.createElement('div'); markeEl.className = 'einfuegemarke'; }
+  if (markeEl.parentElement !== spalte) spalte.appendChild(markeEl);
+  const pct = (m: number) => ((m - H0 * 60) / SPANMIN) * 100;
+  const ende = Math.min(start + dauer, H1 * 60);
+  markeEl.style.top = `${pct(start)}%`;
+  markeEl.style.height = `${pct(ende) - pct(start)}%`;
+  markeEl.innerHTML = `<span class="zeit">${uhrzeit(start)}–${uhrzeit(start + dauer)}</span>`;
+}
+function markeWeg(): void { markeEl?.remove(); }
 
 let pop: HTMLDivElement | null = null;
 function popZu(): void { pop?.remove(); pop = null; }

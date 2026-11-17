@@ -43,6 +43,9 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - Neue Spalte direkt auf dem Board: „+“ hinter dem Gruppennamen (erscheint beim Überfahren) → am Ende der Gruppe eine Spalte mit Eingabefeld und Cursor; ↵ legt an, Esc/leer verwirft (wie in den Einstellungen, kein Dialog).
 - Offene Karten lassen sich senkrecht verschieben (Einfügelinie wie in der Liste), auch in eine andere Spalte (setzt dann zusätzlich den Status). Reihenfolge = derselbe manuelle Rang wie in der Liste.
 
+**Kalender**
+- Ziehen einer Aufgabe (aus Liste/Board) oder eines Termins in Tag/3 Tage/Woche: **keine Einfärbung der ganzen Tagesspalte**, sondern eine **Einfügemarke** – Linie am Terminbeginn (15-Minuten-Raster) mit Uhrzeit „von–bis“ und blassem Block in der Länge des Termins. Neue Termine bekommen die **Standarddauer** (Einstellungen), verschobene behalten ihre Dauer; beim Verschieben folgt die Marke der Oberkante des Termins (Anfasspunkt wird berücksichtigt), auch auf andere Tage.
+
 **Schublade (Aufgabe)**
 - Kopf: Abschließen-Kreis links vom Titel · Archiv · Mülleimer · ×. „×“ und Esc schließen.
 - Reihenfolge: Status als Chips · Frist, Wiedervorlage · Verantwortlich, Ort · Tags · Notiz (füllt den Rest) · Bildanhänge · Buchung hinzufügen · bisherige Buchungen.
