@@ -106,7 +106,7 @@ describe('Queries über den Body', () => {
     expect(passtZuFilter(a, 'angebot #büro')).toBe(false);
   });
 
-  it('Liste: neueste Aufgaben oben in jedem Abschnitt; Board: nach Frist, dann Titel', async () => {
+  it('Liste und Board: neueste Aufgaben oben, danach manuelle Reihenfolge', async () => {
     const { body } = aufbau();
     for (const [titel, frist] of [['Ohne B', null], ['Mit', '2026-11-30'], ['Ohne A', null], ['Früh', '2026-11-25']] as const) {
       await body.aufgabeErfassen({ titel, frist, status: 'idee' });
@@ -116,7 +116,12 @@ describe('Queries über den Body', () => {
     expect(l.gruppen.find(g => g.art === 'spaeter')!.aufgaben.map(a => a.titel)).toEqual(['Früh', 'Mit']);
     // (Ohne A wurde nach Ohne B erfasst, Früh nach Mit → jeweils oben)
     const idee = (await body.board()).kategorien[0]!.spalten.find(s => s.id === 'idee')!;
-    expect(idee.karten.map(k => k.titel)).toEqual(['Früh', 'Mit', 'Ohne A', 'Ohne B']);
+    expect(idee.karten.map(k => k.titel)).toEqual(['Früh', 'Ohne A', 'Mit', 'Ohne B']);
+    // Verschieben wirkt auf Liste und Board gleichermaßen
+    const k = (t: string) => idee.karten.find(x => x.titel === t)!.id;
+    await body.aufgabeVerschieben({ aufgabeId: k('Ohne B'), oben: null, unten: k('Früh') });
+    const neu = (await body.board()).kategorien[0]!.spalten.find(s => s.id === 'idee')!;
+    expect(neu.karten.map(x => x.titel)).toEqual(['Ohne B', 'Früh', 'Ohne A', 'Mit']);
   });
 
   it('Archivieren verbirgt die Aufgabe überall (auch unter Abgeschlossen) – sie steht nur im Archiv', async () => {

@@ -14,13 +14,16 @@ export type BoardZustand = {
   zu?: string[];
   /** offene Bereiche: „<spalte>“ = Abgeschlossen, „zur:<spalte>“ = Zurückgestellt (im kompakten Board je Kategorie) */
   abgOffen?: string[];
+  /** manuell gesetzte Spaltenbreiten in px (sonst teilen sich die Spalten den Platz) */
+  breiten?: Record<string, number>;
 };
+const MIN = 150, ZU = 34, LUECKE = 8;
 
 export class BoardSicht implements Sicht {
   readonly bereiche: Bereich[] = ['board', 'einstellungen'];
   private el: HTMLElement | null = null;
   private dichte: Dichte = 'full';
-  constructor(private z: BoardZustand = {}) { this.z.zu ??= []; this.z.abgOffen ??= []; }
+  constructor(private z: BoardZustand = {}) { this.z.zu ??= []; this.z.abgOffen ??= []; this.z.breiten ??= {}; }
   zustand() { return this.z; }
 
   private zu = (k: string) => this.z.zu!.includes(k);
@@ -49,11 +52,11 @@ export class BoardSicht implements Sicht {
     }
 
     const stapel = (schluessel: string, karten: AufgabeZeile[], voll: boolean, mitStatus: boolean) => {
-      const k = (a: AufgabeZeile) => karte(a, heute, voll, mitStatus, a.id === gewaehlt);
+      const k = (a: AufgabeZeile) => karte(a, heute, voll, mitStatus, a.id === gewaehlt).replace('<div class="card ', `<div ${istOffen(a) ? 'data-offen ' : ''}class="card `);
       const bereich = (name: string, schl: string, liste: AufgabeZeile[]) => liste.length ? `
         <div class="abg-h ${this.abg(schl) ? 'open' : ''}" data-abg="${esc(schl)}"><span class="caret">${I.rechts}</span>${name} <span class="n">${liste.length}</span></div>
         ${this.abg(schl) ? liste.map(k).join('') : ''}` : '';
-      return `<div class="cards">${karten.filter(istOffen).map(k).join('')}${bereich('Zurückgestellt', `zur:${schluessel}`, karten.filter(a => !a.abgeschlossen && a.zurueckgestellt))}${bereich('Abgeschlossen', schluessel, karten.filter(a => a.abgeschlossen))}</div>`;
+      return `<div class="cards" data-spalte="${esc(schluessel)}">${karten.filter(istOffen).map(k).join('')}${bereich('Zurückgestellt', `zur:${schluessel}`, karten.filter(a => !a.abgeschlossen && a.zurueckgestellt))}${bereich('Abgeschlossen', schluessel, karten.filter(a => a.abgeschlossen))}</div>`;
     };
     const offenZahl = (karten: AufgabeZeile[]) => karten.filter(istOffen).length;
     const caret = `<span class="caret">${I.rechts}</span>`;
@@ -73,11 +76,13 @@ export class BoardSicht implements Sicht {
         const offenSpalten = kzu ? 0 : k.spalten.filter(s => !this.zu(s.id)).length;
         const kopf = `<div class="kat-h kat-b-${katKlasse(k.id)} ${kzu ? '' : 'open'}" data-zu="${k.id}" title="${kzu ? 'Aufklappen' : 'Zuklappen'}">${caret}<span class="nm">${k.name}</span> <span class="n">${offenZahl(k.spalten.flatMap(s => s.karten))}</span></div>`;
         if (kzu) return `<div class="kat zu">${kopf}</div>`;
-        const minBreite = offenSpalten * 150 + (k.spalten.length - offenSpalten) * 34 + (k.spalten.length - 1) * 8;
-        return `<div class="kat" style="flex:${Math.max(offenSpalten, 0.2)} 0 0;min-width:${minBreite}px">${kopf}
+        const offene = kzu ? [] : k.spalten.filter(s => !this.zu(s.id));
+        const fest = offene.filter(s => this.z.breiten![s.id]), frei = offene.length - fest.length;
+        const basis = fest.reduce((n, s) => n + this.z.breiten![s.id]!, 0) + frei * MIN + (k.spalten.length - offenSpalten) * ZU + (k.spalten.length - 1) * LUECKE;
+        return `<div class="kat" style="flex:${frei} 0 ${basis}px;min-width:${basis}px">${kopf}
           <div class="kat-cols">${k.spalten.map(s => {
-            const zu = this.zu(s.id);
-            return `<div class="col ${zu ? 'zu' : ''}" data-drop-status="${s.id}">
+            const zu = this.zu(s.id), b = this.z.breiten![s.id];
+            return `<div class="col ${zu ? 'zu' : ''}" data-drop-status="${s.id}"${!zu && b ? ` style="flex:0 0 ${b}px"` : ''}>${zu ? '' : `<div class="spalten-griff" data-griff="${s.id}" title="Ziehen: Breite ändern · Doppelklick: automatisch"></div>`}
               <div class="col-h ${zu ? '' : 'open'}" data-zu="${s.id}" title="${zu ? 'Aufklappen' : 'Zuklappen'}">${caret}${statusPunkt(s.id)}<span class="nm">${esc(s.name)}</span><span class="n">${offenZahl(s.karten)}</span></div>
               ${zu ? '' : stapel(s.id, s.karten, true, false)}</div>`;
           }).join('')}</div></div>`;
@@ -89,10 +94,83 @@ export class BoardSicht implements Sicht {
       if (zu) { this.schalten('zu', zu.dataset.zu!); void this.neu(); }
       if (abg) { this.schalten('abgOffen', abg.dataset.abg!); void this.neu(); }
     };
+    el.ondblclick = e => {
+      const g = (e.target as HTMLElement).closest<HTMLElement>('[data-griff]');
+      if (g) { delete this.z.breiten![g.dataset.griff!]; void this.neu(); }
+    };
+    if (!el.dataset.board) { el.dataset.board = '1'; this.griffeAnbinden(el); verschiebbarMachen(el); }
     el.querySelector<HTMLElement>('.card.gewaehlt')?.scrollIntoView({ block: 'nearest' });
   }
 
+  /** Spaltenbreite per Ziehgriff am rechten Spaltenrand */
+  private griffeAnbinden(el: HTMLElement): void {
+    el.addEventListener('pointerdown', e => {
+      const g = (e.target as HTMLElement).closest<HTMLElement>('[data-griff]');
+      if (!g) return;
+      e.preventDefault(); e.stopPropagation();
+      const col = g.parentElement!, kat = col.closest<HTMLElement>('.kat')!;
+      const start = e.clientX, breite0 = col.getBoundingClientRect().width, kat0 = kat.getBoundingClientRect().width;
+      g.setPointerCapture(e.pointerId); g.classList.add('aktiv');
+      let breite = breite0;
+      const bewegen = (m: PointerEvent) => {
+        breite = Math.max(MIN, Math.round(breite0 + m.clientX - start));
+        col.style.flex = `0 0 ${breite}px`;
+        kat.style.minWidth = `${kat0 + breite - breite0}px`;
+      };
+      const los = () => {
+        g.removeEventListener('pointermove', bewegen); g.removeEventListener('pointerup', los);
+        g.classList.remove('aktiv');
+        this.z.breiten![g.dataset.griff!] = breite;
+        void this.neu();
+      };
+      g.addEventListener('pointermove', bewegen); g.addEventListener('pointerup', los);
+    });
+  }
+
   private async neu(): Promise<void> { if (this.el) await this.render(this.el, this.dichte); }
+}
+
+// ---------- Karten senkrecht verschieben (manuelle Reihenfolge = derselbe Rang wie in der Liste) ----------
+// Gezogen wird nur unter den offenen Karten. Landet eine Karte in einer anderen Spalte, bekommt sie
+// zusätzlich deren Status. Die Einfügestelle zeigt eine Linie wie in der Aufgabenliste.
+const TYP = 'application/x-rb-karte';
+function verschiebbarMachen(el: HTMLElement): void {
+  let gezogen: HTMLElement | null = null;
+  const weg = () => el.querySelectorAll('.einfuegen-oben, .einfuegen-unten').forEach(x => x.classList.remove('einfuegen-oben', 'einfuegen-unten'));
+  const offeneIn = (cards: HTMLElement) => [...cards.querySelectorAll<HTMLElement>(':scope > .card[data-offen]')];
+  el.addEventListener('dragstart', e => {
+    const c = (e.target as HTMLElement).closest<HTMLElement>('.board2 .card[data-offen]');
+    gezogen = c;
+    if (c) e.dataTransfer!.setData(TYP, c.dataset.task!);
+  });
+  el.addEventListener('dragend', () => { gezogen = null; weg(); });
+  const ziel = (e: DragEvent) => {
+    if (!gezogen || !e.dataTransfer!.types.includes(TYP)) return null;
+    const c = (e.target as HTMLElement).closest<HTMLElement>('.board2 .card[data-offen]');
+    if (c && c !== gezogen) { const r = c.getBoundingClientRect(); return { c, oben: e.clientY < r.top + r.height / 2 }; }
+    // unter der letzten offenen Karte einer Spalte
+    const cards = (e.target as HTMLElement).closest<HTMLElement>('.board2 .cards');
+    const letzte = cards ? offeneIn(cards).filter(x => x !== gezogen).at(-1) : undefined;
+    return letzte && e.clientY > letzte.getBoundingClientRect().bottom ? { c: letzte, oben: false } : null;
+  };
+  el.addEventListener('dragover', e => {
+    const z = ziel(e);
+    weg();
+    if (!z) return;
+    e.preventDefault(); e.stopPropagation();
+    z.c.classList.add(z.oben ? 'einfuegen-oben' : 'einfuegen-unten');
+  });
+  el.addEventListener('drop', async e => {
+    const z = ziel(e);
+    weg();
+    if (!z || !gezogen) return;
+    e.preventDefault(); e.stopPropagation();
+    const id = gezogen.dataset.task!, spalte = z.c.parentElement!.dataset.spalte!;
+    const reihe = offeneIn(z.c.parentElement!).filter(x => x !== gezogen);
+    const i = reihe.indexOf(z.c) + (z.oben ? 0 : 1);
+    if (gezogen.parentElement!.dataset.spalte !== spalte) await body.statusSetzen({ aufgabeId: id, status: spalte });
+    await body.aufgabeVerschieben({ aufgabeId: id, oben: reihe[i - 1]?.dataset.task ?? null, unten: reihe[i]?.dataset.task ?? null });
+  });
 }
 
 /** auf dem Board „offen“ = weder abgeschlossen noch zurückgestellt */

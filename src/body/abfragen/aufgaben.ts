@@ -39,7 +39,6 @@ export function passtZuFilter(a: AufgabeZ, filter: string): boolean {
   return f.split(/\s+/).every(w => text.includes(w));
 }
 
-const nachFrist = (x: AufgabeZeile, y: AufgabeZeile) => (x.frist ?? '9999').localeCompare(y.frist ?? '9999') || x.titel.localeCompare(y.titel, 'de');
 
 /** Liste: in jedem Abschnitt nach manuellem Rang – neue Aufgaben bekommen den obersten Rang */
 export function liste(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: Map<Id, SpalteZ>, heute: Datum, filter = ''): Aufgabenliste {
@@ -61,17 +60,18 @@ export function liste(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: Map<
 }
 
 /** Board: alle Aufgaben mit Status – auch zurückgestellte und abgeschlossene (die Oberfläche zeigt sie in eigenen Bereichen der Spalte), aber keine archivierten.
- *  Reihenfolge je Spalte: offen · zurückgestellt · abgeschlossen. */
+ *  Reihenfolge je Spalte: offen · zurückgestellt · abgeschlossen, innerhalb davon der manuelle Rang (wie in der Liste). */
 export function board(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: SpalteZ[], heute: Datum): Board {
   const map = new Map(spalten.map(s => [s.id, s]));
   const karten = aufgaben.filter(a => a.status && map.has(a.status) && !a.archiviert).map(a => zeile(a, buchungen, map, heute));
   const stufe = (c: AufgabeZeile) => (c.abgeschlossen ? 2 : c.zurueckgestellt ? 1 : 0);
+  const rang = new Map(aufgaben.map(a => [a.id, a.rang]));
   return {
     heute,
     kategorien: KATEGORIEN.map(k => {
       const sp = spalten.filter(s => s.kategorie === k.id).map(s => ({
         id: s.id, name: s.name,
-        karten: karten.filter(c => c.status!.id === s.id).sort((x, y) => stufe(x) - stufe(y) || nachFrist(x, y)),
+        karten: karten.filter(c => c.status!.id === s.id).sort((x, y) => stufe(x) - stufe(y) || rang.get(x.id)! - rang.get(y.id)!),
       }));
       return { id: k.id, name: k.name, anzahl: sp.reduce((n, s) => n + s.karten.length, 0), spalten: sp };
     }),
