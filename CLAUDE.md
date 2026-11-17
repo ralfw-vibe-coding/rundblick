@@ -36,7 +36,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 **Schublade (Aufgabe)**
 - Kopf: Abschließen-Kreis links vom Titel · Archiv · Mülleimer · ×. „×“ und Esc schließen.
 - Reihenfolge: Status als Chips · Frist, Wiedervorlage · Verantwortlich, Ort · Tags · Notiz (füllt den Rest) · Bildanhänge · Buchung hinzufügen · bisherige Buchungen.
-- Feldbezeichnungen klein und dezent.
+- Feldbezeichnungen klein und dezent: normale Schreibweise (keine Versalien), 11 px, hellgrau, ohne Sperrung.
 - Verantwortlich, Ort, Tags sind **Chip-Felder** mit Vorschlägen; ↵ macht einen Chip mit ×; **Cursor bleibt nach ↵ im Feld**; Verantwortlich/Ort je ein Wert (neue Eingabe ersetzt), Tags mehrere; kein Platzhaltertext, sobald ein Chip gesetzt ist; Felder einzeilig, lange Chips mit „…“.
 - **Notiz mit Markdown** (fett, kursiv, Links, Listen, abhakbare Checklisten): leer → Bearbeiten-Modus mit Cursor darin beim Öffnen; sonst Ansicht, in der man abhaken kann; ✎ oder Doppelklick → Bearbeiten.
 - **Bilder an der Notiz:** per Drag & Drop auf die Schublade oder ⌘V; Vorschau unter der Notiz mit **Nummer im Kreis**; „×“ (zweistufig) löscht; Klick → Großansicht. Dateien in `<datenordner>/anhaenge/<id>`, Events `AnhangHinzugefuegt`/`AnhangEntfernt`.

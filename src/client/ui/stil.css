@@ -588,3 +588,4 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 /* Manuelle Reihenfolge: Einfügelinie beim Ziehen */
 .row.einfuegen-oben { box-shadow: inset 0 2px 0 var(--own); }
 .row.einfuegen-unten { box-shadow: inset 0 -2px 0 var(--own); }
+.drawer .fld label { text-transform: none; letter-spacing: 0; font-size: 11px; font-weight: 400; color: #b6b4bb; margin-bottom: 3px; }
