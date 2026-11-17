@@ -6,6 +6,7 @@ import { einstellungenOffen, einstellungenSchliessen, einstellungenUmschalten, e
 import { interaktionAnbinden, zweistufigAnbinden } from './interaktion';
 import { I } from './icons';
 import { Raster } from './raster';
+import { ausgewaehlteVerschieben } from './sichten/liste';
 import { schnellerfassungAnbinden } from './schnellerfassung';
 
 const raster = new Raster($('#area'), $('#ws'));
@@ -33,6 +34,8 @@ addEventListener('rb-auswahl', () => raster.aktualisieren(['aufgaben', 'board'])
 zweistufigAnbinden((act, id) => { if (act === 'verwerfen' || act === 'stornieren') schubladeSchliessenWenn(id); });
 
 document.addEventListener('keydown', e => {
+  const imFeld = /INPUT|TEXTAREA|SELECT/.test((e.target as HTMLElement)?.tagName ?? '');
+  if (e.altKey && !imFeld && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); void ausgewaehlteVerschieben(e.key === 'ArrowUp' ? -1 : 1); return; }
   if (tippt(e)) return;
   if (/^[1-9]$/.test(e.key)) raster.wechseln(Number(e.key) - 1);
   else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); erfassung.focus(); }

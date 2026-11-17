@@ -59,6 +59,10 @@ export class ListenSicht implements Sicht {
     if (!h) h = this.z.filter ? '<div class="leer">Nichts gefunden.</div>' : '<div class="leer">Noch keine Aufgaben.<br>Oben eintippen und ↵ – oder <kbd>N</kbd>.</div>';
     const b = el.querySelector<HTMLElement>('.list-b')!;
     b.innerHTML = h;
+    // jede Zeile kennt ihren Abschnitt – verschoben wird nur innerhalb desselben
+    let grp = '';
+    for (const k of [...b.children] as HTMLElement[]) { if (k.dataset.grp) grp = k.dataset.grp; else if (k.classList.contains('row')) k.dataset.abschnitt = grp; }
+    if (!el.dataset.sortierbar) { el.dataset.sortierbar = '1'; sortierbarMachen(b); }
     el.querySelector('.cnt')!.textContent = `${l.offen} offen`;
 
     b.querySelectorAll<HTMLElement>('.row.frisch').forEach(r => {
@@ -83,4 +87,53 @@ export class ListenSicht implements Sicht {
       <div class="peek">${vorn.map(a => `<div data-task="${a.id}">${I.frist} ${esc(a.titel)}</div>`).join('')}</div>
     </div>`;
   }
+}
+
+// ---------- Manuelle Reihenfolge innerhalb eines Abschnitts ----------
+const TYP = 'application/x-rb-abschnitt-';
+const nachbarn = (row: HTMLElement, ohne?: HTMLElement) => [...row.parentElement!.querySelectorAll<HTMLElement>(`.row[data-abschnitt="${row.dataset.abschnitt}"]`)].filter(r => r !== ohne);
+
+function sortierbarMachen(b: HTMLElement): void {
+  let gezogen: HTMLElement | null = null;
+  b.addEventListener('dragstart', e => {
+    const r = (e.target as HTMLElement).closest<HTMLElement>('.row[data-abschnitt]');
+    gezogen = r;
+    if (r) e.dataTransfer!.setData(TYP + r.dataset.abschnitt, r.dataset.task!);
+  });
+  b.addEventListener('dragend', () => { gezogen = null; markierungWeg(b); });
+  const ziel = (e: DragEvent) => {
+    const r = (e.target as HTMLElement).closest<HTMLElement>('.row[data-abschnitt]');
+    if (!r || !gezogen || r === gezogen || !e.dataTransfer!.types.includes(TYP + r.dataset.abschnitt)) return null;
+    const box = r.getBoundingClientRect();
+    return { r, oben: e.clientY < box.top + box.height / 2 };
+  };
+  b.addEventListener('dragover', e => {
+    const z = ziel(e);
+    markierungWeg(b);
+    if (!z) return;
+    e.preventDefault();
+    z.r.classList.add(z.oben ? 'einfuegen-oben' : 'einfuegen-unten');
+  });
+  b.addEventListener('drop', async e => {
+    const z = ziel(e);
+    markierungWeg(b);
+    if (!z || !gezogen) return;
+    e.preventDefault(); e.stopPropagation();
+    const reihe = nachbarn(z.r, gezogen);
+    const i = reihe.indexOf(z.r) + (z.oben ? 0 : 1);
+    await body.aufgabeVerschieben({ aufgabeId: gezogen.dataset.task!, oben: reihe[i - 1]?.dataset.task ?? null, unten: reihe[i]?.dataset.task ?? null });
+  });
+}
+const markierungWeg = (b: HTMLElement) => b.querySelectorAll('.einfuegen-oben, .einfuegen-unten').forEach(x => x.classList.remove('einfuegen-oben', 'einfuegen-unten'));
+
+/** ⌥↑ / ⌥↓: die geöffnete Aufgabe in ihrem Abschnitt um eine Position verschieben */
+export async function ausgewaehlteVerschieben(richtung: -1 | 1): Promise<void> {
+  const r = document.querySelector<HTMLElement>('.list-b .row.gewaehlt[data-abschnitt]');
+  if (!r) return;
+  const reihe = nachbarn(r);
+  const i = reihe.indexOf(r), j = i + richtung;
+  if (j < 0 || j >= reihe.length) return;
+  const ohne = reihe.filter(x => x !== r);
+  // j ist zugleich die Einfügeposition in der Reihe ohne die Aufgabe
+  await body.aufgabeVerschieben({ aufgabeId: r.dataset.task!, oben: ohne[j - 1]?.dataset.task ?? null, unten: ohne[j]?.dataset.task ?? null });
 }

@@ -69,6 +69,14 @@ export class RundblickBody implements Body {
   async aufgabeArchivieren(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeArchivieren(c)); }
   async aufgabeAusArchivHolen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeAusArchivHolen(c)); }
 
+  async aufgabeVerschieben(c: { aufgabeId: string; oben: string | null; unten: string | null }): Promise<CommandStatus> {
+    const rang = (id: string | null) => (id ? this.x.domain.aufgabe(id)?.rang ?? null : null);
+    const o = rang(c.oben), u = rang(c.unten);
+    const neu = o !== null && u !== null ? (o + u) / 2 : o !== null ? o + 1 : u !== null ? u - 1 : null;
+    if (neu === null) return { ok: true };
+    return status(this.x.domain.aufgabeEinsortieren({ aufgabeId: c.aufgabeId, rang: neu }));
+  }
+
   // ---------------- Commands: Anhänge ----------------
   async anhangHinzufuegen(c: { aufgabeId: string; name: string; typ: string; daten: string }): Promise<CommandStatus> {
     let bytes: Uint8Array;

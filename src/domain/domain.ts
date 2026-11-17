@@ -32,6 +32,7 @@ export class Domain implements DomainInterface {
   aufgabeAusArchivHolen: DomainInterface['aufgabeAusArchivHolen'] = c => A.aufgabeAusArchivHolen(this.es, c);
   anhangHinzufuegen: DomainInterface['anhangHinzufuegen'] = c => A.anhangHinzufuegen(this.es, c);
   anhangEntfernen: DomainInterface['anhangEntfernen'] = c => A.anhangEntfernen(this.es, c);
+  aufgabeEinsortieren: DomainInterface['aufgabeEinsortieren'] = c => A.aufgabeEinsortieren(this.es, c);
   buchungAnlegen: DomainInterface['buchungAnlegen'] = c => B.buchungAnlegen(this.es, c);
   buchungEintragen: DomainInterface['buchungEintragen'] = c => B.buchungEintragen(this.es, c);
   buchungAendern: DomainInterface['buchungAendern'] = c => B.buchungAendern(this.es, c);

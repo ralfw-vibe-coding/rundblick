@@ -100,7 +100,7 @@ describe('Queries über den Body', () => {
   it('Dringlichkeit und Filter als pure Funktionen', () => {
     expect(dringlichkeit(null, '2026-11-16')).toBeNull();
     expect(['2026-11-15', '2026-11-16', '2026-11-18', '2026-11-30'].map(f => dringlichkeit(f, '2026-11-16'))).toEqual(['ueberfaellig', 'heute', 'woche', 'spaeter']);
-    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [] };
+    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [], rang: 0 };
     expect(passtZuFilter(a, '  ')).toBe(true);
     expect(passtZuFilter(a, 'angebot #kunde')).toBe(true);
     expect(passtZuFilter(a, 'angebot #büro')).toBe(false);
@@ -153,6 +153,24 @@ describe('Queries über den Body', () => {
     const t = (await body.zeitraum({ von: '2026-12-01', bis: '2026-12-01' })).tage[0]!;
     expect(t.extern.map(e => [e.titel, e.start, e.kalender])).toEqual([['Monatsanfang', null, 'Familie'], ['Fremd', 600, '?'], ['Yoga', 1110, 'Privat']]);
     expect(t.auslastung).toMatchObject({ belegt: 0, nichtBelegend: 30 + 75 });
+  });
+});
+
+describe('Manuelle Priorisierung', () => {
+  it('Aufgabe zwischen Nachbarn, an den Anfang und ans Ende verschieben', async () => {
+    const { body } = aufbau();
+    const ids: Record<string, string> = {};
+    for (const t of ['A', 'B', 'C', 'D']) ids[t] = id(await body.aufgabeErfassen({ titel: t }), 'aufgabeId');
+    const reihe = async () => (await body.liste({})).gruppen.find(g => g.art === 'ohne')!.aufgaben.map(a => a.titel).join('');
+    expect(await reihe()).toBe('DCBA');
+    await body.aufgabeVerschieben({ aufgabeId: ids.A!, oben: ids.D!, unten: ids.C! });
+    expect(await reihe()).toBe('DACB');
+    await body.aufgabeVerschieben({ aufgabeId: ids.B!, oben: null, unten: ids.D! });
+    expect(await reihe()).toBe('BDAC');
+    await body.aufgabeVerschieben({ aufgabeId: ids.B!, oben: ids.C!, unten: null });
+    expect(await reihe()).toBe('DACB');
+    expect(await body.aufgabeVerschieben({ aufgabeId: ids.B!, oben: null, unten: null })).toEqual({ ok: true });
+    expect(await body.aufgabeVerschieben({ aufgabeId: ids.B!, oben: 'gibtsnicht', unten: null })).toEqual({ ok: true });
   });
 });
 

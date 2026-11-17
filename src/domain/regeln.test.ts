@@ -87,6 +87,19 @@ describe('Archiv', () => {
   });
 });
 
+describe('Manuelle Reihenfolge', () => {
+  it('neue Aufgaben kommen nach oben; Einsortieren setzt den Rang', () => {
+    erfasse('a1'); erfasse('a2');
+    d.buchungEintragen({ buchungId: 'b', titel: 'B', datum: '2026-11-17' });
+    d.aufgabeAusBuchung({ buchungId: 'b', aufgabeId: 'a3' });
+    expect(['a1', 'a2', 'a3'].map(id => d.aufgabe(id)!.rang)).toEqual([-1, -2, -3]);
+    expect(d.aufgabeEinsortieren({ aufgabeId: 'a1', rang: -2.5 })).toMatchObject(ja);
+    expect(d.aufgabe('a1')!.rang).toBe(-2.5);
+    expect(d.aufgabeEinsortieren({ aufgabeId: 'fehlt', rang: 1 })).toMatchObject(nein);
+    expect(d.aufgabeEinsortieren({ aufgabeId: 'a1', rang: Infinity })).toMatchObject(nein);
+  });
+});
+
 describe('Anhänge', () => {
   it('nur Bilder bis 25 MB, nur an offenen Aufgaben; Entfernen wirkt einmal', () => {
     expect(d.anhangHinzufuegen({ aufgabeId: 'fehlt', anhangId: 'x', name: 'a.png', typ: 'image/png', groesse: 10 })).toMatchObject(nein);

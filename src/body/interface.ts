@@ -115,6 +115,8 @@ export interface Body {
   /** Bild an die Notiz hängen; daten = Base64 */
   anhangHinzufuegen(c: { aufgabeId: Id; name: string; typ: string; daten: string }): Promise<CommandStatus>;
   anhangEntfernen(c: { aufgabeId: Id; anhangId: Id }): Promise<CommandStatus>;
+  /** Manuell priorisieren: Aufgabe zwischen zwei Nachbarn einsortieren (oben/unten = Nachbar-IDs oder null am Rand) */
+  aufgabeVerschieben(c: { aufgabeId: Id; oben: Id | null; unten: Id | null }): Promise<CommandStatus>;
   // ---- Commands: Buchungen
   buchungAnlegen(c: { aufgabeId: Id; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten }): Promise<CommandStatus>;
   buchungEintragen(c: { titel: string; beschreibung?: string; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten }): Promise<CommandStatus>;
@@ -155,7 +157,7 @@ export interface Body {
 /** Namen aller Methoden außer der Benachrichtigung – für die IPC-Brücke */
 export type BodyMethode = Exclude<keyof Body, 'beiAenderung'>;
 export const BODY_METHODEN: readonly BodyMethode[] = [
-  'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen',
+  'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen', 'aufgabeVerschieben',
   'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung',
   'spalteAnlegen', 'spalteUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',

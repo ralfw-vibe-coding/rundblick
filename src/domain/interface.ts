@@ -20,6 +20,7 @@ export interface DomainInterface {
   aufgabeAusArchivHolen(c: { aufgabeId: Id }): Ergebnis;
   anhangHinzufuegen(c: { aufgabeId: Id; anhangId: Id; name: string; typ: string; groesse: number }): Ergebnis;
   anhangEntfernen(c: { aufgabeId: Id; anhangId: Id }): Ergebnis;
+  aufgabeEinsortieren(c: { aufgabeId: Id; rang: number }): Ergebnis;
   buchungAnlegen(c: { buchungId: Id; aufgabeId: Id; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten; titel?: string }): Ergebnis;
   buchungEintragen(c: { buchungId: Id; titel: string; beschreibung?: string; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten; belegt?: boolean }): Ergebnis;
   buchungAendern(c: { buchungId: Id; aenderungen: BuchungAenderungen }): Ergebnis;

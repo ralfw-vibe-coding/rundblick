@@ -23,6 +23,10 @@ export function anwenden(b: Bestand, e: DomainEvent): void {
     const id = d.aufgabeId;
     if (!e.typ.startsWith('Buchung')) {
       const neu = aufgabeEntwickeln(b.aufgaben.get(id) ?? null, e);
+      // eine neu erfasste Aufgabe kommt in der manuellen Reihenfolge ganz nach oben
+      if (neu && (e.typ === 'AufgabeErfasst' || e.typ === 'AufgabeAusBuchungErstellt') && !b.aufgaben.has(id)) {
+        neu.rang = Math.min(0, ...[...b.aufgaben.values()].map(a => a.rang)) - 1;
+      }
       if (neu) b.aufgaben.set(id, neu);
     }
   }

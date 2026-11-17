@@ -27,7 +27,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 
 **Aufgabenliste**
 - Abschnitte: Überfällig (hellrot) · Heute fällig (tiefrot) · Diese Woche bis Sonntag (orange) · Später (gelb) · Ohne Frist · Zurückgestellt · Abgeschlossen · (Archiv nur auf Wunsch). Alle klappbar, feine Trennlinie zwischen Abschnitten.
-- In jedem Abschnitt stehen die **neuesten Aufgaben oben** (Erfassungsreihenfolge), nicht alphabetisch.
+- In jedem Abschnitt gilt eine **manuelle Reihenfolge** (Priorisierung): neue Aufgaben kommen oben hinein; per Drag & Drop (nur innerhalb des Abschnitts) oder ⌥↑/⌥↓ für die geöffnete Aufgabe verschieben. Technisch: Rang je Aufgabe, Event `AufgabeEinsortiert`, Body-Command `aufgabeVerschieben(oben, unten)`.
 - Neue Aufgaben: 5 s hervorgehoben und in den Blick gerollt (`frisch.ts`).
 - Fälligkeit (Raute + Datum) steht **direkt hinter dem Titel**.
 - Mülleimer erscheint beim Überfahren einer Zeile.

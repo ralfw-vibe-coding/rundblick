@@ -9,6 +9,8 @@ export type AufgabeZ = {
   abgeschlossen: boolean; verworfen: boolean; archiviert: boolean;
   /** Bildanhänge der Notiz, in Reihenfolge des Hinzufügens */
   anhaenge: AnhangZ[];
+  /** Rang für die manuelle Reihenfolge (kleiner = weiter oben); neue Aufgaben kommen nach oben */
+  rang: number;
 };
 
 export type AnhangZ = { id: Id; name: string; typ: string; groesse: number };
@@ -25,10 +27,10 @@ export const PLANUNG_STANDARD: PlanungZ = { kapazitaet: [360, 360, 360, 360, 300
 
 export function aufgabeEntwickeln(z: AufgabeZ | null, e: DomainEvent): AufgabeZ | null {
   switch (e.typ) {
-    case 'AufgabeErfasst': return { ...e.daten, id: e.daten.aufgabeId, tags: [...e.daten.tags], abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [] };
+    case 'AufgabeErfasst': return { ...e.daten, id: e.daten.aufgabeId, tags: [...e.daten.tags], abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [], rang: 0 };
     case 'AufgabeAusBuchungErstellt': return {
       id: e.daten.aufgabeId, titel: e.daten.titel, beschreibung: e.daten.beschreibung, ort: '', verantwortlich: '', tags: [],
-      frist: null, wiedervorlage: null, status: e.daten.status, abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [],
+      frist: null, wiedervorlage: null, status: e.daten.status, abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [], rang: 0,
     };
   }
   if (!z) return z;
@@ -51,6 +53,7 @@ export function aufgabeEntwickeln(z: AufgabeZ | null, e: DomainEvent): AufgabeZ 
     case 'AufgabeArchiviert': return { ...z, archiviert: true };
     case 'AufgabeAusArchivGeholt': return { ...z, archiviert: false };
     case 'AnhangHinzugefuegt': return { ...z, anhaenge: [...z.anhaenge, { id: e.daten.anhangId, name: e.daten.name, typ: e.daten.typ, groesse: e.daten.groesse }] };
+    case 'AufgabeEinsortiert': return { ...z, rang: e.daten.rang };
     case 'AnhangEntfernt': return { ...z, anhaenge: z.anhaenge.filter(x => x.id !== e.daten.anhangId) };
     default: return z;
   }

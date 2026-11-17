@@ -41,9 +41,9 @@ export function passtZuFilter(a: AufgabeZ, filter: string): boolean {
 
 const nachFrist = (x: AufgabeZeile, y: AufgabeZeile) => (x.frist ?? '9999').localeCompare(y.frist ?? '9999') || x.titel.localeCompare(y.titel, 'de');
 
-/** Liste: in jedem Abschnitt stehen die neuesten Aufgaben oben (Erfassungsreihenfolge rückwärts) */
+/** Liste: in jedem Abschnitt nach manuellem Rang – neue Aufgaben bekommen den obersten Rang */
 export function liste(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: Map<Id, SpalteZ>, heute: Datum, filter = ''): Aufgabenliste {
-  const neuesteZuerst = [...aufgaben].reverse().filter(a => passtZuFilter(a, filter));
+  const neuesteZuerst = [...aufgaben].sort((x, y) => x.rang - y.rang).filter(a => passtZuFilter(a, filter));
   const z = (a: AufgabeZ) => zeile(a, buchungen, spalten, heute);
   const sichtbar = neuesteZuerst.filter(a => !a.archiviert);
   const offen = sichtbar.filter(a => !a.abgeschlossen && !istZurueckgestellt(a, heute)).map(z);

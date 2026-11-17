@@ -189,4 +189,14 @@ export function anhangEntfernen(es: EventStore, c: { aufgabeId: Id; anhangId: Id
   });
 }
 
+/** Manuelle Priorisierung: neuen Rang setzen (der Body berechnet ihn aus den Nachbarn) */
+export function aufgabeEinsortieren(es: EventStore, c: { aufgabeId: Id; rang: number }): Ergebnis {
+  return ctx(es, [tag.aufgabe(c.aufgabeId)], b => {
+    const a = b.aufgaben.get(c.aufgabeId);
+    if (!a || a.verworfen) return { ok: false, fehler: ['Aufgabe unbekannt.'] };
+    if (!Number.isFinite(c.rang)) return { ok: false, fehler: ['Ungültiger Rang.'] };
+    return [{ typ: 'AufgabeEinsortiert', tags: [tag.aufgabe(c.aufgabeId)], daten: { aufgabeId: c.aufgabeId, rang: c.rang } }];
+  });
+}
+
 export { fehler };

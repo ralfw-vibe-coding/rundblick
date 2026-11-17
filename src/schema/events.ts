@@ -30,6 +30,8 @@ export type DomainEvent =
   | E<'AufgabeArchiviert', { aufgabeId: Id }>
   | E<'AnhangHinzugefuegt', { aufgabeId: Id; anhangId: Id; name: string; typ: string; groesse: number }>
   | E<'AnhangEntfernt', { aufgabeId: Id; anhangId: Id }>
+  /** manuelle Priorisierung: kleinerer Rang = weiter oben */
+  | E<'AufgabeEinsortiert', { aufgabeId: Id; rang: number }>
   | E<'AufgabeAusArchivGeholt', { aufgabeId: Id }>
   // ---- Buchungen (ohne aufgabeId = freie Buchung; ohne start = Reservierung)
   | E<'BuchungAngelegt', {
