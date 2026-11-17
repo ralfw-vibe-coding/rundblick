@@ -469,3 +469,33 @@ kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ff
 .buchen { display: grid; grid-template-columns: 1.3fr 1fr 1fr auto; gap: 6px; }
 .buchen input, .buchen select { min-width: 0; }
 .drawer .bk-list { max-height: 180px; overflow: auto; }
+/* ===== Feedback 17.11. (2): Auswahl, Chip-Felder, Markdown-Notiz ===== */
+.row.gewaehlt { background: var(--own-soft); box-shadow: inset 3px 0 0 var(--own); }
+.card.gewaehlt { outline: 2px solid var(--own); outline-offset: -1px; }
+.chipfeld { position: relative; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-height: 32px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel2); cursor: text; }
+.chipfeld:focus-within { border-color: var(--own); box-shadow: 0 0 0 3px var(--own-soft); background: #fff; }
+.chipfeld .chip { font-size: 12px; padding: 2px 4px 2px 8px; }
+.chipfeld .chip-x { border: 0; background: none; color: inherit; opacity: .55; padding: 0 3px; font-size: 13px; line-height: 1; }
+.chipfeld .chip-x:hover { opacity: 1; }
+.drawer .db .chipfeld input { flex: 1; min-width: 60px; border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 2px !important; outline: none; }
+.chipfeld .vorschl { display: none; position: absolute; left: -1px; right: -1px; top: calc(100% + 3px); background: #fff; border: 1px solid var(--line2); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 5; padding: 4px; max-height: 220px; overflow: auto; }
+.chipfeld .vorschl div { padding: 4px 8px; border-radius: 5px; cursor: pointer; font-size: 13px; }
+.chipfeld .vorschl div.an, .chipfeld .vorschl div:hover { background: var(--own-soft); color: var(--own); }
+.notiz { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.notiz textarea { flex: 1; min-height: 120px; }
+.notiz .md { flex: 1; overflow: auto; padding: 8px 10px; border: 1px solid transparent; border-radius: 6px; line-height: 1.55; font-size: 13.5px; cursor: text; }
+.notiz .md:hover { border-color: var(--line); background: var(--panel2); }
+.notiz .md > :first-child { margin-top: 0; }
+.notiz .md p { margin: 0 0 8px; }
+.notiz .md ul, .notiz .md ol { margin: 0 0 8px; padding-left: 20px; }
+.notiz .md ul.checks { list-style: none; padding-left: 2px; }
+.notiz .md ul.checks li { display: flex; gap: 7px; align-items: baseline; }
+.notiz .md ul.checks li.an span { text-decoration: line-through; color: var(--mute); }
+.notiz .md ul.checks input { margin: 0; transform: translateY(1px); }
+.notiz .md h4, .notiz .md h5, .notiz .md h6 { margin: 6px 0 4px; font-size: 14px; }
+.notiz .md code { background: var(--bg); padding: 0 4px; border-radius: 3px; font-size: 12px; }
+.notiz .md a { color: var(--own); }
+.notiz .md-bearbeiten { position: absolute; top: 4px; right: 4px; border: 1px solid var(--line); background: #fff; border-radius: 6px; width: 26px; height: 24px; color: var(--mute); opacity: 0; transition: opacity .15s; }
+.notiz:hover .md-bearbeiten { opacity: 1; }
+.notiz .md-bearbeiten:hover { color: var(--ink); }
+.notiz .md { padding-right: 36px; }

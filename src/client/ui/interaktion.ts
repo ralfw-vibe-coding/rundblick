@@ -60,7 +60,7 @@ export function interaktionAnbinden(): void {
     const b = t.closest<HTMLElement>('[data-booking]');
     if (b) { void buchungOeffnen(b.dataset.booking!); return; }
     const a = t.closest<HTMLElement>('[data-task]');
-    if (a) void aufgabeOeffnen(a.dataset.task!);
+    if (a) void aufgabeOeffnen(a.dataset.task!, true);
   });
 
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { schliessen(); popZu(); } });

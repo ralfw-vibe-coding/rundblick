@@ -45,7 +45,7 @@ async function stufe1({ neu, heute, d, body }: Kontext): Promise<void> {
   await neu({ titel: 'Nur Titel – keine weiteren Angaben' });
   await neu({
     titel: 'Alle Felder: Beschreibung, Ort, Verantwortlich, mehrere Tags',
-    beschreibung: 'Eine längere Beschreibung über mehrere Zeilen.\nZweite Zeile mit Details.\nDritte Zeile.',
+    beschreibung: 'Notiz mit **Markdown**: *kursiv*, ~~durchgestrichen~~, `Code` und ein [Link](https://example.com).\n\n## Checkliste\n- [x] Angebot entworfen\n- [ ] Preise prüfen\n- [ ] an Markus schicken\n\nListe:\n- erster Punkt\n- zweiter Punkt\n\n1. Schritt eins\n2. Schritt zwei\n\nNackte URL: https://rundblick.example/doku',
     ort: 'Hamburg, Eppendorf', verantwortlich: 'Markus', tags: ['kunde', 'angebot', 'wichtig'],
   });
   await neu({ titel: 'Nur Tag #privat', tags: ['privat'] });

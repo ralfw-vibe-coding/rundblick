@@ -5,6 +5,7 @@ import { body } from '../body';
 import { ICON, zeile } from '../bausteine';
 import { esc } from '../dom';
 import { alter, einmalZeigen, istFrisch } from '../frisch';
+import { ausgewaehlt } from '../detail';
 import type { Dichte, Sicht } from './sicht';
 
 export type ListeZustand = { filter?: string; zu?: string[]; archiv?: boolean };
@@ -44,14 +45,15 @@ export class ListenSicht implements Sicht {
       ...(this.z.archiv ? [{ k: 'archiv', name: 'Archiv', aufgaben: l.archiv }] : []),
     ];
     // Ein frisch angelegter Eintrag in einem zugeklappten Abschnitt klappt diesen auf
-    for (const a of abschnitte) if (a.aufgaben.some(x => istFrisch(x.id)) && this.istZu(a.k)) this.umschalten(a.k);
+    const gewaehlt = ausgewaehlt();
+    for (const a of abschnitte) if (a.aufgaben.some(x => istFrisch(x.id) || x.id === gewaehlt) && this.istZu(a.k)) this.umschalten(a.k);
 
     let h = '';
     for (const a of abschnitte) {
       if (!a.aufgaben.length && a.k !== 'archiv') continue;
       const offen = !this.istZu(a.k);
       h += `<div class="grp-h ${a.klasse ?? ''} ${offen ? 'open' : ''}" data-grp="${a.k}">${esc(a.name)} <span class="n">${a.aufgaben.length}</span></div>`;
-      if (offen) h += a.aufgaben.map(x => zeile(x, l.heute, voll, istFrisch(x.id))).join('') || '<div class="leer" style="padding:6px 12px;text-align:left">leer</div>';
+      if (offen) h += a.aufgaben.map(x => zeile(x, l.heute, voll, istFrisch(x.id), x.id === gewaehlt)).join('') || '<div class="leer" style="padding:6px 12px;text-align:left">leer</div>';
     }
     if (!h) h = this.z.filter ? '<div class="leer">Nichts gefunden.</div>' : '<div class="leer">Noch keine Aufgaben.<br>Oben eintippen und ↵ – oder <kbd>N</kbd>.</div>';
     const b = el.querySelector<HTMLElement>('.list-b')!;
@@ -62,6 +64,8 @@ export class ListenSicht implements Sicht {
       r.style.animationDelay = `-${alter(r.dataset.task!)}ms`;
       if (einmalZeigen(r.dataset.task!)) r.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     });
+    // die in der Schublade geöffnete Aufgabe bleibt im Blick – auch wenn sie den Abschnitt wechselt
+    b.querySelector<HTMLElement>('.row.gewaehlt')?.scrollIntoView({ block: 'nearest' });
   }
 
   private async mini(el: HTMLElement): Promise<void> {

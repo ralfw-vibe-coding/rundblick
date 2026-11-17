@@ -42,8 +42,8 @@ export const ICON = {
 /** Mülleimer nach dem Zwei-Klick-Muster: 1. Klick → „?“, 2. Klick → Aktion; sonst nach 5 s zurück */
 export const muellKnopf = (act: string, titel: string, id?: string) => `<button class="muell" data-zweistufig="${act}"${id ? ` data-id="${esc(id)}"` : ''} title="${esc(titel)}">${ICON.muell}</button>`;
 
-export function zeile(a: AufgabeZeile, heute: string, voll: boolean, frisch = false): string {
-  const cls = ['row', a.abgeschlossen ? 'done' : '', a.zurueckgestellt ? 'deferred' : '', frisch ? 'frisch' : ''].join(' ');
+export function zeile(a: AufgabeZeile, heute: string, voll: boolean, frisch = false, gewaehlt = false): string {
+  const cls = ['row', a.abgeschlossen ? 'done' : '', a.zurueckgestellt ? 'deferred' : '', frisch ? 'frisch' : '', gewaehlt ? 'gewaehlt' : ''].join(' ');
   const rechts = voll
     ? `${buchungsSymbole(a)}${a.status ? `<span class="chip">${statusPunkt(a.status.id)}${esc(a.status.name)}</span>` : ''}${a.zurueckgestellt && a.wiedervorlage ? `<span class="chip wv">↩ ${kurz(a.wiedervorlage)}</span>` : ''}`
     : `${buchungsSymbole(a)}${a.status ? `<span title="${esc(a.status.name)}">${statusPunkt(a.status.id)}</span>` : ''}`;
@@ -53,12 +53,12 @@ export function zeile(a: AufgabeZeile, heute: string, voll: boolean, frisch = fa
     <div class="right">${rechts}${a.archiviert ? '' : muellKnopf('verwerfen', 'Aufgabe verwerfen')}</div></div>`;
 }
 
-export function karte(a: AufgabeZeile, heute: string, voll: boolean, mitStatus: boolean): string {
+export function karte(a: AufgabeZeile, heute: string, voll: boolean, mitStatus: boolean, gewaehlt = false): string {
   const beendet = a.status?.kategorie === 'beendet';
   const knopf = a.abgeschlossen
     ? `<span class="closed-badge">✓ abgeschlossen</span><button class="done-btn" data-act="wiederoeffnen" title="Wieder öffnen" style="color:var(--mute)">↺</button>`
     : beendet ? `<button class="done-btn" data-act="abschliessen" title="Abschließen – eigener Zustand, unabhängig von der Spalte">✓ abschließen</button>` : '';
-  return `<div class="card ${beendet ? 'ended' : ''} ${a.abgeschlossen ? 'closed' : ''}" draggable="true" data-task="${a.id}">
+  return `<div class="card ${beendet ? 'ended' : ''} ${a.abgeschlossen ? 'closed' : ''} ${gewaehlt ? 'gewaehlt' : ''}" draggable="true" data-task="${a.id}">
     <div class="t">${esc(a.titel)}</div>
     <div class="meta">${mitStatus && a.status ? `<span class="chip">${statusPunkt(a.status.id)}${esc(a.status.name)}</span>` : ''}${frist(a, heute)}${buchungsSymbole(a)}${voll ? tagsChips(a) : ''}${knopf}${avatar(a)}</div>
   </div>`;

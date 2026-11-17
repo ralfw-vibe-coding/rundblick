@@ -22,6 +22,7 @@ body.beiAenderung(bereiche => {
 });
 
 addEventListener('rb-frisch', () => raster.aktualisieren(['aufgaben', 'board']));
+addEventListener('rb-auswahl', () => raster.aktualisieren(['aufgaben', 'board']));
 zweistufigAnbinden((act, id) => { if (act === 'verwerfen' || act === 'stornieren') schubladeSchliessenWenn(id); });
 
 document.addEventListener('keydown', e => {

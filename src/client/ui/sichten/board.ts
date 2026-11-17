@@ -3,6 +3,7 @@ import type { Bereich, Board } from '../../../body/interface';
 import { body } from '../body';
 import { karte, spaltenKategorien, statusPunkt } from '../bausteine';
 import { esc } from '../dom';
+import { ausgewaehlt } from '../detail';
 import type { Dichte, Sicht } from './sicht';
 
 export class BoardSicht implements Sicht {
@@ -10,7 +11,7 @@ export class BoardSicht implements Sicht {
   zustand() { return {}; }
 
   async render(el: HTMLElement, dichte: Dichte): Promise<void> {
-    const b = await body.board(), heute = b.heute;
+    const b = await body.board(), heute = b.heute, gewaehlt = ausgewaehlt();
     spaltenKategorien(Object.fromEntries(b.kategorien.flatMap(k => k.spalten.map(s => [s.id, k.id]))));
     if (dichte === 'mini') { el.innerHTML = mini(b); return; }
     if (b.kategorien.every(k => !k.spalten.length)) { el.innerHTML = '<div class="leer">Keine Board-Spalten. ⚙︎ Einstellungen → Board-Spalten.</div>'; return; }
@@ -19,7 +20,7 @@ export class BoardSicht implements Sicht {
         const erste = k.spalten.find(s => /bereit|inarbeit|erledigt/.test(s.id)) ?? k.spalten[0];
         const karten = k.spalten.flatMap(s => s.karten);
         return `<div class="col kcol kat-b-${katKlasse(k.id)}" ${erste ? `data-drop-status="${erste.id}"` : ''}><div class="col-h">${k.name}<span class="n">${karten.length}</span></div>
-          <div class="cards">${karten.map(a => karte(a, heute, false, true)).join('')}</div></div>`;
+          <div class="cards">${karten.map(a => karte(a, heute, false, true, a.id === gewaehlt)).join('')}</div></div>`;
       }).join('')}</div>`;
       return;
     }
@@ -27,7 +28,7 @@ export class BoardSicht implements Sicht {
       <div class="kat" style="flex:${k.spalten.length} 1 0"><div class="kat-h kat-b-${katKlasse(k.id)}">${k.name} <span class="n">${k.anzahl}</span></div>
         <div class="kat-cols">${k.spalten.map(s => `
           <div class="col" data-drop-status="${s.id}"><div class="col-h">${statusPunkt(s.id)}${esc(s.name)}<span class="n">${s.karten.length}</span></div>
-            <div class="cards">${s.karten.map(a => karte(a, heute, true, false)).join('')}</div></div>`).join('')}
+            <div class="cards">${s.karten.map(a => karte(a, heute, true, false, a.id === gewaehlt)).join('')}</div></div>`).join('')}
         </div></div>`).join('')}</div>`;
   }
 }

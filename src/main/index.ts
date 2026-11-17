@@ -96,7 +96,7 @@ async function starte(): Promise<void> {
   // Entwicklungshilfe: RB_SCREENSHOT=pfad.png [RB_JS=…] → Fenster abfotografieren und beenden
   if (process.env.RB_SCREENSHOT) {
     win.webContents.once('did-finish-load', () => setTimeout(async () => {
-      if (process.env.RB_JS) await win.webContents.executeJavaScript(process.env.RB_JS).catch(e => console.error(e));
+      if (process.env.RB_JS) console.log('RB_JS →', JSON.stringify(await win.webContents.executeJavaScript(process.env.RB_JS).catch(e => String(e))));
       await new Promise(r => setTimeout(r, 900));
       const bild = await win.webContents.capturePage();
       writeFileSync(process.env.RB_SCREENSHOT!, bild.toPNG());

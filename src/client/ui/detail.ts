@@ -7,6 +7,8 @@ import { body } from './body';
 import { buchungArt, ICON, kapazitaetsBalken, muellKnopf, statusPunkt } from './bausteine';
 import { esc, pruefe } from './dom';
 import { markieren } from './frisch';
+import { chipFeld } from './chipfeld';
+import { notizFeld } from './notiz';
 
 let schublade: HTMLDivElement | null = null;
 let aktuell: { art: 'aufgabe' | 'buchung'; id: string } | null = null;
@@ -19,7 +21,11 @@ function el(): HTMLDivElement {
   return schublade;
 }
 
-export function schliessen(): void { schublade?.classList.remove('open'); aktuell = null; }
+export function schliessen(): void { schublade?.classList.remove('open'); aktuell = null; auswahlMelden(); }
+/** Die in der Schublade geöffnete Aufgabe – Sichten heben sie hervor und halten sie im Blick */
+export function ausgewaehlt(): string | null { return aktuell?.art === 'aufgabe' && offen() ? aktuell.id : null; }
+let gemeldet: string | null = null;
+function auswahlMelden(): void { const a = ausgewaehlt(); if (a !== gemeldet) { gemeldet = a; dispatchEvent(new CustomEvent('rb-auswahl')); } }
 export const offen = () => !!schublade?.classList.contains('open');
 /** schließt die Schublade, falls sie gerade dieses Objekt zeigt (z. B. nach dem Verwerfen) */
 export function schliessenWenn(id: string): void { if (aktuell?.id === id) schliessen(); }
@@ -34,7 +40,7 @@ export async function auffrischen(): Promise<void> {
 const feld = (label: string, inhalt: string, extra = '') => `<div class="fld" ${extra}><label>${label}</label>${inhalt}</div>`;
 const knopf = (d: string, icon: string, titel: string) => `<button class="kopfknopf" data-d="${d}" title="${esc(titel)}">${icon}</button>`;
 
-export async function aufgabeOeffnen(id: string): Promise<void> {
+export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
   const [a, e, h] = await Promise.all([body.aufgabe({ aufgabeId: id }), body.einstellungen(), body.heute()]);
   if (!a) { schliessen(); return; }
   aktuell = { art: 'aufgabe', id };
@@ -59,12 +65,12 @@ export async function aufgabeOeffnen(id: string): Promise<void> {
       <div class="fld-grid">
         ${feld('Frist', `<div class="inl"><input type="date" data-f="frist" value="${a.frist ?? ''}" ${zu}><button data-leer="frist" title="Frist entfernen">×</button></div>`)}
         ${feld('Wiedervorlage', `<div class="inl"><input type="date" data-f="wiedervorlage" value="${a.wiedervorlage ?? ''}" ${zu}><button data-leer="wiedervorlage" title="Wiedervorlage aufheben">×</button></div>`)}
-        ${feld('Verantwortlich', `<input type="text" data-f="verantwortlich" value="${esc(a.verantwortlich)}" list="dl-person" ${zu}>`)}
-        ${feld('Ort', `<input type="text" data-f="ort" value="${esc(a.ort)}" list="dl-ort" ${zu}>`)}
+        ${feld('Verantwortlich', '<div data-chips="person"></div>')}
+        ${feld('Ort', '<div data-chips="ort"></div>')}
       </div>
-      ${feld('Tags', `<input type="text" data-f="tags" value="${esc(a.tags.join(', '))}" placeholder="kunde, büro" ${zu}>`)}
+      ${feld('Tags', '<div data-chips="tag"></div>')}
       ${a.zurueckgestellt ? `<div class="muted" style="font-size:12px">↩ Bis ${WT[wochentag(a.wiedervorlage!)]} ${kurz(a.wiedervorlage!)} zurückgestellt – bis dahin in der Liste eingeklappt.</div>` : ''}
-      ${feld('Notiz', `<textarea data-f="beschreibung" placeholder="Notizen, Details, Links …" ${zu}>${esc(a.beschreibung)}</textarea>`, 'style="flex:1;display:flex;flex-direction:column;min-height:120px"')}
+      ${feld('Notiz', '<div data-notiz></div>', 'style="flex:1;display:flex;flex-direction:column;min-height:140px"')}
       ${gesperrt ? '' : feld('Buchung hinzufügen', `<div class="buchen">
         <input type="date" data-b="datum" value="${morgen}" title="Datum">
         <input type="time" data-b="start" title="Uhrzeit – leer lassen für eine Reservierung">
@@ -72,8 +78,12 @@ export async function aufgabeOeffnen(id: string): Promise<void> {
         <button class="btn primary" data-d="buchen">Buchen</button></div>`)}
       ${feld(`Buchungen · gebucht ${dauerText(a.buchungen.gebucht)}`, `<div class="bk-list">${buchungsliste(a)}</div>`)}
     </div>
-    ${datalisten()}`;
-  void vorschlaegeLaden(s);
+`;
+  const aendern = async (x: Parameters<typeof body.aufgabeAendern>[0]['aenderungen']) => { pruefe(await body.aufgabeAendern({ aufgabeId: id, aenderungen: x })); };
+  chipFeld(s.querySelector('[data-chips="person"]')!, { art: 'person', werte: a.verantwortlich ? [a.verantwortlich] : [], mehrfach: false, gesperrt, platzhalter: 'Name …', aendern: w => void aendern({ verantwortlich: w[0] ?? '' }) });
+  chipFeld(s.querySelector('[data-chips="ort"]')!, { art: 'ort', werte: a.ort ? [a.ort] : [], mehrfach: false, gesperrt, platzhalter: 'Ort …', aendern: w => void aendern({ ort: w[0] ?? '' }) });
+  chipFeld(s.querySelector('[data-chips="tag"]')!, { art: 'tag', werte: a.tags, mehrfach: true, gesperrt, platzhalter: 'Tag …  ↵', aendern: w => void aendern({ tags: w }) });
+  notizFeld(s.querySelector('[data-notiz]')!, { text: a.beschreibung, gesperrt, fokus, speichern: t => aendern({ beschreibung: t }) });
   s.onchange = async ev => {
     const t = ev.target as HTMLInputElement;
     const f = t.dataset.f;
@@ -102,6 +112,7 @@ export async function aufgabeOeffnen(id: string): Promise<void> {
     }
   };
   s.classList.add('open');
+  auswahlMelden();
 }
 
 function buchungsliste(a: AufgabeDetails): string {
@@ -126,11 +137,12 @@ export async function buchungOeffnen(id: string): Promise<void> {
       ${b.aufgabeId
         ? feld('Gehört zu Aufgabe', `<a href="#" data-d="aufgabe" style="color:var(--own)">${esc(b.aufgabentitel)}</a>`)
         : '<div class="muted" style="line-height:1.5;font-size:12px">Freie Buchung ohne Aufgabe. Wird mehr daraus: „→ Aufgabe daraus machen“ – Titel und Notiz wandern mit, die Buchung bleibt und gehört dann zur Aufgabe. Oder die Buchung auf Liste/Board ziehen.</div>'}
-      ${feld('Notiz', `<textarea data-f="beschreibung">${esc(b.beschreibung)}</textarea>`)}
+      ${feld('Notiz', '<div data-notiz></div>')}
       ${feld('Tagesauslastung', `<div>${dauerText(b.tag.belegt)} von ${dauerText(b.tag.kapazitaet)}${kapazitaetsBalken(b.tag, true)}</div>`)}
     </div>
     ${b.aufgabeId ? '' : '<div class="df"><button class="btn primary" data-d="aufgabeMachen">→ Aufgabe daraus machen</button></div>'}`;
   const aendern = async (x: Parameters<typeof body.buchungAendern>[0]) => { if (pruefe(await body.buchungAendern(x))) void buchungOeffnen(id); };
+  notizFeld(s.querySelector('[data-notiz]')!, { text: b.beschreibung, gesperrt: false, fokus: false, speichern: async t => { pruefe(await body.buchungAendern({ buchungId: id, beschreibung: t })); } });
   s.onchange = async ev => {
     const t = ev.target as HTMLInputElement;
     const f = t.dataset.f;
@@ -153,12 +165,6 @@ export async function buchungOeffnen(id: string): Promise<void> {
     }
   };
   s.classList.add('open');
+  auswahlMelden();
 }
 
-function datalisten(): string { return '<datalist id="dl-person"></datalist><datalist id="dl-ort"></datalist>'; }
-async function vorschlaegeLaden(s: HTMLElement): Promise<void> {
-  const [p, o] = await Promise.all([body.vorschlaege({ art: 'person', praefix: '' }), body.vorschlaege({ art: 'ort', praefix: '' })]);
-  const dp = s.querySelector('#dl-person'), dor = s.querySelector('#dl-ort');
-  if (dp) dp.innerHTML = p.map(x => `<option value="${esc(x)}">`).join('');
-  if (dor) dor.innerHTML = o.map(x => `<option value="${esc(x)}">`).join('');
-}
