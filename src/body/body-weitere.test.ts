@@ -1,6 +1,7 @@
 // Ergänzende Body-Tests: alle Commands/Queries, Zugriffsfälle, Fehler der Kalenderquelle, Benachrichtigungen.
 import { describe, expect, it } from 'vitest';
 import { Domain } from '../domain/domain';
+import { speicherAnhaenge } from '../providers/anhaenge/datei';
 import { speicherEinstellungen } from '../providers/einstellungen/json';
 import { SpeicherEventStore } from '../providers/eventstore/speicher';
 import { zaehlerIds } from '../providers/ids/ulid';
@@ -17,7 +18,7 @@ const uhr = festeUhr('2026-11-16T10:40:00');
 function aufbau(kalender: Kalenderquelle = beispielKalender()) {
   const es = new SpeicherEventStore('t', zaehlerIds('e').neu, () => uhr.jetzt());
   const einstellungen = speicherEinstellungen();
-  const body = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen, kalender, cache: kalenderCache(), info: { datenordner: '/d', geraet: 'g' } });
+  const body = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen, kalender, cache: kalenderCache(), anhaenge: speicherAnhaenge(), info: { datenordner: '/d', geraet: 'g' } });
   body.einrichten();
   const gemeldet: Bereich[][] = [];
   body.beiAenderung(b => gemeldet.push(b));
@@ -99,7 +100,7 @@ describe('Queries über den Body', () => {
   it('Dringlichkeit und Filter als pure Funktionen', () => {
     expect(dringlichkeit(null, '2026-11-16')).toBeNull();
     expect(['2026-11-15', '2026-11-16', '2026-11-18', '2026-11-30'].map(f => dringlichkeit(f, '2026-11-16'))).toEqual(['ueberfaellig', 'heute', 'woche', 'spaeter']);
-    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, archiviert: false };
+    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [] };
     expect(passtZuFilter(a, '  ')).toBe(true);
     expect(passtZuFilter(a, 'angebot #kunde')).toBe(true);
     expect(passtZuFilter(a, 'angebot #büro')).toBe(false);
@@ -152,6 +153,37 @@ describe('Queries über den Body', () => {
     const t = (await body.zeitraum({ von: '2026-12-01', bis: '2026-12-01' })).tage[0]!;
     expect(t.extern.map(e => [e.titel, e.start, e.kalender])).toEqual([['Monatsanfang', null, 'Familie'], ['Fremd', 600, '?'], ['Yoga', 1110, 'Privat']]);
     expect(t.auslastung).toMatchObject({ belegt: 0, nichtBelegend: 30 + 75 });
+  });
+});
+
+describe('Anhänge über den Body', () => {
+  const PNG = btoa(String.fromCharCode(137, 80, 78, 71, 1, 2, 3));
+  it('speichert das Bild, nummeriert es, liefert es als data:-URL und löscht die Datei beim Entfernen', async () => {
+    const anhaenge = speicherAnhaenge();
+    const es = new SpeicherEventStore('t', zaehlerIds('e').neu, () => uhr.jetzt());
+    const body = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: beispielKalender(), cache: kalenderCache(), anhaenge, info: { datenordner: '', geraet: '' } });
+    const a = id(await body.aufgabeErfassen({ titel: 'Mit Bild' }), 'aufgabeId');
+    const r1 = await body.anhangHinzufuegen({ aufgabeId: a, name: 'foto.png', typ: 'image/png', daten: 'data:image/png;base64,' + PNG });
+    const r2 = await body.anhangHinzufuegen({ aufgabeId: a, name: 'zwei.png', typ: 'image/png', daten: PNG });
+    const det = (await body.aufgabe({ aufgabeId: a }))!;
+    expect(det.anhangliste.map(x => [x.nr, x.name, x.groesse])).toEqual([[1, 'foto.png', 7], [2, 'zwei.png', 7]]);
+    expect((await body.liste({})).gruppen.find(g => g.art === 'ohne')!.aufgaben[0]!.anhaenge).toBe(2);
+    expect(await body.anhang({ anhangId: id(r1, 'anhangId') })).toEqual({ name: 'foto.png', typ: 'image/png', url: 'data:image/png;base64,' + PNG });
+    await body.anhangEntfernen({ aufgabeId: a, anhangId: id(r2, 'anhangId') });
+    expect(anhaenge.lesen(id(r2, 'anhangId'))).toBeNull();
+    expect(await body.anhang({ anhangId: id(r2, 'anhangId') })).toBeNull();
+    expect(await body.anhang({ anhangId: 'gibtsnicht' })).toBeNull();
+  });
+
+  it('abgelehnte oder kaputte Anhänge hinterlassen keine Datei', async () => {
+    const anhaenge = speicherAnhaenge();
+    const es = new SpeicherEventStore('t', zaehlerIds('e').neu, () => uhr.jetzt());
+    const body = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: beispielKalender(), cache: kalenderCache(), anhaenge, info: { datenordner: '', geraet: '' } });
+    const a = id(await body.aufgabeErfassen({ titel: 'T' }), 'aufgabeId');
+    const r = await body.anhangHinzufuegen({ aufgabeId: a, name: 'x.pdf', typ: 'application/pdf', daten: PNG });
+    expect(r.ok).toBe(false);
+    expect(anhaenge.lesen('x2')).toBeNull();
+    expect(await body.anhangHinzufuegen({ aufgabeId: a, name: 'x.png', typ: 'image/png', daten: '%%%kein base64' })).toMatchObject({ ok: false, fehler: ['Die Bilddaten sind beschädigt.'] });
   });
 });
 

@@ -2,7 +2,7 @@
 import {
   Archive, ArchiveRestore, ArrowDown, ArrowUp, Calendar, CalendarClock, CalendarRange, ChartGantt, Check, ChevronLeft,
   ChevronRight, Circle, CircleCheck, Clock, Columns2, Diamond, Hourglass, List, MapPin, Maximize2, Minimize2, Minus,
-  Pencil, Plus, RefreshCw, RotateCcw, Rows2, Settings, SquareKanban, Trash2, X,
+  Paperclip, Pencil, Plus, ImagePlus, RefreshCw, RotateCcw, Rows2, Settings, SquareKanban, Trash2, X,
 } from 'lucide';
 
 type Knoten = [string, Record<string, string | number | undefined>][];
@@ -22,5 +22,5 @@ export const I = {
   liste: k(List), board: k(SquareKanban), tag: k(Calendar), mehrtage: k(CalendarRange), timeline: k(ChartGantt),
   links: k(ChevronLeft), rechts: k(ChevronRight), haken: k(Check), aktualisieren: k(RefreshCw),
   termin: k(Clock), reservierung: k(Hourglass), offen: k(Circle), erledigt: k(CircleCheck),
-  hoch: k(ArrowUp), runter: k(ArrowDown),
+  hoch: k(ArrowUp), runter: k(ArrowDown), anhang: k(Paperclip), bildHinzu: k(ImagePlus),
 };

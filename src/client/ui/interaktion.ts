@@ -15,12 +15,13 @@ const heuteLaden = async () => { heute = (await body.heute()).datum; };
 const ZWEISTUFIG: Record<string, (id: string) => Promise<void>> = {
   verwerfen: async id => { pruefe(await body.aufgabeVerwerfen({ aufgabeId: id }), 'Aufgabe verworfen'); },
   stornieren: async id => { pruefe(await body.buchungStornieren({ buchungId: id }), 'Buchung gelöscht'); },
+  anhangEntfernen: async id => { const [aufgabeId, anhangId] = id.split('/'); pruefe(await body.anhangEntfernen({ aufgabeId: aufgabeId!, anhangId: anhangId! })); },
 };
 let fragenTimer: ReturnType<typeof setTimeout> | undefined;
 function fragenZuruecksetzen(ausser?: Element): void {
   document.querySelectorAll<HTMLElement>('[data-zweistufig].fragen').forEach(b => {
     if (b === ausser) return;
-    b.classList.remove('fragen'); b.innerHTML = ICON.muell;
+    b.classList.remove('fragen'); b.innerHTML = b.dataset.icon ?? ICON.muell;
   });
 }
 export function zweistufigAnbinden(nachAusfuehren?: (act: string, id: string) => void): void {
@@ -31,6 +32,7 @@ export function zweistufigAnbinden(nachAusfuehren?: (act: string, id: string) =>
     const act = b.dataset.zweistufig!, id = b.dataset.id ?? b.closest<HTMLElement>('[data-task]')?.dataset.task ?? '';
     if (!b.classList.contains('fragen')) {
       fragenZuruecksetzen(b);
+      b.dataset.icon = b.innerHTML;
       b.classList.add('fragen'); b.textContent = '?'; b.title = 'Nochmal klicken zum Ausführen';
       clearTimeout(fragenTimer);
       fragenTimer = setTimeout(() => fragenZuruecksetzen(), 5000);

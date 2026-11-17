@@ -2,6 +2,7 @@
 // führt eigene und externe Kalenderdaten zusammen und meldet Änderungen an die Clients.
 import { plusTage } from '../basis/datum';
 import type { DomainInterface, Ergebnis } from '../domain/interface';
+import type { Anhangspeicher } from '../providers/anhaenge/interface';
 import type { Einstellungen } from '../providers/einstellungen/interface';
 import type { IdGenerator } from '../providers/ids/interface';
 import type { KalenderCache, Kalenderquelle } from '../providers/kalender/interface';
@@ -20,6 +21,7 @@ export type BodyAbhaengigkeiten = {
   einstellungen: Einstellungen;
   kalender: Kalenderquelle;
   cache: KalenderCache;
+  anhaenge: Anhangspeicher;
   info: { datenordner: string; geraet: string };
 };
 
@@ -66,6 +68,22 @@ export class RundblickBody implements Body {
   async aufgabeVerwerfen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeVerwerfen(c)); }
   async aufgabeArchivieren(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeArchivieren(c)); }
   async aufgabeAusArchivHolen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeAusArchivHolen(c)); }
+
+  // ---------------- Commands: Anhänge ----------------
+  async anhangHinzufuegen(c: { aufgabeId: string; name: string; typ: string; daten: string }): Promise<CommandStatus> {
+    let bytes: Uint8Array;
+    try { bytes = ausBase64(c.daten); } catch { return { ok: false, fehler: ['Die Bilddaten sind beschädigt.'] }; }
+    const anhangId = this.x.ids.neu();
+    this.x.anhaenge.speichern(anhangId, bytes);
+    const e = this.x.domain.anhangHinzufuegen({ aufgabeId: c.aufgabeId, anhangId, name: c.name, typ: c.typ, groesse: bytes.length });
+    if (!e.ok) this.x.anhaenge.entfernen(anhangId);
+    return status(e, { anhangId });
+  }
+  async anhangEntfernen(c: { aufgabeId: string; anhangId: string }): Promise<CommandStatus> {
+    const e = this.x.domain.anhangEntfernen(c);
+    if (e.ok) this.x.anhaenge.entfernen(c.anhangId);
+    return status(e);
+  }
 
   // ---------------- Commands: Buchungen ----------------
   async buchungAnlegen(c: Parameters<Body['buchungAnlegen']>[0]) {
@@ -158,6 +176,7 @@ export class RundblickBody implements Body {
       ...zeile(a, d.buchungen(), new Map(d.spalten().map(s => [s.id, s])), this.x.uhr.heute()),
       beschreibung: a.beschreibung,
       buchungsliste: d.buchungenDerAufgabe(a.id).map(b => buchungDto(b, amap)),
+      anhangliste: a.anhaenge.map((x, i) => ({ ...x, nr: i + 1 })),
     };
   }
 
@@ -195,6 +214,12 @@ export class RundblickBody implements Body {
     }
     const p = q.praefix.toLowerCase();
     return [...zaehler.entries()].filter(([w]) => w.toLowerCase().startsWith(p)).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'de')).map(([w]) => w).slice(0, 12);
+  }
+
+  async anhang(q: { anhangId: string }) {
+    const info = this.x.domain.aufgaben().flatMap(a => a.anhaenge).find(x => x.id === q.anhangId);
+    const bytes = info ? this.x.anhaenge.lesen(q.anhangId) : null;
+    return info && bytes ? { name: info.name, typ: info.typ, url: `data:${info.typ};base64,${inBase64(bytes)}` } : null;
   }
 
   async heute() { return { datum: this.x.uhr.heute(), minute: this.x.uhr.minuteDesTages() }; }
@@ -247,3 +272,15 @@ export class RundblickBody implements Body {
   private melde(b: Bereich[]): void { this.abos.forEach(cb => cb(b)); }
 }
 
+// Base64 ohne Node-APIs (der Body läuft plattformunabhängig)
+function ausBase64(s: string): Uint8Array {
+  const roh = atob(s.replace(/^data:[^,]*,/, ''));
+  const b = new Uint8Array(roh.length);
+  for (let i = 0; i < roh.length; i++) b[i] = roh.charCodeAt(i);
+  return b;
+}
+function inBase64(b: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
+  return btoa(s);
+}

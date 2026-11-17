@@ -7,7 +7,11 @@ export type AufgabeZ = {
   id: Id; titel: string; beschreibung: string; ort: string; verantwortlich: string; tags: string[];
   frist: Datum | null; wiedervorlage: Datum | null; status: Id | null;
   abgeschlossen: boolean; verworfen: boolean; archiviert: boolean;
+  /** Bildanhänge der Notiz, in Reihenfolge des Hinzufügens */
+  anhaenge: AnhangZ[];
 };
+
+export type AnhangZ = { id: Id; name: string; typ: string; groesse: number };
 
 export type BuchungZ = {
   id: Id; aufgabeId: Id | null; titel: string; beschreibung: string;
@@ -21,10 +25,10 @@ export const PLANUNG_STANDARD: PlanungZ = { kapazitaet: [360, 360, 360, 360, 300
 
 export function aufgabeEntwickeln(z: AufgabeZ | null, e: DomainEvent): AufgabeZ | null {
   switch (e.typ) {
-    case 'AufgabeErfasst': return { ...e.daten, id: e.daten.aufgabeId, tags: [...e.daten.tags], abgeschlossen: false, verworfen: false, archiviert: false };
+    case 'AufgabeErfasst': return { ...e.daten, id: e.daten.aufgabeId, tags: [...e.daten.tags], abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [] };
     case 'AufgabeAusBuchungErstellt': return {
       id: e.daten.aufgabeId, titel: e.daten.titel, beschreibung: e.daten.beschreibung, ort: '', verantwortlich: '', tags: [],
-      frist: null, wiedervorlage: null, status: e.daten.status, abgeschlossen: false, verworfen: false, archiviert: false,
+      frist: null, wiedervorlage: null, status: e.daten.status, abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [],
     };
   }
   if (!z) return z;
@@ -46,6 +50,8 @@ export function aufgabeEntwickeln(z: AufgabeZ | null, e: DomainEvent): AufgabeZ 
     case 'AufgabeVerworfen': return { ...z, verworfen: true };
     case 'AufgabeArchiviert': return { ...z, archiviert: true };
     case 'AufgabeAusArchivGeholt': return { ...z, archiviert: false };
+    case 'AnhangHinzugefuegt': return { ...z, anhaenge: [...z.anhaenge, { id: e.daten.anhangId, name: e.daten.name, typ: e.daten.typ, groesse: e.daten.groesse }] };
+    case 'AnhangEntfernt': return { ...z, anhaenge: z.anhaenge.filter(x => x.id !== e.daten.anhangId) };
     default: return z;
   }
 }

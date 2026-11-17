@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { dateiAnhaenge, speicherAnhaenge } from './anhaenge/datei';
 import { jsonEinstellungen, speicherEinstellungen } from './einstellungen/json';
 import { hlcFormat, stromVergleich } from './eventstore/hlc';
 import { JsonlEventStore } from './eventstore/jsonl';
@@ -33,6 +34,26 @@ describe('Einstellungen', () => {
     e.schreiben('b', 2);
     expect(e.lesen('b', 0)).toBe(2);
     expect(e.lesen('c', 3)).toBe(3);
+  });
+});
+
+describe('Anhänge als Dateien', () => {
+  it('speichert, liest und entfernt; lehnt unsichere IDs ab', () => {
+    const a = dateiAnhaenge(join(ordner, 'anh'));
+    expect(a.lesen('X1')).toBeNull();
+    a.speichern('X1', new Uint8Array([1, 2, 3]));
+    expect([...a.lesen('X1')!]).toEqual([1, 2, 3]);
+    a.entfernen('X1');
+    a.entfernen('X1');
+    expect(a.lesen('X1')).toBeNull();
+    expect(() => a.speichern('../boese', new Uint8Array([1]))).toThrow('Ungültige');
+  });
+  it('im Speicher', () => {
+    const a = speicherAnhaenge();
+    a.speichern('a', new Uint8Array([9]));
+    expect(a.lesen('a')).toEqual(new Uint8Array([9]));
+    a.entfernen('a');
+    expect(a.lesen('a')).toBeNull();
   });
 });
 

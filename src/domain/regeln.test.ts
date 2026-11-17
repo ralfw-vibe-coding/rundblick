@@ -87,6 +87,24 @@ describe('Archiv', () => {
   });
 });
 
+describe('Anhänge', () => {
+  it('nur Bilder bis 25 MB, nur an offenen Aufgaben; Entfernen wirkt einmal', () => {
+    expect(d.anhangHinzufuegen({ aufgabeId: 'fehlt', anhangId: 'x', name: 'a.png', typ: 'image/png', groesse: 10 })).toMatchObject(nein);
+    erfasse();
+    expect(d.anhangHinzufuegen({ aufgabeId: 'a1', anhangId: 'x', name: 'a.pdf', typ: 'application/pdf', groesse: 10 })).toMatchObject(nein);
+    expect(d.anhangHinzufuegen({ aufgabeId: 'a1', anhangId: 'x', name: 'a.png', typ: 'image/png', groesse: 26 * 1024 * 1024 })).toMatchObject(nein);
+    expect(d.anhangHinzufuegen({ aufgabeId: 'a1', anhangId: 'x1', name: ' ', typ: 'image/png', groesse: 10 })).toMatchObject(ja);
+    d.anhangHinzufuegen({ aufgabeId: 'a1', anhangId: 'x1', name: 'doppelt', typ: 'image/png', groesse: 10 });
+    d.anhangHinzufuegen({ aufgabeId: 'a1', anhangId: 'x2', name: 'b.jpg', typ: 'image/jpeg', groesse: 20 });
+    expect(d.aufgabe('a1')!.anhaenge.map(a => [a.id, a.name])).toEqual([['x1', 'Bild'], ['x2', 'b.jpg']]);
+    d.anhangEntfernen({ aufgabeId: 'a1', anhangId: 'x1' });
+    d.anhangEntfernen({ aufgabeId: 'a1', anhangId: 'x1' });
+    expect(neu()).toEqual(['AufgabeErfasst', 'AnhangHinzugefuegt', 'AnhangHinzugefuegt', 'AnhangEntfernt']);
+    d.aufgabeAbschliessen({ aufgabeId: 'a1' });
+    expect(d.anhangEntfernen({ aufgabeId: 'a1', anhangId: 'x2' })).toMatchObject(nein);
+  });
+});
+
 describe('Buchungen: Ablehnungen und Änderungen', () => {
   it('anlegen: unbekannte/verworfene Aufgabe, doppelte Buchung, eigener Titel', () => {
     expect(d.buchungAnlegen({ buchungId: 'b1', aufgabeId: 'fehlt', datum: '2026-11-17' })).toMatchObject(nein);

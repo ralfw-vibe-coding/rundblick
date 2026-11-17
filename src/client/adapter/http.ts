@@ -66,7 +66,7 @@ function lesen(req: IncomingMessage): Promise<string> {
   return new Promise((ok, nein) => {
     let s = '';
     req.setEncoding('utf8');
-    req.on('data', d => { s += d; if (s.length > 1_000_000) { nein(new Error('zu groß')); req.destroy(); } });
+    req.on('data', d => { s += d; if (s.length > 40_000_000) { nein(new Error('zu groß')); req.destroy(); } });
     req.on('end', () => ok(s));
     req.on('error', nein);
   });

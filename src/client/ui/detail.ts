@@ -10,6 +10,7 @@ import { markieren } from './frisch';
 import { I } from './icons';
 import { chipFeld } from './chipfeld';
 import { notizFeld } from './notiz';
+import { anhaengeHtml, bilderHinzufuegen, grossansicht, vorschauenLaden } from './anhaenge';
 
 let schublade: HTMLDivElement | null = null;
 let aktuell: { art: 'aufgabe' | 'buchung'; id: string } | null = null;
@@ -19,6 +20,25 @@ function el(): HTMLDivElement {
   schublade = document.createElement('div');
   schublade.className = 'drawer';
   document.body.appendChild(schublade);
+  // Bilder per Drag & Drop oder aus der Zwischenablage an die geöffnete Aufgabe hängen
+  const ziel = () => (aktuell?.art === 'aufgabe' && offen() && schublade!.querySelector('.anh-hinweis') ? aktuell.id : null);
+  const mitDateien = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+  schublade.addEventListener('dragover', e => { if (mitDateien(e) && ziel()) { e.preventDefault(); schublade!.classList.add('bild-drop'); } });
+  schublade.addEventListener('dragleave', e => { if (!schublade!.contains(e.relatedTarget as Node)) schublade!.classList.remove('bild-drop'); });
+  schublade.addEventListener('drop', e => {
+    schublade!.classList.remove('bild-drop');
+    const id = ziel();
+    if (!mitDateien(e) || !id) return;
+    e.preventDefault(); e.stopPropagation();
+    void bilderHinzufuegen(id, [...e.dataTransfer!.files]);
+  });
+  document.addEventListener('paste', e => {
+    const id = ziel();
+    const dateien = [...(e.clipboardData?.files ?? [])].filter(f => f.type.startsWith('image/'));
+    if (!id || !dateien.length) return;
+    e.preventDefault();
+    void bilderHinzufuegen(id, dateien);
+  });
   return schublade;
 }
 
@@ -72,6 +92,7 @@ export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
       ${feld('Tags', '<div data-chips="tag"></div>')}
       ${a.zurueckgestellt ? `<div class="muted hinweis-zeile">${I.wiedervorlage} Bis ${WT[wochentag(a.wiedervorlage!)]} ${kurz(a.wiedervorlage!)} zurückgestellt – bis dahin in der Liste eingeklappt.</div>` : ''}
       ${feld('Notiz', '<div data-notiz></div>', 'style="flex:1;display:flex;flex-direction:column;min-height:140px"')}
+      ${a.anhangliste.length || !gesperrt ? anhaengeHtml(a.anhangliste, id, gesperrt) : ''}
       ${gesperrt ? '' : feld('Buchung hinzufügen', `<div class="buchen">
         <input type="date" data-b="datum" value="${morgen}" title="Datum">
         <input type="time" data-b="start" title="Uhrzeit – leer lassen für eine Reservierung">
@@ -85,6 +106,7 @@ export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
   chipFeld(s.querySelector('[data-chips="ort"]')!, { art: 'ort', werte: a.ort ? [a.ort] : [], mehrfach: false, gesperrt, platzhalter: 'Ort …', aendern: w => void aendern({ ort: w[0] ?? '' }) });
   chipFeld(s.querySelector('[data-chips="tag"]')!, { art: 'tag', werte: a.tags, mehrfach: true, gesperrt, platzhalter: 'Tag …  ↵', aendern: w => void aendern({ tags: w }) });
   notizFeld(s.querySelector('[data-notiz]')!, { text: a.beschreibung, gesperrt, fokus, speichern: t => aendern({ beschreibung: t }) });
+  vorschauenLaden(s);
   s.onchange = async ev => {
     const t = ev.target as HTMLInputElement;
     const f = t.dataset.f;
@@ -98,6 +120,8 @@ export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
     if (st && !gesperrt) { if (pruefe(await body.statusSetzen({ aufgabeId: id, status: st.dataset.status || null }))) void aufgabeOeffnen(id); return; }
     const leer = t.closest<HTMLElement>('[data-leer]');
     if (leer && !gesperrt) { pruefe(await body.aufgabeAendern({ aufgabeId: id, aenderungen: { [leer.dataset.leer!]: null } })); return; }
+    const bild = t.closest<HTMLElement>('.anh-bild[data-anhang]');
+    if (bild && !t.closest('.anh-x')) { grossansicht(bild.dataset.anhang!); return; }
     const bk = t.closest<HTMLElement>('.bk-item[data-booking]');
     if (bk) { void buchungOeffnen(bk.dataset.booking!); return; }
     const d = t.closest<HTMLElement>('[data-d]')?.dataset.d;

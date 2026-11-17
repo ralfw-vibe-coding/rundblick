@@ -11,6 +11,8 @@ export function frist(a: AufgabeZeile, heute: string): string {
   return a.frist ? `<span class="due ${dringKlasse(a.dringlichkeit)}" title="Frist ${WT[wochentag(a.frist)]} ${kurz(a.frist)}">${I.frist}${relativ(a.frist, heute)}</span>` : '';
 }
 
+export const anhangSymbol = (a: AufgabeZeile) => (a.anhaenge ? `<span class="bk-i anh" title="${a.anhaenge} Bild(er)">${I.anhang}<b>${a.anhaenge}</b></span>` : '');
+
 export function buchungsSymbole(a: AufgabeZeile): string {
   const { reservierungen: r, termine: t, gebucht: g } = a.buchungen;
   if (!r && !t) return '';
@@ -41,8 +43,8 @@ export const muellKnopf = (act: string, titel: string, id?: string) => `<button 
 export function zeile(a: AufgabeZeile, heute: string, voll: boolean, frisch = false, gewaehlt = false): string {
   const cls = ['row', a.abgeschlossen ? 'done' : '', a.zurueckgestellt ? 'deferred' : '', frisch ? 'frisch' : '', gewaehlt ? 'gewaehlt' : ''].join(' ');
   const rechts = voll
-    ? `${buchungsSymbole(a)}${a.status ? `<span class="chip">${statusPunkt(a.status.id)}${esc(a.status.name)}</span>` : ''}${a.zurueckgestellt && a.wiedervorlage ? `<span class="chip wv">${I.wiedervorlage}${kurz(a.wiedervorlage)}</span>` : ''}`
-    : `${buchungsSymbole(a)}${a.status ? `<span title="${esc(a.status.name)}">${statusPunkt(a.status.id)}</span>` : ''}`;
+    ? `${anhangSymbol(a)}${buchungsSymbole(a)}${a.status ? `<span class="chip">${statusPunkt(a.status.id)}${esc(a.status.name)}</span>` : ''}${a.zurueckgestellt && a.wiedervorlage ? `<span class="chip wv">${I.wiedervorlage}${kurz(a.wiedervorlage)}</span>` : ''}`
+    : `${anhangSymbol(a)}${buchungsSymbole(a)}${a.status ? `<span title="${esc(a.status.name)}">${statusPunkt(a.status.id)}</span>` : ''}`;
   return `<div class="${cls}" draggable="true" data-task="${a.id}">
     <button class="chk" data-act="${a.abgeschlossen ? 'wiederoeffnen' : 'abschliessen'}" title="${a.abgeschlossen ? 'Wieder öffnen' : 'Abschließen'}">${a.abgeschlossen ? I.erledigt : I.offen}</button>
     <div class="main"><div class="t"><span class="tt">${esc(a.titel)}</span>${frist(a, heute)}</div>${voll && (a.tags.length || a.verantwortlich || a.ort) ? `<div class="meta">${tagsChips(a)}${personChip(a)}${ortChip(a)}</div>` : ''}</div>

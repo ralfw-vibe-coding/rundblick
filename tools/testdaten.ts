@@ -10,6 +10,7 @@ import { plusTage, wochentag } from '../src/basis/datum';
 import { RundblickBody } from '../src/body/body';
 import type { AufgabeEingabe, Body } from '../src/body/interface';
 import { Domain } from '../src/domain/domain';
+import { dateiAnhaenge } from '../src/providers/anhaenge/datei';
 import { speicherEinstellungen } from '../src/providers/einstellungen/json';
 import { JsonlEventStore } from '../src/providers/eventstore/jsonl';
 import { ulidGenerator } from '../src/providers/ids/ulid';
@@ -88,7 +89,7 @@ async function main(): Promise<void> {
   const store = new JsonlEventStore(datenordner, geraet, ulidGenerator.neu, () => systemUhr.jetzt());
   const body = new RundblickBody({
     domain: new Domain(store), uhr: systemUhr, ids: ulidGenerator, einstellungen: speicherEinstellungen(),
-    kalender: beispielKalender(), cache: kalenderCache(), info: { datenordner, geraet },
+    kalender: beispielKalender(), cache: kalenderCache(), anhaenge: dateiAnhaenge(datenordner), info: { datenordner, geraet },
   });
   body.einrichten();
   const heute = systemUhr.heute();

@@ -18,7 +18,11 @@ export type AufgabeZeile = {
   wiedervorlage: Datum | null; zurueckgestellt: boolean;
   status: StatusInfo | null; abgeschlossen: boolean; archiviert: boolean;
   buchungen: { reservierungen: number; termine: number; gebucht: Minuten };
+  /** Anzahl der Bildanhänge */
+  anhaenge: number;
 };
+
+export type AnhangInfo = { id: Id; nr: number; name: string; typ: string; groesse: number };
 
 export type ListenGruppe = { art: 'ueberfaellig' | 'heute' | 'woche' | 'spaeter' | 'ohne'; name: string; aufgaben: AufgabeZeile[] };
 export type Aufgabenliste = {
@@ -63,6 +67,7 @@ export type Zeitraum = { heute: Datum; jetzt: number; tage: Tag[] };
 export type AufgabeDetails = AufgabeZeile & {
   beschreibung: string;
   buchungsliste: BuchungDto[];
+  anhangliste: AnhangInfo[];
 };
 
 export type BuchungDetails = BuchungDto & { tag: Auslastung };
@@ -107,6 +112,9 @@ export interface Body {
   aufgabeVerwerfen(c: { aufgabeId: Id }): Promise<CommandStatus>;
   aufgabeArchivieren(c: { aufgabeId: Id }): Promise<CommandStatus>;
   aufgabeAusArchivHolen(c: { aufgabeId: Id }): Promise<CommandStatus>;
+  /** Bild an die Notiz hängen; daten = Base64 */
+  anhangHinzufuegen(c: { aufgabeId: Id; name: string; typ: string; daten: string }): Promise<CommandStatus>;
+  anhangEntfernen(c: { aufgabeId: Id; anhangId: Id }): Promise<CommandStatus>;
   // ---- Commands: Buchungen
   buchungAnlegen(c: { aufgabeId: Id; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten }): Promise<CommandStatus>;
   buchungEintragen(c: { titel: string; beschreibung?: string; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten }): Promise<CommandStatus>;
@@ -137,6 +145,8 @@ export interface Body {
   vorschlaege(q: { art: 'tag' | 'person' | 'ort'; praefix: string }): Promise<string[]>;
   layout(): Promise<Layout>;
   heute(): Promise<{ datum: Datum; minute: number }>;
+  /** Bild als data:-URL (null, wenn unbekannt oder die Datei noch nicht synchronisiert ist) */
+  anhang(q: { anhangId: Id }): Promise<{ name: string; typ: string; url: string } | null>;
 
   // ---- Benachrichtigung
   beiAenderung(cb: (bereiche: Bereich[]) => void): () => void;
@@ -145,9 +155,9 @@ export interface Body {
 /** Namen aller Methoden außer der Benachrichtigung – für die IPC-Brücke */
 export type BodyMethode = Exclude<keyof Body, 'beiAenderung'>;
 export const BODY_METHODEN: readonly BodyMethode[] = [
-  'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeAusArchivHolen',
+  'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen',
   'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung',
   'spalteAnlegen', 'spalteUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',
-  'liste', 'board', 'zeitraum', 'aufgabe', 'buchung', 'einstellungen', 'erfassungVorschau', 'vorschlaege', 'layout', 'heute',
+  'liste', 'board', 'zeitraum', 'aufgabe', 'buchung', 'einstellungen', 'erfassungVorschau', 'vorschlaege', 'layout', 'heute', 'anhang',
 ];

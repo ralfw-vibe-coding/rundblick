@@ -566,3 +566,22 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .drawer .db .chipfeld input[type=text] { flex: 1 1 24px; }
 .chipfeld .chip { gap: 0; } .chipfeld .chip-x { margin-left: 4px; }
 .list-b .grp-h:not(:first-child) { border-top: 1px solid var(--line); margin: 6px 10px 0; padding-left: 2px; padding-right: 2px; }
+/* ===== Bildanhänge ===== */
+.anhaenge { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -4px; }
+.anh-bild { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: visible; border: 1px solid var(--line); background: var(--panel2) center/cover; cursor: zoom-in; }
+.anh-bild img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; display: block; }
+.anh-bild.fehlt::after { content: 'fehlt'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; color: var(--mute); }
+.anh-nr { position: absolute; left: 4px; bottom: 4px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: rgba(29,29,31,.78); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; line-height: 1; }
+.anh-x { position: absolute; top: -7px; right: -7px; width: 20px !important; height: 20px !important; border-radius: 50% !important; background: #fff !important; border: 1px solid var(--line2) !important; color: var(--ink2); visibility: hidden; box-shadow: var(--shadow); }
+.anh-bild:hover .anh-x, .anh-x.fragen { visibility: visible; }
+.anh-x.fragen { background: var(--over) !important; color: #fff; border-color: var(--over) !important; }
+.anh-x svg.lu { width: 11px; height: 11px; }
+.anh-hinweis { width: 72px; height: 72px; border: 1.5px dashed var(--line2); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--mute); font-size: 9.5px; text-align: center; line-height: 1.2; }
+.anh-hinweis svg.lu { width: 16px; height: 16px; }
+.drawer.bild-drop .anh-hinweis { border-color: var(--own); color: var(--own); background: var(--own-soft); }
+.drawer.bild-drop { box-shadow: inset 0 0 0 3px var(--own-soft), -12px 0 40px rgba(0,0,0,.1); }
+.lightbox { position: fixed; inset: 0; z-index: 200; background: rgba(15,15,20,.82); display: grid; place-items: center; cursor: zoom-out; -webkit-app-region: no-drag; }
+.lightbox img { max-width: 92vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.row .bk-i.anh { color: var(--mute); }
+/* Feldbezeichnungen in der Schublade dezenter */
+.drawer .fld label { font-size: 10px; font-weight: 500; letter-spacing: .07em; color: #a9a7ae; margin-bottom: 4px; }

@@ -23,6 +23,11 @@ body.beiAenderung(bereiche => {
   if (bereiche.includes('einstellungen') || bereiche.includes('kalender')) void einstellungenZeichnen();
 });
 
+// Dateien, die nicht auf einem Ziel landen, dürfen das Fenster nicht verlassen (Electron würde sie öffnen)
+const mitDateien = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+addEventListener('dragover', e => { if (mitDateien(e)) e.preventDefault(); });
+addEventListener('drop', e => { if (mitDateien(e)) e.preventDefault(); });
+
 addEventListener('rb-frisch', () => raster.aktualisieren(['aufgaben', 'board']));
 addEventListener('rb-auswahl', () => raster.aktualisieren(['aufgaben', 'board']));
 zweistufigAnbinden((act, id) => { if (act === 'verwerfen' || act === 'stornieren') schubladeSchliessenWenn(id); });

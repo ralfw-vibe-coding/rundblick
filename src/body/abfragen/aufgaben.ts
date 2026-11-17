@@ -28,6 +28,7 @@ export function zeile(a: AufgabeZ, buchungen: BuchungZ[], spalten: Map<Id, Spalt
       termine: eigene.filter(b => b.start).length,
       gebucht: eigene.filter(b => b.belegt).reduce((x, b) => x + b.dauer, 0),
     },
+    anhaenge: a.anhaenge.length,
   };
 }
 

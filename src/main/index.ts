@@ -11,6 +11,7 @@ import { RundblickBody } from '../body/body';
 import { webAnbinden, type WebServer } from '../client/adapter/http';
 import { ipcAnbinden } from '../client/adapter/ipc';
 import { Domain } from '../domain/domain';
+import { dateiAnhaenge } from '../providers/anhaenge/datei';
 import { jsonEinstellungen } from '../providers/einstellungen/json';
 import { JsonlEventStore } from '../providers/eventstore/jsonl';
 import { ulidGenerator } from '../providers/ids/ulid';
@@ -65,7 +66,7 @@ async function starte(): Promise<void> {
 
   // ---- Domain & Body
   const domain = new Domain(store);
-  const body = new RundblickBody({ domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender, cache, info: { datenordner, geraet } });
+  const body = new RundblickBody({ domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender, cache, anhaenge: dateiAnhaenge(datenordner), info: { datenordner, geraet } });
   body.einrichten();
   if (process.env.RB_DEMO === '1' && store.lesen().events.length <= 7) await demoDatenAnlegen(body, systemUhr.heute());
 

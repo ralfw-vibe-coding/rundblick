@@ -163,4 +163,30 @@ export function aufgabeAusArchivHolen(es: EventStore, c: { aufgabeId: Id }): Erg
   });
 }
 
+export const BILDTYPEN = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/heic', 'image/svg+xml'];
+export const MAX_ANHANG = 25 * 1024 * 1024;
+
+/** Bild an die Notiz einer Aufgabe hängen (die Datei selbst legt der Body über den Anhangspeicher ab) */
+export function anhangHinzufuegen(es: EventStore, c: { aufgabeId: Id; anhangId: Id; name: string; typ: string; groesse: number }): Ergebnis {
+  return ctx(es, [tag.aufgabe(c.aufgabeId)], b => {
+    const a = b.aufgaben.get(c.aufgabeId);
+    const nicht = bearbeitbar(a);
+    if (nicht) return { ok: false, fehler: [nicht] };
+    if (!BILDTYPEN.includes(c.typ)) return { ok: false, fehler: ['Nur Bilder (PNG, JPEG, GIF, WebP, HEIC, SVG) können angehängt werden.'] };
+    if (!(c.groesse > 0 && c.groesse <= MAX_ANHANG)) return { ok: false, fehler: ['Das Bild ist zu groß (höchstens 25 MB).'] };
+    if (a!.anhaenge.some(x => x.id === c.anhangId)) return [];
+    return [{ typ: 'AnhangHinzugefuegt', tags: [tag.aufgabe(c.aufgabeId)], daten: { aufgabeId: c.aufgabeId, anhangId: c.anhangId, name: c.name.trim() || 'Bild', typ: c.typ, groesse: c.groesse } }];
+  });
+}
+
+export function anhangEntfernen(es: EventStore, c: { aufgabeId: Id; anhangId: Id }): Ergebnis {
+  return ctx(es, [tag.aufgabe(c.aufgabeId)], b => {
+    const a = b.aufgaben.get(c.aufgabeId);
+    const nicht = bearbeitbar(a);
+    if (nicht) return { ok: false, fehler: [nicht] };
+    if (!a!.anhaenge.some(x => x.id === c.anhangId)) return [];
+    return [{ typ: 'AnhangEntfernt', tags: [tag.aufgabe(c.aufgabeId)], daten: { aufgabeId: c.aufgabeId, anhangId: c.anhangId } }];
+  });
+}
+
 export { fehler };

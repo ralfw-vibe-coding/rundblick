@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Domain } from '../domain/domain';
+import { speicherAnhaenge } from '../providers/anhaenge/datei';
 import { speicherEinstellungen } from '../providers/einstellungen/json';
 import { SpeicherEventStore } from '../providers/eventstore/speicher';
 import { zaehlerIds } from '../providers/ids/ulid';
@@ -19,7 +20,7 @@ beforeEach(() => {
   const es = new SpeicherEventStore('test', zaehlerIds('e').neu, () => uhr.jetzt());
   const domain = new Domain(es);
   body = new RundblickBody({
-    domain, uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: beispielKalender(), cache: kalenderCache(),
+    domain, uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: beispielKalender(), cache: kalenderCache(), anhaenge: speicherAnhaenge(),
     info: { datenordner: '/tmp', geraet: 'test' },
   });
   body.einrichten();
@@ -146,7 +147,7 @@ describe('Nachladen externer Termine', () => {
     const orig = quelle.termine;
     quelle.termine = (von, bis) => { abfragen.push([von, bis]); return orig(von, bis); };
     const es = new SpeicherEventStore('t', zaehlerIds('e').neu, () => uhr.jetzt());
-    const b = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: quelle, cache: kalenderCache(), info: { datenordner: '', geraet: '' } });
+    const b = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: quelle, cache: kalenderCache(), anhaenge: speicherAnhaenge(), info: { datenordner: '', geraet: '' } });
     await b.synchronisieren();
     await b.zeitraum({ von: '2000-01-01', bis: '2000-01-02' });
     await b.zeitraum({ von: '2027-08-01', bis: '2027-08-31' });
@@ -172,7 +173,7 @@ describe('Einstellungen', () => {
     const es = new SpeicherEventStore('t', zaehlerIds('e').neu, () => uhr.jetzt());
     const b = new RundblickBody({
       domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(),
-      kalender: beispielKalender('verweigert'), cache: kalenderCache(), info: { datenordner: '', geraet: '' },
+      kalender: beispielKalender('verweigert'), cache: kalenderCache(), anhaenge: speicherAnhaenge(), info: { datenordner: '', geraet: '' },
     });
     expect(await b.synchronisieren()).toMatchObject({ ok: false });
     expect((await b.einstellungen()).zugriff).toBe('verweigert');

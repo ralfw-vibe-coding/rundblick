@@ -4,9 +4,9 @@ import type { Datum, Id, KategorieId, Minuten, Uhrzeit, Wochentag } from '../sch
 import type { AufgabeAenderungen, AufgabeFelder } from './commands/aufgaben';
 import type { Ergebnis } from './commands/basis';
 import type { BuchungAenderungen } from './commands/buchungen';
-import type { AufgabeZ, BuchungZ, PlanungZ, SpalteZ } from './zustand';
+import type { AnhangZ, AufgabeZ, BuchungZ, PlanungZ, SpalteZ } from './zustand';
 
-export type { AufgabeAenderungen, AufgabeFelder, BuchungAenderungen, Ergebnis, AufgabeZ, BuchungZ, PlanungZ, SpalteZ };
+export type { AufgabeAenderungen, AufgabeFelder, BuchungAenderungen, Ergebnis, AnhangZ, AufgabeZ, BuchungZ, PlanungZ, SpalteZ };
 
 export interface DomainInterface {
   // ---- Commands
@@ -18,6 +18,8 @@ export interface DomainInterface {
   aufgabeVerwerfen(c: { aufgabeId: Id }): Ergebnis;
   aufgabeArchivieren(c: { aufgabeId: Id }): Ergebnis;
   aufgabeAusArchivHolen(c: { aufgabeId: Id }): Ergebnis;
+  anhangHinzufuegen(c: { aufgabeId: Id; anhangId: Id; name: string; typ: string; groesse: number }): Ergebnis;
+  anhangEntfernen(c: { aufgabeId: Id; anhangId: Id }): Ergebnis;
   buchungAnlegen(c: { buchungId: Id; aufgabeId: Id; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten; titel?: string }): Ergebnis;
   buchungEintragen(c: { buchungId: Id; titel: string; beschreibung?: string; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten; belegt?: boolean }): Ergebnis;
   buchungAendern(c: { buchungId: Id; aenderungen: BuchungAenderungen }): Ergebnis;
