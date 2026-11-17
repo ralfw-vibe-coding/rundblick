@@ -711,3 +711,20 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .tl-last-text { position: absolute; top: 3px; font-size: 10px; color: var(--mute); display: inline-flex; align-items: center; gap: 3px; }
 .tl-last-text.st-ueber { color: var(--last-rot); font-weight: 600; }
 .tl-last-text svg.lu { width: 12px; height: 12px; }
+/* Seitenleiste der Tagesansicht: Aufgaben wie in der Liste (ziehbar), Abschnittsköpfe in den Listenfarben */
+.day-side { padding: 8px 4px 10px; gap: 10px; }
+.day-side .ds-h { display: flex; align-items: center; gap: 6px; padding: 4px 10px 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); }
+.day-side .ds-h .n { font-weight: 500; }
+.day-side .ds-h.ueberfaellig { color: var(--d-ueberfaellig); } .day-side .ds-h.heute { color: var(--d-heute); }
+.day-side .ds-h.bald, .day-side .ds-h.woche { color: var(--d-woche); } .day-side .ds-h.spaeter { color: var(--d-spaeter); }
+.day-side .row { margin: 0 2px; padding: 4px 8px; }
+.day-side .row .t .tt { font-size: 12.5px; }
+.day-side svg.lu { width: auto; height: auto; }
+.day-side .ds-hinweis { margin-top: auto; display: flex; gap: 6px; align-items: flex-start; padding: 8px 10px 0; border-top: 1px solid var(--line); font-size: 11px; color: var(--mute); line-height: 1.5; }
+.day-side .ds-hinweis svg.lu { width: 12px; height: 12px; flex: none; margin-top: 2px; }
+.day-side { width: 290px; }
+.day-side .row { align-items: flex-start; }
+.day-side .row .chk { margin-top: 1px; }
+.day-side .row .t { flex-wrap: wrap; row-gap: 0; column-gap: 6px; }
+.day-side .row .t .tt { white-space: normal; overflow: visible; overflow-wrap: break-word; hyphens: auto; }
+.day-side .row .right > :not(.muell) { display: none; }

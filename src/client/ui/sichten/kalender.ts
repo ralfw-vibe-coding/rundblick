@@ -1,11 +1,11 @@
 // Sicht: Kalender – Tag, 3 Tage, Woche, Monat, 3 Monate und Timeline.
 // Daten kommen aus der Query `zeitraum`; hier steckt nur Darstellungslogik (Layout, Pixel ↔ Zeit, Zoom).
 import {
-  dauerText, differenz, kurz, kw, MON, MON_LANG, monatsErster, montag, plusMonate, plusTage, tagImMonat, uhrzeit, WT, WT_LANG, wochentag, jahr, monat,
+  relativ,   dauerText, differenz, kurz, kw, MON, MON_LANG, monatsErster, montag, plusMonate, plusTage, tagImMonat, uhrzeit, WT, WT_LANG, wochentag, jahr, monat,
 } from '../../../basis/datum';
-import type { Bereich, BuchungDto, ExternDto, Tag, Zeitraum } from '../../../body/interface';
+import type { AufgabeZeile, Aufgabenliste, Bereich, BuchungDto, ExternDto, Tag, Zeitraum } from '../../../body/interface';
 import { body } from '../body';
-import { auslastungsAnteil, auslastungsStufe, kapazitaetsBalken } from '../bausteine';
+import { auslastungsAnteil, auslastungsStufe, kapazitaetsBalken, zeile } from '../bausteine';
 import { esc } from '../dom';
 import { I } from '../icons';
 import type { Dichte, Sicht } from './sicht';
@@ -55,7 +55,11 @@ export class KalenderSicht implements Sicht {
     this.heute = z.heute;
     let inhalt = '';
     switch (this.z.ansicht) {
-      case 'tag': inhalt = `<div style="display:flex;flex:1;min-height:0"><div style="flex:1;min-width:0;display:flex;flex-direction:column">${woche(z, z.tage, dichte)}</div>${dichte === 'full' ? tagSeite(z.tage[0]!) : ''}</div>`; break;
+      case 'tag': {
+        const liste = dichte === 'full' ? await body.liste({}) : null;
+        inhalt = `<div style="display:flex;flex:1;min-height:0"><div style="flex:1;min-width:0;display:flex;flex-direction:column">${woche(z, z.tage, dichte)}</div>${liste ? tagSeite(z.tage[0]!, liste, z.heute) : ''}</div>`;
+        break;
+      }
       case 'tage3': case 'woche': inhalt = woche(z, z.tage, dichte); break;
       case 'monat': inhalt = monatsRaster(z, z.tage, anker, dichte); break;
       case 'monate3': inhalt = `<div class="months">${[0, 1, 2].map(i => { const m = plusMonate(anker, i); const s = montag(monatsErster(m)); const t = z.tage.filter(x => x.datum >= s && x.datum <= plusTage(s, 41)); return `<div class="mm"><div class="mm-h">${MON_LANG[monat(m)]} ${jahr(m)}</div>${monatsRaster(z, t, m, 'compact')}</div>`; }).join('')}</div>`; break;
@@ -198,14 +202,23 @@ function woche(z: Zeitraum, tage: Tag[], dichte: Dichte): string {
   </div>`;
 }
 
-function tagSeite(t: Tag): string {
-  const ev = ereignisse(t);
+/** Seitenleiste der Tagesansicht: überfällige und an diesem Tag fällige Aufgaben – als ziehbare Zeilen
+ *  wie in der Aufgabenliste (Rauten in denselben Farben), dazu Wiedervorlagen. Buchungen und Auslastung
+ *  stehen bereits im Raster und fehlen hier bewusst. */
+function tagSeite(t: Tag, l: Aufgabenliste, heute: string): string {
+  const alle = l.gruppen.flatMap(g => g.aufgaben);
+  const amTag = alle.filter(a => a.frist === t.datum);
+  const ueberfaellig = l.gruppen.find(g => g.art === 'ueberfaellig')!.aufgaben.filter(a => a.frist !== t.datum);
+  const wv = t.wiedervorlagen.map(w => alle.find(a => a.id === w.aufgabeId) ?? l.zurueckgestellt.find(a => a.id === w.aufgabeId)).filter(Boolean) as AufgabeZeile[];
+  const abschnitt = (name: string, klasse: string, aufgaben: AufgabeZeile[]) => aufgaben.length
+    ? `<div class="ds-abschnitt"><div class="ds-h ${klasse}">${esc(name)} <span class="n">${aufgaben.length}</span></div>${aufgaben.map(a => zeile(a, heute, false)).join('')}</div>` : '';
+  const tagName = t.datum === heute ? 'heute' : relativ(t.datum, heute);
+  const inhalt = abschnitt('Überfällig', 'ueberfaellig', ueberfaellig)
+    + abschnitt(`Fällig ${tagName}`, amTag[0]?.dringlichkeit ?? '', amTag)
+    + abschnitt('Taucht wieder auf', '', wv);
   return `<div class="day-side">
-    <div><h4>Fällig</h4>${t.fristen.length ? t.fristen.map(f => `<div class="row" data-task="${f.aufgabeId}"><div class="main"><div class="t">${I.frist} ${esc(f.titel)}</div></div></div>`).join('') : '<div class="muted">nichts</div>'}</div>
-    <div><h4>Reservierungen</h4>${t.reservierungen.length ? `<div style="display:flex;flex-direction:column;gap:4px">${t.reservierungen.map(resHtml).join('')}</div>` : '<div class="muted">keine</div>'}</div>
-    <div><h4>Termine</h4>${ev.map(e => `<div style="font-size:12px;padding:2px 0" ${e.b ? `data-booking="${e.b.id}"` : ''}><span class="muted">${uhrzeit(e.s)}</span> ${esc(e.titel)}${e.x ? ` <span class="legend"><i style="background:${e.x.farbe}"></i></span>` : ''}</div>`).join('') || '<div class="muted">keine</div>'}</div>
-    ${t.wiedervorlagen.length ? `<div><h4>Taucht wieder auf</h4>${t.wiedervorlagen.map(w => `<div data-task="${w.aufgabeId}" style="font-size:12px">${I.wiedervorlage} ${esc(w.titel)}</div>`).join('')}</div>` : ''}
-    <div><h4>Auslastung</h4>${dauerText(t.auslastung.belegt)} von ${dauerText(t.auslastung.kapazitaet)}${kapazitaetsBalken(t.auslastung, true)}</div>
+    ${inhalt || '<div class="muted" style="font-size:12px">Keine überfälligen oder fälligen Aufgaben.</div>'}
+    <div class="ds-hinweis">${I.plus}<span>Aufgabe hierher in den Kalender ziehen: Termin.<br>Doppelklick ins Raster oder Reservierungsband: Buchung ohne Aufgabe.</span></div>
   </div>`;
 }
 
