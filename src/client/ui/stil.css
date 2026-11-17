@@ -672,3 +672,11 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 /* Einstellungen: Name der Spaltengruppe editierbar wie die Spaltennamen */
 .einst .kat-block .kat-name { display: block; width: 100%; margin: 6px 0 2px; font: inherit; font-size: 12px; font-weight: 700; border: 1px solid transparent; border-radius: 5px; padding: 2px 6px; background: transparent; color: var(--ink); }
 .einst .kat-block .kat-name:hover, .einst .kat-block .kat-name:focus { border-color: var(--line2); background: #fff; outline: none; }
+/* Einstellungen: „+“ direkt hinter dem Namen der Spaltengruppe */
+.einst .kat-zeile { display: flex; align-items: center; gap: 2px; margin: 6px 0 2px; }
+.einst .kat-zeile .kat-name { margin: 0; width: auto; flex: 1; min-width: 0; }
+.einst .kat-plus { border: 0; background: none; color: var(--mute); width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; padding: 0; flex: none; }
+.einst .kat-plus:hover { color: var(--own); background: var(--own-soft); }
+.einst .kat-plus svg.lu { width: 15px; height: 15px; }
+.einst .sp-zeile.neu input { border-color: var(--own); background: #fff; }
+.einst .kat-zeile .kat-name { flex: none; field-sizing: content; min-width: 4ch; max-width: calc(100% - 26px); }

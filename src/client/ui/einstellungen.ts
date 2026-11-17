@@ -32,7 +32,7 @@ export async function einstellungenUmschalten(): Promise<void> {
     if (d.zugriff) pruefe(await body.kalenderZugriffAnfragen());
     if (d.sync) pruefe(await body.synchronisieren(), 'Kalender aktualisiert');
     if (d.spWeg) pruefe(await body.spalteEntfernen({ statusId: d.spWeg }));
-    if (d.spNeu) { const name = prompt('Name der neuen Spalte'); if (name) pruefe(await body.spalteAnlegen({ name, kategorie: d.spNeu as KategorieId })); }
+    if (d.spNeu) { neueSpalteZeile(d.spNeu as KategorieId); return; }
     if (d.spHoch || d.spRunter) {
       const e2 = await body.einstellungen();
       const id = (d.spHoch ?? d.spRunter)!;
@@ -44,6 +44,31 @@ export async function einstellungenUmschalten(): Promise<void> {
     if (d.zu) { einstellungenSchliessen(); return; }
     void einstellungenZeichnen();
   });
+}
+
+/** „+“ hinter dem Gruppennamen: leere Zeile mit Cursor; ↵ legt die Spalte an, Esc oder leer verlassen verwirft */
+function neueSpalteZeile(kat: KategorieId): void {
+  const block = panel!.querySelector<HTMLElement>(`.kat-block[data-kat="${kat}"]`)!;
+  let zeile = block.querySelector<HTMLElement>('.sp-zeile.neu');
+  if (!zeile) {
+    zeile = document.createElement('div');
+    zeile.className = 'sp-zeile neu';
+    zeile.innerHTML = '<input placeholder="Name der neuen Spalte">';
+    block.appendChild(zeile);
+    const inp = zeile.querySelector('input')!;
+    let fertig = false;
+    const weg = () => { fertig = true; zeile!.remove(); };
+    inp.addEventListener('keydown', async ev => {
+      if (ev.key === 'Escape') { ev.stopPropagation(); weg(); }
+      if (ev.key !== 'Enter') return;
+      const name = inp.value.trim();
+      if (!name) { weg(); return; }
+      fertig = true;
+      if (pruefe(await body.spalteAnlegen({ name, kategorie: kat }))) void einstellungenZeichnen();
+    });
+    inp.addEventListener('blur', () => { if (!fertig && !inp.value.trim()) weg(); });
+  }
+  zeile.querySelector('input')!.focus();
 }
 
 export async function einstellungenZeichnen(): Promise<void> {
@@ -64,9 +89,9 @@ export async function einstellungenZeichnen(): Promise<void> {
     <h4>Tageskapazität (Stunden)</h4>
     <div class="kapgrid">${WT.map((w, i) => `<label>${w}<input type="number" min="0" max="24" step="0.5" data-wt="${i + 1}" value="${e.kapazitaet[i]! / 60}"></label>`).join('')}</div>
     <h4>Board-Spalten</h4>
-    ${e.kategorien.map(k => `<div class="kat-block"><input class="kat-name" value="${esc(k.name)}" data-kat-name="${k.id}" title="Name der Spaltengruppe">
+    ${e.kategorien.map(k => `<div class="kat-block" data-kat="${k.id}"><div class="kat-zeile"><input class="kat-name" value="${esc(k.name)}" data-kat-name="${k.id}" title="Name der Spaltengruppe"><button class="kat-plus" data-sp-neu="${k.id}" title="Neue Spalte in „${esc(k.name)}“">${I.plus}</button></div>
       ${e.spalten.filter(s => s.kategorie === k.id).map(s => `<div class="sp-zeile"><input value="${esc(s.name)}" data-sp-name="${esc(s.id)}"><button data-sp-hoch="${esc(s.id)}" title="nach links">${I.hoch}</button><button data-sp-runter="${esc(s.id)}" title="nach rechts">${I.runter}</button><button data-sp-weg="${esc(s.id)}" title="Spalte entfernen (nur wenn leer)">${I.x}</button></div>`).join('')}
-      <button class="btn" data-sp-neu="${k.id}" style="font-size:12px;padding:1px 8px;margin-top:2px">${I.plus} Spalte</button></div>`).join('')}
+      </div>`).join('')}
     <h4>Daten</h4>
     <div class="info">Ordner: ${esc(e.datenordner)}<br>Gerät: ${esc(e.geraet)} (eigene Event-Datei: events/${esc(e.geraet)}.jsonl)</div>`;
   if (aktiv?.wt) panel.querySelector<HTMLInputElement>(`[data-wt="${aktiv.wt}"]`)?.focus();

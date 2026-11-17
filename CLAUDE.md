@@ -54,5 +54,5 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - „Abgeschlossen“ ist ein eigener Zustand, unabhängig vom Board-Status; abgeschlossene Karten bleiben auf dem Board.
 - **Archivieren** verbirgt eine Aufgabe überall (auch unter Abgeschlossen); **Verwerfen** löscht sie.
 - Buchungen haben eigenen Titel/Notiz; freie Buchungen (ohne Aufgabe) können später zur Aufgabe werden.
-- Board-Spalten gehören zu einer von drei Kategorien (nicht begonnen / begonnen / beendet). Die drei Kategorien sind fest, ihre Namen (Spaltengruppen) sind in den Einstellungen umbenennbar (Event `KategorieUmbenannt`).
+- Board-Spalten gehören zu einer von drei Kategorien (nicht begonnen / begonnen / beendet). Die drei Kategorien sind fest, ihre Namen (Spaltengruppen) sind in den Einstellungen umbenennbar (Event `KategorieUmbenannt`). Neue Spalte: „+“ direkt hinter dem Gruppennamen in den Einstellungen → leere Zeile mit Cursor, ↵ legt an, Esc/leer verwirft (kein Dialog).
 - Kapazität je Wochentag; Buchungen und externe Kalender (pro Kalender einstellbar) belegen sie; Standarddauer für neue Buchungen.
