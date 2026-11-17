@@ -558,3 +558,9 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .mini .peek svg.lu { width: 10px; height: 10px; fill: currentColor; }
 .day-side svg.lu { width: 11px; height: 11px; }
 .leer svg.lu { width: 14px; height: 14px; }
+.drawer .db .chipfeld input[type=text] { width: auto !important; flex: 1 1 40px; min-width: 40px; }
+.chipfeld { flex-wrap: wrap; }
+.chipfeld .chip { max-width: calc(100% - 34px); min-width: 0; }
+.chipfeld .chip-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.drawer .db .chipfeld input[type=text] { min-width: 24px; }
+.drawer .db .chipfeld input[type=text] { flex: 1 1 24px; }
