@@ -4,7 +4,7 @@ import type { Bereich, Layout } from '../../body/interface';
 import { body } from './body';
 import { esc } from './dom';
 import { I } from './icons';
-import { BoardSicht } from './sichten/board';
+import { BoardSicht, type BoardZustand } from './sichten/board';
 import { KalenderSicht, type KalZustand } from './sichten/kalender';
 import { ListenSicht, type ListeZustand } from './sichten/liste';
 import type { Dichte, Sicht } from './sichten/sicht';
@@ -39,7 +39,7 @@ function vorlagen(): Arbeitsbereich[] {
 function sichtErzeugen(z: Zelle): Sicht | null {
   switch (z.sicht) {
     case 'liste': return new ListenSicht((z.zustand as ListeZustand) ?? {});
-    case 'board': return new BoardSicht();
+    case 'board': return new BoardSicht((z.zustand as BoardZustand) ?? {});
     case 'tag': return new KalenderSicht({ ansicht: 'tag', anker: null, pph: 10, ...(z.zustand as Partial<KalZustand>) }, ['tag']);
     case 'mehrtage': return new KalenderSicht({ ansicht: 'woche', anker: null, pph: 10, ...(z.zustand as Partial<KalZustand>) }, ['tage3', 'woche', 'monat', 'monate3']);
     case 'timeline': return new KalenderSicht({ ansicht: 'timeline', anker: null, pph: 16, ...(z.zustand as Partial<KalZustand>) }, ['timeline']);

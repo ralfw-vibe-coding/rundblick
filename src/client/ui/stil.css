@@ -611,9 +611,36 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .board.compact .card .chk svg.lu { width: 14px; height: 14px; }
 /* Board: Spalten nie schmaler als 150 px – wird es eng, scrollt das Board waagerecht */
 .board2 { overflow-x: auto; }
-.board2 .kat { min-width: auto; flex-shrink: 0; flex-grow: 1; }
+.board2 .kat { flex-shrink: 0; }
 .board2 .kat-cols { grid-auto-columns: minmax(150px, 1fr); }
 .card { position: relative; padding: 6px 8px; }
 .card .t .tt { overflow-wrap: break-word; hyphens: auto; }
 .card .muell { position: absolute; top: 3px; right: 3px; margin: 0; background: #fff; box-shadow: 0 0 0 3px #fff; }
 .card .meta { padding-left: 24px; }
+
+/* ===== Board: zuklappen, Bereich „Abgeschlossen“, Korrekturen ===== */
+.card .muell.fragen { background: var(--over); color: #fff; box-shadow: 0 0 0 3px #fff; font-size: 12px; }
+.cards { padding-top: 3px; }
+.board2 .kat-cols { display: flex; gap: 8px; }
+.board2 .kat-cols > .col { flex: 1 1 0; min-width: 150px; }
+.board2 .kat.zu { flex: 0 0 auto; width: 34px; min-width: 34px; }
+.kat-h, .col-h, .abg-h { cursor: pointer; user-select: none; }
+.kat-h { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.kat-h .caret, .col-h .caret, .abg-h .caret { display: inline-grid; place-items: center; color: var(--mute); transition: transform .15s; flex: none; }
+.kat-h .caret svg.lu, .col-h .caret svg.lu, .abg-h .caret svg.lu { width: 12px; height: 12px; }
+.kat-h.open .caret, .col-h.open .caret, .abg-h.open .caret { transform: rotate(90deg); }
+.col-h .nm, .kat-h .nm { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* zugeklappt: schmaler Streifen mit senkrechter Beschriftung */
+.board2 .kat.zu .kat-h, .board2 .col.zu .col-h, .board.compact .col.zu .col-h {
+  writing-mode: vertical-rl; flex-direction: row; align-items: center; gap: 6px; padding: 8px 0; height: auto; border-bottom: 0;
+}
+.board2 .kat.zu .kat-h { border-left: 3px solid; padding: 4px 6px; margin: 0; }
+.board2 .kat-cols > .col.zu { flex: 0 0 34px; min-width: 34px; }
+.col.zu { align-items: center; }
+.col.zu .col-h .n, .kat.zu .kat-h .n { margin: 0; }
+.board.compact { display: flex; }
+.board.compact > .col { flex: 1 1 0; min-width: 0; }
+.board.compact > .col.zu { flex: 0 0 34px; }
+.abg-h { display: flex; align-items: center; gap: 5px; margin: 6px 2px 2px; padding-top: 6px; border-top: 1px dashed var(--line2); font-size: 11px; color: var(--mute); }
+.abg-h .n { margin-left: auto; }
+.board2 .kat-cols > .col { min-width: 0; }

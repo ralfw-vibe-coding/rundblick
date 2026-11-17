@@ -33,6 +33,12 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - Mülleimer erscheint beim Überfahren einer Zeile.
 - Die in der Schublade geöffnete Aufgabe bleibt in Liste/Board **markiert und sichtbar**, auch wenn sie den Abschnitt wechselt.
 
+**Kanban-Board**
+- Kategorien und Spalten per Chevron zuklappbar (zugeklappt = schmaler Streifen mit senkrechter Beschriftung); Zustand je Board-Zelle gespeichert.
+- Abgeschlossene Aufgaben stehen unten in jeder Spalte in einem eigenen, anfangs zugeklappten Bereich „Abgeschlossen“ (durchgestrichen); Zähler zeigen nur offene Karten.
+- Karte wie Listenzeile: Abschließen-Kreis vor dem Titel, Frist dahinter, Mülleimer (zweistufig) schwebt beim Überfahren oben rechts.
+- Spalten mindestens 150 px breit; wird es eng, scrollt das Board waagerecht.
+
 **Schublade (Aufgabe)**
 - Kopf: Abschließen-Kreis links vom Titel · Archiv · Mülleimer · ×. „×“ und Esc schließen.
 - Reihenfolge: Status als Chips · Frist, Wiedervorlage · Verantwortlich, Ort · Tags · Notiz (füllt den Rest) · Bildanhänge · Buchung hinzufügen · bisherige Buchungen.
