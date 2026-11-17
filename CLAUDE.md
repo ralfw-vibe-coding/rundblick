@@ -56,4 +56,6 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - **Archivieren** verbirgt eine Aufgabe überall (auch unter Abgeschlossen); **Verwerfen** löscht sie.
 - Buchungen haben eigenen Titel/Notiz; freie Buchungen (ohne Aufgabe) können später zur Aufgabe werden.
 - Board-Spalten gehören zu einer von drei Kategorien (nicht begonnen / begonnen / beendet). Die drei Kategorien sind fest, ihre Namen (Spaltengruppen) sind in den Einstellungen umbenennbar (Event `KategorieUmbenannt`). Neue Spalte: „+“ direkt hinter dem Gruppennamen in den Einstellungen → leere Zeile mit Cursor, ↵ legt an, Esc/leer verwirft (kein Dialog).
+- **Kalender:** Rundblick-Einträge (Buchungen von Aufgaben, freie Buchungen) erscheinen im Kalender als **eigene, zu Rundblick gehörende Einträge** – wie die Karten auf dem Board – neben den Terminen aus Google/iCloud. Sie sind **keine** Google-/iCloud-Einträge und werden dort (noch) nicht angelegt.
+- **Später (Backlog, noch nicht umsetzen):** Rundblick-Aufgaben/Buchungen in Google Calendar oder iCloud übernehmen bzw. umwandeln.
 - Kapazität je Wochentag; Buchungen und externe Kalender (pro Kalender einstellbar) belegen sie; Standarddauer für neue Buchungen.
