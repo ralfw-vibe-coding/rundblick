@@ -37,7 +37,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 **Kanban-Board**
 - Kategorien und Spalten per Chevron zuklappbar (zugeklappt = schmaler Streifen mit senkrechter Beschriftung); Zustand je Board-Zelle gespeichert.
 - Unten in jeder Spalte zwei eigene, anfangs zugeklappte Bereiche: „Zurückgestellt“ (Wiedervorlage in der Zukunft, mit Datum-Chip) und darunter „Abgeschlossen“ (durchgestrichen). Zähler zeigen nur offene Karten; archivierte erscheinen nicht.
-- Karte wie Listenzeile: Abschließen-Kreis vor dem Titel, Frist dahinter, Mülleimer (zweistufig) schwebt beim Überfahren oben rechts.
+- Karte wie Listenzeile: Abschließen-Kreis vor dem Titel, Frist dahinter, darunter Chips für Tags, @Verantwortlich und Ort (wie in der Liste); Mülleimer (zweistufig) schwebt beim Überfahren oben rechts.
 - Spalten mindestens 150 px breit; Breite per Griff am rechten Spaltenrand einstellbar (Doppelklick = automatisch), wird im Board-Zustand gespeichert; wird es eng, scrollt das Board waagerecht.
 - Zahlen in zugeklappten (senkrechten) Streifen stehen aufrecht.
 - Offene Karten lassen sich senkrecht verschieben (Einfügelinie wie in der Liste), auch in eine andere Spalte (setzt dann zusätzlich den Status). Reihenfolge = derselbe manuelle Rang wie in der Liste.

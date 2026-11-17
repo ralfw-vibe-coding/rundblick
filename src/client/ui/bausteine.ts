@@ -53,7 +53,7 @@ export function zeile(a: AufgabeZeile, heute: string, voll: boolean, frisch = fa
 
 export function karte(a: AufgabeZeile, heute: string, voll: boolean, mitStatus: boolean, gewaehlt = false): string {
   const beendet = a.status?.kategorie === 'beendet';
-  const meta = `${mitStatus && a.status ? `<span class="chip">${statusPunkt(a.status.id)}${esc(a.status.name)}</span>` : ''}${a.zurueckgestellt && a.wiedervorlage ? `<span class="chip wv" title="zurückgestellt bis ${kurz(a.wiedervorlage)}">${I.wiedervorlage}${kurz(a.wiedervorlage)}</span>` : ''}${anhangSymbol(a)}${buchungsSymbole(a)}${voll ? tagsChips(a) : ''}${avatar(a)}`;
+  const meta = `${mitStatus && a.status ? `<span class="chip">${statusPunkt(a.status.id)}${esc(a.status.name)}</span>` : ''}${a.zurueckgestellt && a.wiedervorlage ? `<span class="chip wv" title="zurückgestellt bis ${kurz(a.wiedervorlage)}">${I.wiedervorlage}${kurz(a.wiedervorlage)}</span>` : ''}${anhangSymbol(a)}${buchungsSymbole(a)}${voll ? tagsChips(a) : ''}${personChip(a)}${ortChip(a)}`;
   return `<div class="card ${beendet ? 'ended' : ''} ${a.abgeschlossen ? 'closed' : ''} ${a.zurueckgestellt && !a.abgeschlossen ? 'zurueck' : ''} ${gewaehlt ? 'gewaehlt' : ''}" draggable="true" data-task="${a.id}">
     <div class="c-kopf">
       <button class="chk" data-act="${a.abgeschlossen ? 'wiederoeffnen' : 'abschliessen'}" title="${a.abgeschlossen ? 'Wieder öffnen' : 'Abschließen – eigener Zustand, unabhängig von der Spalte'}">${a.abgeschlossen ? I.erledigt : I.offen}</button>

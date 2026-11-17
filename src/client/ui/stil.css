@@ -666,3 +666,6 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, .14); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, .3); }
 ::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+/* Karten: Person und Ort als Chips wie in der Liste; lange Werte gekürzt */
+.card .meta .chip.person, .card .meta .chip.ort { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.board.compact .card .meta .chip.person, .board.compact .card .meta .chip.ort { display: inline-flex; }
