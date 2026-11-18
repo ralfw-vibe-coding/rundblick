@@ -73,6 +73,12 @@
   .aktionen { position: absolute; inset: 0 0 0 auto; display: flex; }
   .aktionen button { width: 72px; border: 0; color: #fff; display: grid; place-items: center; gap: 2px; font-size: 11px; cursor: pointer; }
   .aktionen .arch { background: #8a8890; }
+  .aktionen .gesehen { background: var(--own); }
+  .abschnitt.neu { color: var(--own); }
+  .eintrag { position: relative; transition: transform .2s; touch-action: pan-y; }
+  .log-huelle { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .log-huelle:last-child { border-bottom: 0; }
+  .log-huelle .eintrag { border-bottom: 0; }
   .aktionen .muell { background: #d9d5cd; color: var(--ink2); }
   .aktionen .muell.fragen { background: var(--over); color: #fff; font-size: 22px; font-weight: 700; }
   .zeile { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; background: #fff; transition: transform .2s; touch-action: pan-y; cursor: pointer; }
@@ -211,7 +217,7 @@
 <body>
 <div class="seite">
   <h1>Rundblick Phone App – Entwurf</h1>
-  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig) · lange drücken und ziehen = umsortieren (in der Liste innerhalb des Abschnitts, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
+  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig), unter „Neu“ = Gesehen / Mülleimer, im Logbuch = Mülleimer · neu Erfasstes steht oben unter „Neu“ (zusätzlich in seiner Rubrik), bis man es öffnet oder wegwischt · lange drücken und ziehen = umsortieren (in der Liste innerhalb des Abschnitts, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
   <div class="reihe" id="reihe"></div>
 
   <div class="erkl">
@@ -270,10 +276,17 @@ function telefon(start, titel, unter) {
 
 function app(bs, start) {
   const aufgaben = daten();
-  const z = { sicht: start === 'detail' ? 'liste' : start, offen: new Set(['ueberfaellig','heute','woche','spaeter','ohne']), wolke: 0, frisch: null, suche: false, filter: '', spalteZu: new Set(['erledigt']), angaben: false };
-  const notizen = [
-    { zeit: '09:12', t: 'Telefonat mit Markus: Rohschnitt Freitag fertig #vorgestellt', notiz: true },
-    { zeit: '08:40', t: 'Workshop-Feedback auswerten' },
+  const z = { sicht: start === 'detail' ? 'liste' : start, offen: new Set(['neu','ueberfaellig','heute','woche','spaeter','ohne']), wolke: 0, frisch: null, suche: false, filter: '', spalteZu: new Set(['erledigt']), angaben: false,
+    // „Neu“: frisch erfasste Aufgaben stehen oben (zusätzlich in ihrer Rubrik), bis man sie öffnet oder wegwischt
+    neu: [] };
+  z.neu = aufgaben.filter(a => a.titel.startsWith('Geschenk')).map(a => a.id);
+  let ln = 0; const L = (tag, zeit, t, art, unter = '') => ({ id: 'l' + (++ln), tag, zeit, t, art, unter });
+  const log = [
+    L('Heute', '09:12', 'Telefonat mit Markus: Rohschnitt Freitag fertig #vorgestellt', 'notiz'),
+    L('Heute', '08:40', 'Workshop-Feedback auswerten', 'aufgabe'),
+    L('Gestern', '17:05', 'Referenzen sammeln', 'punkt', 'Punkt in „Angebot Möbeltischlerei Hüttner“'),
+    L('Gestern', '11:20', 'Reisekosten Oktober einreichen', 'aufgabe'),
+    L('Mo 16.11.', '', 'Idee: Rundblick fürs Handy als PWA #rundblick', 'notiz'),
   ];
   bs.innerHTML = `<div class="statusleiste"><span>9:41</span><span class="insel"></span><span>${ICON('wifi')}</span></div><div class="haupt" style="flex:1;min-height:0;display:flex;flex-direction:column"></div>
     <nav class="reiter"><button data-sicht="liste">${ICON('list')}Liste</button><button data-sicht="board">${ICON('square-kanban')}Board</button><button data-sicht="logbuch">${ICON('notebook-pen')}Logbuch</button></nav>
@@ -293,17 +306,23 @@ function app(bs, start) {
     return (t ? `<div class="meta termine">${t}</div>` : '') + (r ? `<div class="meta">${r}</div>` : ''); };
   const sdot = a => { const s = SPALTEN.find(x => x.id === a.status); return s ? `<span class="chip"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</span>` : ''; };
 
+  const zeileHtml = (a, neu = false) => `<div class="zeile-huelle"><div class="aktionen">${neu ? `<button class="gesehen" data-gesehen="${a.id}">${ICON('eye')}Gesehen</button>` : `<button class="arch" data-arch="${a.id}">${ICON('archive')}Archiv</button>`}<button class="muell" data-muell="${a.id}">${ICON('trash-2')}</button></div>
+        <div class="zeile ${a.done ? 'erledigt' : ''} ${z.frisch === a.id ? 'frisch' : ''}" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON(a.done ? 'circle-check' : 'circle')}</button>
+        <div class="mitte"><div class="t"><span class="tt">${a.titel}</span></div>${meta(a)}</div></div></div>`;
   function liste() {
     let h = kopf('Aufgaben') + suche() + `<div class="erfassen">${ICON('plus')}<input placeholder="Neue Aufgabe … #tag @person !fr" enterkeyhint="done"></div>
       <div class="inhalt" data-ziehbar>`;
+    const neue = z.neu.map(id => aufgaben.find(a => a.id === id)).filter(a => a && passt(a));
+    if (neue.length) {
+      h += `<div class="abschnitt neu ${z.offen.has('neu') ? 'offen' : ''}" data-abschnitt="neu">${ICON('chevron-right')}Neu <span class="n">${neue.length}</span></div>`;
+      if (z.offen.has('neu')) h += `<div class="gruppe" data-neu-gruppe>${neue.map(a => zeileHtml(a, true)).join('')}</div>`;
+    }
     for (const [k, name] of ABSCHNITTE) {
       const as = aufgaben.filter(a => abschnittVon(a) === k && passt(a));
       if (!as.length) continue;
       const offen = z.offen.has(k);
       h += `<div class="abschnitt ${k} ${offen ? 'offen' : ''}" data-abschnitt="${k}">${ICON('chevron-right')}${name} <span class="n">${as.length}</span></div>`;
-      if (offen) h += `<div class="gruppe">${as.map(a => `<div class="zeile-huelle"><div class="aktionen"><button class="arch" data-arch="${a.id}">${ICON('archive')}Archiv</button><button class="muell" data-muell="${a.id}">${ICON('trash-2')}</button></div>
-        <div class="zeile ${a.done ? 'erledigt' : ''} ${z.frisch === a.id ? 'frisch' : ''}" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON(a.done ? 'circle-check' : 'circle')}</button>
-        <div class="mitte"><div class="t"><span class="tt">${a.titel}</span></div>${meta(a)}</div></div></div>`).join('')}</div>`;
+      if (offen) h += `<div class="gruppe">${as.map(a => zeileHtml(a)).join('')}</div>`;
     }
     return h + '</div>';
   }
@@ -319,14 +338,11 @@ function app(bs, start) {
   }
 
   function logbuch() {
-    const tage = [
-      ['Heute', notizen.map(n => `<div class="eintrag"><span class="zeit">${n.zeit}</span><span class="sym ${n.notiz ? 'istnotiz' : ''}">${ICON(n.notiz ? 'sticky-note' : 'circle-check')}</span><div><div class="t">${n.t}</div>${n.unter ? `<div class="eu">${n.unter}</div>` : ''}</div></div>`)],
-      ['Gestern', [`<div class="eintrag"><span class="zeit">17:05</span><span class="sym">${ICON('square-check')}</span><div><div class="t">Referenzen sammeln</div><div class="eu">Punkt in „Angebot Möbeltischlerei Hüttner“</div></div></div>`,
-        `<div class="eintrag"><span class="zeit">11:20</span><span class="sym">${ICON('circle-check')}</span><div><div class="t">Reisekosten Oktober einreichen</div></div></div>`]],
-      ['Mo 16.11.', [`<div class="eintrag"><span class="zeit"></span><span class="sym istnotiz">${ICON('sticky-note')}</span><div><div class="t">Idee: Rundblick fürs Handy als PWA #rundblick</div></div></div>`]],
-    ];
+    const sym = e => e.art === 'notiz' ? `<span class="sym istnotiz">${ICON('sticky-note')}</span>` : `<span class="sym">${ICON(e.art === 'punkt' ? 'square-check' : 'circle-check')}</span>`;
+    const tage = [...new Set(log.map(e => e.tag))];
     return kopf('Logbuch') + suche() + `<div class="notizfeld">${ICON('notebook-pen')}<input placeholder="Notiz … #tag" enterkeyhint="done"></div><div class="inhalt" data-ziehbar>` +
-      tage.map(([t, es]) => `<div class="tag-h ${t === 'Heute' ? 'heute' : ''}">${t}</div><div class="gruppe">${es.join('')}</div>`).join('') + '</div>';
+      tage.map(t => `<div class="tag-h ${t === 'Heute' ? 'heute' : ''}">${t}</div><div class="gruppe">${log.filter(e => e.tag === t && (!z.filter || e.t.toLowerCase().includes(z.filter.toLowerCase()))).map(e =>
+        `<div class="log-huelle"><div class="aktionen"><button class="muell" data-muell-log="${e.id}">${ICON('trash-2')}</button></div><div class="eintrag" data-log="${e.id}"><span class="zeit">${e.zeit}</span>${sym(e)}<div><div class="t">${e.t}</div>${e.unter ? `<div class="eu">${e.unter}</div>` : ''}</div></div></div>`).join('')}</div>`).join('') + '</div>';
   }
 
   // eingeklappte Angaben: knappe Zusammenfassung des Gesetzten
@@ -384,11 +400,11 @@ function app(bs, start) {
 
   // Wischen nach links → Archiv / Mülleimer
   function wischenAnbinden() {
-    haupt.querySelectorAll('.zeile').forEach(zl => {
-      let x0 = null, dx = 0;
+    haupt.querySelectorAll('.zeile, .eintrag').forEach(zl => {
+      let x0 = null, dx = 0; const w = zl.parentNode.querySelector('.aktionen')?.offsetWidth || 144;
       zl.addEventListener('pointerdown', e => { x0 = e.clientX; dx = 0; zl.style.transition = 'none'; });
-      zl.addEventListener('pointermove', e => { if (x0 === null || zug) return; dx = Math.min(0, e.clientX - x0); if (dx < -6) zl.style.transform = `translateX(${Math.max(-144, dx)}px)`; });
-      const ende = () => { if (x0 === null) return; zl.style.transition = ''; const auf = dx < -60; zl.style.transform = auf ? 'translateX(-144px)' : ''; zl.dataset.wisch = auf ? '1' : ''; if (Math.abs(dx) > 6) zl.dataset.gewischt = '1'; x0 = null; };
+      zl.addEventListener('pointermove', e => { if (x0 === null || zug) return; dx = Math.min(0, e.clientX - x0); if (dx < -6) zl.style.transform = `translateX(${Math.max(-w, dx)}px)`; });
+      const ende = () => { if (x0 === null) return; zl.style.transition = ''; const auf = dx < -50; zl.style.transform = auf ? `translateX(-${w}px)` : ''; zl.dataset.wisch = auf ? '1' : ''; if (Math.abs(dx) > 6) zl.dataset.gewischt = '1'; x0 = null; };
       zl.addEventListener('pointerup', ende); zl.addEventListener('pointerleave', ende);
     });
   }
@@ -398,7 +414,7 @@ function app(bs, start) {
   // Auf dem Board: lange drücken und ohne Bewegung loslassen → Auswahlblatt „Verschieben nach“.
   let druck = null, zug = null;
   bs.addEventListener('pointerdown', e => {
-    const el = e.target.closest('.karte, .zeile'); if (!el || e.target.closest('.kreis, .aktionen') || el.dataset.wisch === '1') return;
+    const el = e.target.closest('.karte, .zeile'); if (!el || e.target.closest('.kreis, .aktionen, [data-neu-gruppe]') || el.dataset.wisch === '1') return;
     const x0 = e.clientX, y0 = e.clientY;
     druck = setTimeout(() => { druck = 'lang'; zugStart(el, x0, y0); }, 420);
     const ab = ev => { if (druck !== 'lang' && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 8) { clearTimeout(druck); druck = null; } };
@@ -493,11 +509,14 @@ function app(bs, start) {
     if (q('[data-abschnitt]')) { const k = q('[data-abschnitt]').dataset.abschnitt; z.offen.has(k) ? z.offen.delete(k) : z.offen.add(k); zeichnen(); return; }
     if (q('[data-kreis]')) { const a = aufgaben.find(x => x.id === q('[data-kreis]').dataset.kreis); a.done = !a.done; toast(a.done ? 'Abgeschlossen' : 'Wieder offen'); zeichnen(); if (detail.classList.contains('offen')) detailZeigen(a.id); return; }
     if (q('[data-arch]')) { const id = q('[data-arch]').dataset.arch; aufgaben.splice(aufgaben.findIndex(x => x.id === id), 1); detail.classList.remove('offen'); toast('Archiviert'); zeichnen(); return; }
-    const m = q('[data-muell]') || q('[data-muell2]');
+    if (q('[data-gesehen]')) { const id = q('[data-gesehen]').dataset.gesehen; z.neu = z.neu.filter(x => x !== id); zeichnen(); return; }
+    const m = q('[data-muell]') || q('[data-muell2]') || q('[data-muell-log]');
     if (m) {
-      const id = m.dataset.muell || m.dataset.muell2;
+      const id = m.dataset.muell || m.dataset.muell2 || m.dataset.muellLog;
       if (fragenId !== id) { fragenId = id; m.classList.add('fragen'); m.textContent = '?'; clearTimeout(fragenT); fragenT = setTimeout(() => { fragenId = null; zeichnen(); if (detail.classList.contains('offen')) detailZeigen(detail.dataset.id); }, 5000); return; }
-      fragenId = null; aufgaben.splice(aufgaben.findIndex(x => x.id === id), 1); detail.classList.remove('offen'); toast('Gelöscht'); zeichnen(); return;
+      fragenId = null;
+      if (m.dataset.muellLog) { log.splice(log.findIndex(x => x.id === id), 1); toast('Eintrag gelöscht'); zeichnen(); return; }
+      z.neu = z.neu.filter(x => x !== id); aufgaben.splice(aufgaben.findIndex(x => x.id === id), 1); detail.classList.remove('offen'); toast('Gelöscht'); zeichnen(); return;
     }
     if (q('[data-angaben]')) { angabenBlatt(aufgaben.find(x => x.id === detail.dataset.id)); return; }
     if (q('[data-blatt-zu]')) { blattZu(); return; }
@@ -512,7 +531,8 @@ function app(bs, start) {
       // Lage aus dem DOM messen – stimmt egal, welche Spalten zugeklappt sind; offene Spalten rasten mittig ein, zugeklappte am Anfang
       const links = el.getBoundingClientRect().left - sp.getBoundingClientRect().left + sp.scrollLeft;
       sp.scrollTo({ left: el.classList.contains('zu') ? links - 12 : links - (sp.clientWidth - el.offsetWidth) / 2, behavior: 'smooth' }); return; }
-    const zl = q('.zeile'); if (zl) { if (zl.dataset.gewischt) { zl.dataset.gewischt = ''; return; } if (zl.dataset.wisch) { zl.style.transform = ''; zl.dataset.wisch = ''; return; } detailZeigen(zl.dataset.id); return; }
+    const zl = q('.zeile'); if (zl) { if (zl.dataset.gewischt) { zl.dataset.gewischt = ''; return; } if (zl.dataset.wisch) { zl.style.transform = ''; zl.dataset.wisch = ''; return; } z.neu = z.neu.filter(x => x !== zl.dataset.id); detailZeigen(zl.dataset.id); return; }
+    const ei = q('.eintrag'); if (ei) { if (ei.dataset.gewischt) { ei.dataset.gewischt = ''; return; } if (ei.dataset.wisch) { ei.style.transform = ''; ei.dataset.wisch = ''; } return; }
     const k = q('.karte'); if (k) { detailZeigen(k.dataset.id); return; }
   });
   bs.addEventListener('input', e => {
@@ -529,19 +549,19 @@ function app(bs, start) {
       const text = inp.value.trim(); const tags = [...text.matchAll(/#(\S+)/g)].map(m => m[1]); const person = (text.match(/@(\S+)/) || [])[1] || '';
       const fr = /!heute/.test(text) ? tag(0) : /!morgen/.test(text) ? tag(1) : /!fr/.test(text) ? tag((5 - HEUTE.getDay() + 7) % 7) : null;
       const a = { id: 'n' + Date.now(), titel: text.replace(/[#@!]\S+/g, '').trim(), tags, person, ort: '', frist: fr, wv: null, status: null, done: false, notiz: '' };
-      aufgaben.unshift(a); z.frisch = a.id; z.offen.add(abschnittVon(a)); inp.value = ''; toast('Erfasst – wird abgeglichen'); zeichnen();
+      aufgaben.unshift(a); z.neu.unshift(a.id); z.frisch = a.id; z.offen.add(abschnittVon(a)); inp.value = ''; toast('Erfasst – wird abgeglichen'); zeichnen();
     } else if (inp.closest('.notizfeld')) {
-      notizen.unshift({ zeit: new Date().toTimeString().slice(0, 5), t: inp.value.trim(), notiz: true }); inp.value = ''; zeichnen();
+      log.unshift(L('Heute', new Date().toTimeString().slice(0, 5), inp.value.trim(), 'notiz')); inp.value = ''; zeichnen();
     }
   });
   zeichnen();
   if (start === 'detail') detailZeigen('a3');
 }
 
-telefon('liste', 'Liste', 'Abschnitte wie am Desktop · Wischen nach links = Archiv / Mülleimer (zweistufig) · lange drücken und ziehen = im Abschnitt umsortieren · oben Schnellerfassung · herunterziehen = Suche');
+telefon('liste', 'Liste', '„Neu“ oben, dann Abschnitte wie am Desktop · Wischen nach links = Archiv / Mülleimer (zweistufig) · lange drücken und ziehen = im Abschnitt umsortieren · oben Schnellerfassung · herunterziehen = Suche');
 telefon('detail', 'Aufgabe', 'Vollbild statt Schublade · Status als Chips · Notiz zuerst (mit abhakbarer Checkliste) · Bilder · Kurzinfo unter der Notiz öffnet die Angaben als Schublade · „‹“ zurück');
 telefon('board', 'Board', 'Eine Spalte pro Breite, waagerecht wischen · Kategorien oben als Sprungmarken · Karte lange drücken und ziehen = umsortieren, auch über Spalten (am Rand rollt das Board weiter) · lange drücken und loslassen = Auswahlblatt');
-telefon('logbuch', 'Logbuch', 'Notiz-Eingabe oben · Tage, neuester oben · runder Haken = Aufgabe, eckiger = Punkt, Notiz-Symbol');
+telefon('logbuch', 'Logbuch', 'Notiz-Eingabe oben · nach links wischen = Mülleimer (zweistufig) · Tage, neuester oben · runder Haken = Aufgabe, eckiger = Punkt, Notiz-Symbol');
 </script>
 </body>
 </html>
