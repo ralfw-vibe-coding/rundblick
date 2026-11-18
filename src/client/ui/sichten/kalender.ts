@@ -214,7 +214,9 @@ function fristMarke(t: Tag): string {
   if (!t.fristen.length) return '';
   const d = t.fristen[0]!.dringlichkeit;
   const farbe = `var(--d-${d})`;
-  return `<span class="fr" style="color:${farbe}" title="${esc('Fällig:\n' + t.fristen.map(f => f.titel).join('\n'))}">${I.frist}${t.fristen.length}</span>`;
+  // Klick öffnet eine knappe Liste der fälligen Aufgaben (interaktion.ts); die Daten stehen am Element
+  const daten = esc(JSON.stringify(t.fristen.map(f => [f.aufgabeId, f.titel, f.dringlichkeit])));
+  return `<button type="button" class="fr" style="color:${farbe}" data-fristen="${daten}" data-datum="${t.datum}" title="${t.fristen.length} fällig – klicken für die Liste">${I.frist}${t.fristen.length}</button>`;
 }
 
 function woche(z: Zeitraum, tage: Tag[], dichte: Dichte): string {

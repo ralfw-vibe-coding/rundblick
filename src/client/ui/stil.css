@@ -778,3 +778,12 @@ input.uhrzeit { width: 72px !important; font-variant-numeric: tabular-nums; text
 .pop .pop-zeile { display: flex; gap: 6px; }
 .pop .pop-zeile input.uhrzeit { flex: none; width: 64px !important; }
 .pop .pop-zeile input.pop-titel { flex: 1; min-width: 0; }
+/* Fristen-Marke anklickbar, mit knapper Liste */
+button.fr { border: 0; background: none; padding: 0 3px; border-radius: 4px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; }
+button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+.fristen-pop { position: fixed; z-index: 110; min-width: 200px; max-width: 320px; max-height: 300px; overflow: auto; background: #fff; border: 1px solid var(--line2); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 4px; }
+.fristen-pop .fp-kopf { font-size: 11px; color: var(--mute); padding: 3px 6px 4px; }
+.fristen-pop .fp-zeile { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 5px; font-size: 12.5px; cursor: grab; }
+.fristen-pop .fp-zeile:hover { background: var(--bg); }
+.fristen-pop .fp-zeile .tt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fristen-pop .fp-zeile .due svg.lu { fill: currentColor; width: 11px; height: 11px; margin: 0; }

@@ -4,6 +4,7 @@ import type { CommandStatus } from '../../body/interface';
 import { body } from './body';
 import { aufgabeOeffnen, buchungOeffnen, schliessen } from './detail';
 import { ICON } from './bausteine';
+import { I } from './icons';
 import { esc, pruefe, toast } from './dom';
 import { markieren } from './frisch';
 import { fensterVon } from './sichten/kalender';
@@ -53,6 +54,8 @@ export function interaktionAnbinden(): void {
 
   document.addEventListener('click', async e => {
     const t = e.target as HTMLElement;
+    const marke = t.closest<HTMLElement>('[data-fristen]');
+    if (marke) { e.stopPropagation(); fristenListe(marke); return; }
     if (t.closest('.drawer, .pop, .einst, .qc')) return;
     const act = t.closest<HTMLElement>('[data-act]');
     if (act) {
@@ -212,6 +215,30 @@ function marke(spalte: HTMLElement, start: number, dauer: number): void {
   markeEl.innerHTML = `<span class="zeit">${uhrzeit(start)}–${uhrzeit(start + dauer)}</span>`;
 }
 function markeWeg(): void { markeEl?.remove(); }
+
+// ---------- Fristen-Marke: knappe Liste der an einem Tag fälligen Aufgaben ----------
+// Klick auf eine Zeile → Schublade (globaler Klick auf [data-task]); Ziehen in den Kalender → Termin.
+let fristPop: HTMLDivElement | null = null;
+function fristenListeZu(): void { fristPop?.remove(); fristPop = null; }
+function fristenListe(marke: HTMLElement): void {
+  const offen = fristPop?.dataset.datum === marke.dataset.datum;
+  fristenListeZu();
+  if (offen) return;
+  const eintraege = JSON.parse(marke.dataset.fristen!) as [string, string, string][];
+  fristPop = document.createElement('div');
+  fristPop.className = 'fristen-pop';
+  fristPop.dataset.datum = marke.dataset.datum!;
+  fristPop.innerHTML = `<div class="fp-kopf">Fällig ${esc(relativ(marke.dataset.datum!, heute || marke.dataset.datum!))}</div>`
+    + eintraege.map(([id, titel, d]) => `<div class="fp-zeile" draggable="true" data-task="${esc(id)}" title="Klick: Details · Ziehen: in den Kalender einplanen"><span class="due d-${esc(d)}">${I.frist}</span><span class="tt">${esc(titel)}</span></div>`).join('');
+  document.body.appendChild(fristPop);
+  const r = marke.getBoundingClientRect(), b = fristPop.getBoundingClientRect();
+  fristPop.style.left = `${Math.max(8, Math.min(r.right - b.width, innerWidth - b.width - 8))}px`;
+  fristPop.style.top = `${r.bottom + b.height + 8 < innerHeight ? r.bottom + 4 : r.top - b.height - 4}px`;
+}
+document.addEventListener('mousedown', e => { if (fristPop && !(e.target as HTMLElement).closest('.fristen-pop, [data-fristen]')) fristenListeZu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fristenListeZu(); });
+// nach dem Ablegen einer gezogenen Aufgabe schließen
+document.addEventListener('dragend', () => fristenListeZu());
 
 let pop: HTMLDivElement | null = null;
 function popZu(): void { pop?.remove(); pop = null; }
