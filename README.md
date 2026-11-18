@@ -28,7 +28,7 @@ npm run app            # baut, signiert (HyperRec) und legt dist/Rundblick-<vers
 npm run installieren   # erste Installation nach /Applications
 ```
 
-Danach aktualisiert sich Rundblick selbst: In **Einstellungen › Aktualisierung** einen Update-Ordner wählen (z. B. `dist/` dieses Repos oder einen geteilten Dropbox-Ordner). Rundblick sieht beim Start und alle 30 Minuten nach; liegt ein ZIP mit höherer Build-Nummer und gleicher Signatur dort, erscheint ein Punkt am Zahnrad und „Jetzt aktualisieren“ tauscht die App aus. Vor dem Packen committen – die Build-Nummer ist die Anzahl der Commits.
+Danach aktualisiert sich Rundblick selbst: In **Einstellungen › Aktualisierung** einen Update-Ordner wählen (z. B. `dist/` dieses Repos oder einen geteilten Dropbox-Ordner). Rundblick sieht beim Start und alle 30 Minuten nach; liegt ein ZIP mit höherer Build-Nummer und gleicher Signatur dort, erscheint ein Punkt am Zahnrad und „Jetzt aktualisieren“ tauscht die App aus. Vor dem Packen committen – die Build-Nummer ist die Anzahl der Commits. `npm run app` legt das ZIP außerdem in den geteilten Update-Ordner `~/Dropbox/02 AR Team/05 App Updates` (für andere Nutzer; abschalten mit `RB_UPDATE_ORDNER=aus`).
 
 ## Im Browser (z. B. für die Feedback-Extension)
 
