@@ -42,6 +42,10 @@ export type Board = {
 export type BuchungDto = {
   id: Id; aufgabeId: Id | null; titel: string; beschreibung: string; aufgabentitel: string | null;
   datum: Datum; start: Uhrzeit | null; dauer: Minuten; belegt: boolean; abgeschlossen: boolean;
+  /** gespiegelt in Google/iCloud (Zielkalender), sonst null */
+  spiegel: { kalender: string; konto: string; farbe: string } | null;
+  /** Hinweis an der Buchung, z. B. nach externem Löschen */
+  hinweis: string | null;
   /** wo die zugehörige Aufgabe steht: auf dem Board (hat Status) oder nur in der Aufgabenliste; null = freie Buchung */
   herkunft: 'board' | 'liste' | null;
 };
@@ -50,6 +54,7 @@ export type ExternDto = {
   id: string; kalender: string; konto: string; farbe: string; titel: string;
   /** Minuten seit Mitternacht; null = ganztägig */
   start: number | null; ende: number | null; belegt: boolean; ort: string;
+  notiz: string;
 };
 
 export type Auslastung = { belegt: Minuten; eigene: Minuten; extern: Minuten; nichtBelegend: Minuten; kapazitaet: Minuten };
@@ -85,7 +90,7 @@ export type LogbuchTag = { datum: Datum; eintraege: LogEintrag[] };
 export type Logbuch = { heute: Datum; tage: LogbuchTag[]; weiter: Datum | null };
 export type NotizDetails = { id: Id; text: string; tags: string[]; datum: Datum; erfasst: string; anhangliste: AnhangInfo[] };
 
-export type KalenderEintrag = { id: string; name: string; konto: string; farbe: string; sichtbar: boolean; belegt: boolean };
+export type KalenderEintrag = { id: string; name: string; konto: string; farbe: string; sichtbar: boolean; belegt: boolean; schreibbar: boolean };
 
 export type EinstellungenDto = {
   /** die drei Spaltengruppen in fester Reihenfolge mit ihren (ggf. umbenannten) Namen */
@@ -140,6 +145,12 @@ export interface Body {
   buchungAendern(c: { buchungId: Id; titel?: string; beschreibung?: string; belegt?: boolean; datum?: Datum; start?: Uhrzeit | null; dauer?: Minuten }): Promise<CommandStatus>;
   buchungStornieren(c: { buchungId: Id }): Promise<CommandStatus>;
   aufgabeAusBuchung(c: { buchungId: Id; status?: Id | null }): Promise<CommandStatus>;
+  /** Termin in Google/iCloud spiegeln (Zwei-Wege-Sync) */
+  buchungSpiegeln(c: { buchungId: Id; kalenderId: string }): Promise<CommandStatus>;
+  /** Spiegelung beenden – Buchung und externer Eintrag bleiben bestehen */
+  verknuepfungLoesen(c: { buchungId: Id }): Promise<CommandStatus>;
+  /** externen Termin von Hand zu einer Aufgabe machen; die Buchung bleibt mit dem Termin verknüpft */
+  aufgabeAusExtern(c: { externId: string }): Promise<CommandStatus>;
   // ---- Commands: Board & Planung
   spalteAnlegen(c: { name: string; kategorie: KategorieId }): Promise<CommandStatus>;
   spalteUmbenennen(c: { statusId: Id; name: string }): Promise<CommandStatus>;
@@ -190,7 +201,7 @@ export interface Body {
 export type BodyMethode = Exclude<keyof Body, 'beiAenderung'>;
 export const BODY_METHODEN: readonly BodyMethode[] = [
   'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen', 'aufgabeVerschieben',
-  'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung',
+  'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung', 'buchungSpiegeln', 'verknuepfungLoesen', 'aufgabeAusExtern',
   'spalteAnlegen', 'spalteUmbenennen', 'kategorieUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen', 'tageszeitFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',
   'notizErfassen', 'notizAendern', 'notizVerwerfen', 'notizAnhangHinzufuegen', 'notizAnhangEntfernen', 'aufgabeAusNotiz', 'logbuch', 'notiz',

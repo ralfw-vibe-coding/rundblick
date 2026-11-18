@@ -1,5 +1,6 @@
 // Body: koordiniert jede Anfrage. Holt Zeit und IDs von Providern, ruft die Domain auf,
 // führt eigene und externe Kalenderdaten zusammen und meldet Änderungen an die Clients.
+import { abgleich, ausBuchung, ausExtern, fingerabdruck } from './spiegel/abgleich';
 import { plusTage } from '../basis/datum';
 import type { DomainInterface, Ergebnis } from '../domain/interface';
 import type { Anhangspeicher } from '../providers/anhaenge/interface';
@@ -7,7 +8,7 @@ import type { Einstellungen } from '../providers/einstellungen/interface';
 import type { IdGenerator } from '../providers/ids/interface';
 import type { KalenderCache, Kalenderquelle } from '../providers/kalender/interface';
 import type { Uhr } from '../providers/uhr/interface';
-import type { KalenderEinstellung, KalenderZugriff } from '../schema/extern';
+import type { ExternerTermin, KalenderEinstellung, KalenderZugriff } from '../schema/extern';
 import type { Datum } from '../schema/werte';
 import { board, liste, zeile } from './abfragen/aufgaben';
 import { logbuch, tagsAusText } from './abfragen/logbuch';
@@ -142,9 +143,55 @@ export class RundblickBody implements Body {
   }
   async buchungAendern(c: Parameters<Body['buchungAendern']>[0]) {
     const { buchungId, ...aenderungen } = c;
-    return status(this.x.domain.buchungAendern({ buchungId, aenderungen }));
+    const e = this.x.domain.buchungAendern({ buchungId, aenderungen });
+    if (e.ok) await this.nachExtern(buchungId);
+    return status(e);
   }
-  async buchungStornieren(c: { buchungId: string }) { return status(this.x.domain.buchungStornieren(c)); }
+  async buchungStornieren(c: { buchungId: string }) {
+    const v = this.x.domain.buchung(c.buchungId)?.verknuepfung;
+    const e = this.x.domain.buchungStornieren(c);
+    // gespiegelt: der externe Eintrag verschwindet mit
+    if (e.ok && v) await this.x.kalender.terminLoeschen(v.externeUid).catch(() => false);
+    return status(e);
+  }
+
+  // ---------------- Commands: Spiegelung in Google/iCloud ----------------
+  async buchungSpiegeln(c: { buchungId: string; kalenderId: string }): Promise<CommandStatus> {
+    const b = this.x.domain.buchung(c.buchungId);
+    if (!b) return { ok: false, fehler: ['Buchung unbekannt.'] };
+    if (!b.start) return { ok: false, fehler: ['Nur Termine (mit Uhrzeit) lassen sich spiegeln.'] };
+    if (b.verknuepfung) return { ok: false, fehler: ['Die Buchung ist schon gespiegelt.'] };
+    const k = this.x.cache.kalender().find(x => x.id === c.kalenderId);
+    if (!k?.schreibbar) return { ok: false, fehler: ['In diesen Kalender kann Rundblick nicht schreiben.'] };
+    let extern;
+    try { extern = await this.x.kalender.terminAnlegen(k.id, ausBuchung(b)); }
+    catch (e) { return { ok: false, fehler: [`Spiegeln fehlgeschlagen: ${(e as Error).message}`] }; }
+    const r = this.x.domain.buchungVerknuepfen({
+      buchungId: b.id, kalenderId: k.id, kalender: k.name, konto: k.konto, farbe: k.farbe, externeUid: extern.uid ?? '', stand: fingerabdruck(ausBuchung(b)),
+    });
+    if (!r.ok) await this.x.kalender.terminLoeschen(extern.uid ?? '').catch(() => false);
+    return status(r);
+  }
+
+  async verknuepfungLoesen(c: { buchungId: string }) { return status(this.x.domain.verknuepfungLoesen({ buchungId: c.buchungId, grund: 'manuell' })); }
+
+  async aufgabeAusExtern(c: { externId: string }): Promise<CommandStatus> {
+    const st = this.x.cache.stand();
+    const e = st.von && st.bis ? this.x.cache.termine(st.von, st.bis).find(t => t.id === c.externId) : undefined;
+    if (!e) return { ok: false, fehler: ['Externer Termin nicht gefunden.'] };
+    if (!e.start || !e.uid) return { ok: false, fehler: ['Nur Termine mit Uhrzeit lassen sich übernehmen.'] };
+    if (this.x.domain.buchungen().some(b => b.verknuepfung?.externeUid === e.uid)) return { ok: false, fehler: ['Dieser Termin gehört schon zu einer Buchung.'] };
+    const k = this.x.cache.kalender().find(x => x.id === e.kalenderId);
+    const r = await this.aufgabeErfassen({ titel: e.titel, beschreibung: e.notiz ?? '', buchung: { datum: e.datum, start: e.start, dauer: e.dauer } });
+    if (!r.ok) return r;
+    const buchungId = r.ids!.buchungId!;
+    // Inhalt der Buchung = Inhalt des externen Termins, damit der Abgleich nichts überschreibt
+    this.x.domain.buchungAendern({ buchungId, aenderungen: { beschreibung: e.notiz ?? '' } });
+    const v = this.x.domain.buchungVerknuepfen({
+      buchungId, kalenderId: e.kalenderId, kalender: k?.name ?? '', konto: k?.konto ?? '', farbe: k?.farbe ?? '#888888', externeUid: e.uid, stand: fingerabdruck(ausExtern(e)),
+    });
+    return v.ok ? r : v;
+  }
   async aufgabeAusBuchung(c: Parameters<Body['aufgabeAusBuchung']>[0]) {
     const aufgabeId = this.x.ids.neu();
     return status(this.x.domain.aufgabeAusBuchung({ ...c, aufgabeId }), { aufgabeId });
@@ -220,7 +267,7 @@ export class RundblickBody implements Body {
     return zeitraum({
       von: q.von, bis: q.bis, heute: this.x.uhr.heute(), jetzt: this.x.uhr.minuteDesTages(),
       aufgaben: d.aufgaben(), buchungen: d.buchungen(q.von, q.bis), planung: d.planung(),
-      extern: this.x.cache.termine(q.von, q.bis), kalender: this.x.cache.kalender(), kalenderEinstellungen: this.kalenderEinstellungen(),
+      extern: this.ohneGespiegelte(this.x.cache.termine(q.von, q.bis)), kalender: this.x.cache.kalender(), kalenderEinstellungen: this.kalenderEinstellungen(),
     });
   }
 
@@ -251,7 +298,7 @@ export class RundblickBody implements Body {
       spalten: d.spalten().map(s => ({ id: s.id, name: s.name, kategorie: s.kategorie })),
       kapazitaet: p.kapazitaet, standarddauer: p.standarddauer,
       tageszeit: this.x.einstellungen.lesen('tageszeit', TAGESZEIT_STANDARD),
-      kalender: this.x.cache.kalender().map(k => ({ ...k, ...(e[k.id] ?? KALENDER_STANDARD) })),
+      kalender: this.x.cache.kalender().map(k => ({ ...k, schreibbar: !!k.schreibbar, ...(e[k.id] ?? KALENDER_STANDARD) })),
       zugriff: this.zugriffStand, letzteSynchronisation: this.x.cache.stand().zuletzt,
       datenordner: this.x.info.datenordner, geraet: this.x.info.geraet,
     };
@@ -320,12 +367,48 @@ export class RundblickBody implements Body {
       if (this.zugriffStand !== 'erlaubt') { this.melde(['einstellungen']); return { ok: false, fehler: [this.zugriffText()] }; }
       const [kalender, termine] = await Promise.all([this.x.kalender.kalender(), this.x.kalender.termine(von, bis)]);
       this.x.cache.ersetzen(von, bis, kalender, termine);
+      await this.spiegelAbgleichen(termine);
       this.melde(['kalender', 'einstellungen']);
       return { ok: true };
     } catch (e) {
       return { ok: false, fehler: [`Kalender konnten nicht gelesen werden: ${(e as Error).message}`] };
     } finally {
       this.laedt = false;
+    }
+  }
+
+  /** gespiegelte Buchungen erscheinen nur einmal – als Rundblick-Buchung; ihr externer Doppelgänger wird ausgeblendet */
+  private ohneGespiegelte(termine: ExternerTermin[]): ExternerTermin[] {
+    const uids = new Set(this.x.domain.buchungen().flatMap(b => (b.verknuepfung ? [b.verknuepfung.externeUid] : [])));
+    return uids.size ? termine.filter(t => !t.uid || !uids.has(t.uid)) : termine;
+  }
+
+  /** Änderung einer gespiegelten Buchung sofort nach außen schreiben */
+  private async nachExtern(buchungId: string): Promise<void> {
+    const b = this.x.domain.buchung(buchungId);
+    if (!b?.verknuepfung || !b.start) return;
+    try {
+      const e = await this.x.kalender.terminAendern(b.verknuepfung.externeUid, ausBuchung(b));
+      if (!e) this.x.domain.verknuepfungLoesen({ buchungId, grund: 'externGeloescht' });
+      else this.x.domain.buchungAbgleichen({ buchungId, stand: fingerabdruck(ausBuchung(b)) });
+    } catch { /* nicht erreichbar: der nächste Abgleich holt es nach */ }
+  }
+
+  /** Abgleich aller gespiegelten Buchungen mit den externen Terminen (jüngere Änderung gewinnt) */
+  private async spiegelAbgleichen(termine: ExternerTermin[]): Promise<void> {
+    for (const b of this.x.domain.buchungen().filter(x => x.verknuepfung)) {
+      const uid = b.verknuepfung!.externeUid;
+      let extern: ExternerTermin | null | undefined = termine.find(t => t.uid === uid);
+      if (extern === undefined) { try { extern = await this.x.kalender.terminLesen(uid); } catch { continue; } }
+      const a = abgleich(b, extern);
+      if (a.art === 'geloest') this.x.domain.verknuepfungLoesen({ buchungId: b.id, grund: 'externGeloescht' });
+      if (a.art === 'stand') this.x.domain.buchungAbgleichen({ buchungId: b.id, stand: a.stand });
+      if (a.art === 'nachExtern') await this.nachExtern(b.id);
+      if (a.art === 'vonExtern') {
+        const { notiz, ...rest } = a.inhalt;
+        this.x.domain.buchungAendern({ buchungId: b.id, aenderungen: { ...rest, beschreibung: notiz } });
+        this.x.domain.buchungAbgleichen({ buchungId: b.id, stand: a.stand });
+      }
     }
   }
 
