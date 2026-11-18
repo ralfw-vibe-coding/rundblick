@@ -747,3 +747,23 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .hours span.erst { transform: translateY(1px); }
 .hours span.letzt { transform: translateY(-100%); }
 .dcol { box-shadow: inset 0 -1px 0 var(--line); }
+/* Monatsansicht: Einträge untereinander über die volle Breite, Punkte für die Lage im Tagesverlauf */
+.mc .mb { display: flex; gap: 3px; padding: 0 4px 3px 2px; }
+.mc .mpunkte { position: relative; width: 6px; flex: none; margin: 2px 0; border-radius: 3px; background: linear-gradient(#ece9e3, #ece9e3) center / 1px 100% no-repeat; }
+.mc .mpunkte i { position: absolute; left: 1px; width: 4px; height: 4px; border-radius: 50%; transform: translateY(-2px); opacity: .9; }
+.mc .mliste { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.mc .me { display: flex; align-items: baseline; gap: 4px; font-size: 11px; line-height: 16px; padding: 0 4px 0 5px; border-radius: 4px; white-space: nowrap; overflow: hidden; flex: none; }
+.mc .me .tt { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mc .me .zt { flex: none; font-variant-numeric: tabular-nums; opacity: .8; }
+.mc .me.term { border-left: 3px solid var(--kf); color: color-mix(in srgb, var(--kf) 80%, #000); background: color-mix(in srgb, var(--kf) 7%, transparent); cursor: default; }
+.mc .me.term.own, .mc .me.term.frei, .mc .me.res { cursor: grab; }
+.mc .me.term .tt { font-weight: 500; }
+.mc .me.ganz { background: color-mix(in srgb, var(--kf) 18%, #fff); color: color-mix(in srgb, var(--kf) 70%, #000); border-left: 3px solid var(--kf); }
+.mc .me.res { border: 1px dashed var(--own); color: var(--own); background: repeating-linear-gradient(135deg, #fff 0 4px, #f1f0fe 4px 8px); }
+.mc .me.res.frei { border-color: var(--free); color: var(--free); }
+.mc .me.res .zt { font-weight: 700; opacity: 1; }
+.mc .me.done { opacity: .5; }
+.mc .me.done .tt { text-decoration: line-through; }
+.mc .me.mehr { color: var(--mute); padding-left: 6px; }
+.mo.compact .mc .me { font-size: 10px; line-height: 14px; }
+.mc .me.hl { box-shadow: 0 0 0 2px var(--own); }

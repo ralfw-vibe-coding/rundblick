@@ -253,21 +253,28 @@ function tagSeite(t: Tag, l: Aufgabenliste, heute: string): string {
   </div>`;
 }
 
+/** Monatsansicht: je Tag alle Einträge untereinander über die volle Breite (ganztägig, Reservierungen,
+ *  Termine nach Uhrzeit); links ein schmaler Streifen mit Punkten, wo im Tagesverlauf Termine liegen;
+ *  unten die Auslastung. */
 function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte): string {
   const m = monat(anker);
+  const max = dichte === 'full' ? 6 : 3;
   const zellen = tage.slice(0, 42).map(t => {
-    const balken = ereignisse(t).map(e => {
-      const stil = `top:${Math.max(0, pct(e.s))}%;height:${Math.max(3, pct(e.e) - pct(e.s))}%`;
-      return e.b
-        ? `<i class="own ${e.b.aufgabeId ? '' : 'frei'}" style="${stil}" title="${esc(uhrzeit(e.s) + ' ' + e.titel)}" data-booking="${e.b.id}"${e.b.aufgabeId ? ` data-task="${e.b.aufgabeId}"` : ''}>${dichte === 'full' ? esc(e.titel) : ''}</i>`
-        : `<i class="extern" style="${stil};--kf:${e.x!.farbe}" title="${esc(uhrzeit(e.s) + ' ' + e.titel + ' · ' + e.x!.kalender)}">${dichte === 'full' ? esc(e.titel) : ''}</i>`;
-    }).join('');
-    const max = dichte === 'full' ? 3 : 2;
-    const res = ganztags(t) + t.reservierungen.slice(0, max).map(resHtml).join('') + (t.reservierungen.length > max ? `<div class="more">+${t.reservierungen.length - max}</div>` : '');
+    const ev = ereignisse(t).sort((a, b) => a.s - b.s);
+    const farbe = (e: Ev) => (e.b ? (e.b.aufgabeId ? 'var(--own)' : 'var(--free)') : e.x!.farbe);
+    const punkte = ev.map(e => `<i style="top:${Math.min(100, Math.max(0, pct(e.s)))}%;background:${farbe(e)}" title="${esc(`${uhrzeit(e.s)} ${e.titel}`)}"></i>`).join('');
+    const eintraege = [
+      ...t.extern.filter(x => x.start === null).map(x => `<div class="me ganz" style="--kf:${x.farbe}" title="${esc(`${x.titel} · ganztägig · ${x.kalender}`)}"><span class="tt">${esc(x.titel)}</span></div>`),
+      ...t.reservierungen.map(r => `<div class="me res ${r.aufgabeId ? '' : 'frei'} ${r.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} title="${esc(`Reservierung ${dauerText(r.dauer)}: ${r.titel}`)}"><span class="zt">${dauerText(r.dauer).replace(' ', '')}</span><span class="tt">${esc(r.titel)}</span></div>`),
+      ...ev.map(e => e.b
+        ? `<div class="me term ${e.b.aufgabeId ? 'own' : 'frei'} ${e.b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${e.b.id}"${e.b.aufgabeId ? ` data-task="${e.b.aufgabeId}"` : ''} style="--kf:${farbe(e)}" title="${esc(`${uhrzeit(e.s)}–${uhrzeit(e.e)} ${e.titel}`)}"><span class="zt">${uhrzeit(e.s)}</span><span class="tt">${esc(e.titel)}</span></div>`
+        : `<div class="me term extern" style="--kf:${e.x!.farbe}" title="${esc(`${uhrzeit(e.s)}–${uhrzeit(e.e)} ${e.titel} · ${e.x!.kalender}`)}"><span class="zt">${uhrzeit(e.s)}</span><span class="tt">${esc(e.titel)}</span></div>`),
+    ];
+    const liste = eintraege.slice(0, max).join('') + (eintraege.length > max ? `<div class="me mehr">+${eintraege.length - max} weitere</div>` : '');
     const anders = monat(t.datum) !== m;
     return `<div class="mc ${anders ? 'other' : ''} ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-res="${t.datum}" data-day="${t.datum}" title="Doppelklick: Tagesansicht">
       <div class="mh"><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>
-      <div class="mb"><div class="mstrip">${balken}</div><div class="mres">${res}</div></div>${kapazitaetsBalken(t.auslastung)}</div>`;
+      <div class="mb"><div class="mpunkte" title="Termine im Tagesverlauf (${H0}–${H1} Uhr)">${punkte}</div><div class="mliste">${liste}</div></div>${kapazitaetsBalken(t.auslastung)}</div>`;
   }).join('');
   return `<div class="mo ${dichte}"><div class="mo-h">${WT.map(w => `<div>${w}</div>`).join('')}</div><div class="mo-g">${zellen}</div></div>`;
 }
