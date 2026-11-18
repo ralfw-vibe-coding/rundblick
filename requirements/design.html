@@ -79,7 +79,7 @@
   <a href="#offen">13 Entscheidungen &amp; Backlog</a>
   <a href="#plan">14 Schrittfolge</a>
   <a href="#stand">15 Umsetzungsstand</a>
-  <a href="#web">16 Web-App (später)</a>
+  <a href="#web">16 Phone App (PWA)</a>
   <a href="#sync">17 Buchungen ↔ Google/iCloud</a>
   <br><a href="../entwuerfe/index.html">→ UI-Entwürfe</a>
 </nav>
@@ -593,42 +593,34 @@
     <tr><td>Abweichung: UI ohne Svelte – die Entwürfe wurden direkt nach TypeScript portiert (weniger Abhängigkeiten, gleiches Aussehen)</td><td>bewusst</td></tr>
     <tr><td>Globales Schnellerfassungsfenster, Tray, Benachrichtigungen, Veröffentlichen, REST API</td><td>offen (Schritte 8/9)</td></tr>
   </table>
-  <h2 id="web">16 Web-App (später, entschieden 18.11.2026)</h2>
-  <p><b>Entscheidung:</b> Eine Web-App greift <b>direkt aus dem Browser auf die Dropbox</b> zu (Weg B). Kein zentraler Server, keine Datendopplung. Die Electron-App bleibt die Hauptanwendung; Daten bleiben lokal bzw. in der Dropbox.</p>
+  <h2 id="web">16 Phone App (PWA) – entschieden 18.11.2026</h2>
+  <p><b>Ziel:</b> TickTick auf dem Handy ersetzen – zuerst nur <b>Aufgaben</b>; Kalender später. Desktop-App und Phone App verwalten dieselben Aufgaben.</p>
+  <p><b>Entscheidungen:</b> Weg B (Browser greift <b>direkt auf die Dropbox</b> zu, kein Server, keine Datendopplung) · Dropbox-App <b>„Rundblick“</b> mit Zugriff nur auf den App-Ordner (<code>Apps/Rundblick</code>) · Hosting bei <b>Netlify</b> (nur Programmcode, keine Daten) · <b>offline-first</b>.</p>
+  <h3>Aufbau</h3>
   <ul>
-    <li><b>Übernommen unverändert:</b> Domain, Body, Schema, Basis und die Oberfläche (<code>client/ui</code>). Der Body-Proxy ruft dann ein Body-Objekt im selben Fenster auf statt IPC/HTTP.</li>
-    <li><b>Neu:</b> eine Web-Composition-Root und Browser-Provider:
-      <ul>
-        <li>Event Store über die Dropbox-API: liest alle <code>events/*.jsonl</code>, schreibt eine eigene Gerätedatei (z. B. <code>web-ipad.jsonl</code>), Zwischenspeicher in IndexedDB für offline, Hochladen mit Revisionsprüfung (Dropbox kann nicht anhängen → Datei wird ersetzt). Änderungen anderer Geräte per Longpoll.</li>
-        <li>IDs (<code>crypto.getRandomValues</code>), Uhr, Einstellungen/Layouts (<code>localStorage</code>), Anhänge als Dateien in der Dropbox.</li>
-        <li><b>Kalenderquelle für Google und iCloud ohne EventKit</b> (Google Calendar API, CalDAV) – nötig, da EventKit im Browser fehlt.</li>
-      </ul></li>
-    <li><b>Zugang:</b> Dropbox-App „Rundblick“ mit Zugriff nur auf den App-Ordner (= <code>Apps/Rundblick</code>), OAuth mit PKCE im Browser.</li>
-    <li><b>Mehrere Geräte:</b> bereits gelöst durch eine Event-Datei pro Gerät und die Hybrid Logical Clock (8.4, 8.5).</li>
-    <li><b>Hosting:</b> statische Seite als installierbare Web-App (PWA).</li>
-    <li><b>Verworfen:</b> A (Mac als Server – nur bei laufendem Mac) und C (zentraler Server mit Datenbank – Datendopplung).</li>
+    <li><b>Unverändert übernommen:</b> Domain, Body, Schema, Basis. Body-Proxy ruft das Body-Objekt im selben Fenster auf.</li>
+    <li><b>Neu:</b> Web-Composition-Root und Browser-Provider – Event Store (lokal IndexedDB + Abgleich mit Dropbox), IDs (<code>crypto.getRandomValues</code>), Uhr, Einstellungen (<code>localStorage</code>); Kalender vorerst „nicht verfügbar“; Bilder zunächst lesend.</li>
+    <li><b>Gerätedatei:</b> eigene Datei, z. B. <code>events/iphone-ralf.jsonl</code>; Reihenfolge über die Hybrid Logical Clock (8.4, 8.5). Die Desktop-App übernimmt sie über die Ordner-Beobachtung – dort ändert sich nichts.</li>
+    <li><b>Zugang:</b> OAuth mit PKCE im Browser (nur App-Key, kein Secret), Refresh-Token auf dem Gerät.</li>
+    <li><b>Oberfläche:</b> eigene Handy-Hülle aus den vorhandenen Bausteinen – unten <b>Liste · Board · Logbuch</b>, oben Schnellerfassung, Aufgabe als Vollbild-Ansicht; Touch statt Hover (Wischen/Detail statt Mülleimer beim Überfahren, weiterhin zweistufig; Reihenfolge per langem Drücken).</li>
   </ul>
-  <h2 id="sync">17 Buchungen ↔ Google/iCloud (Zwei-Wege-Sync) – entschieden und gebaut 18.11.2026</h2>
-  <p>Aus einer Buchung lässt sich ein Eintrag in Google Calendar oder iCloud machen; danach bleiben beide Seiten synchron.</p>
-  <h3>Entscheidungen</h3>
-  <table>
-    <tr><th>Frage</th><th>Entscheidung</th></tr>
-    <tr><td>Welche Buchungen?</td><td><b>Nur Termine</b> (mit Uhrzeit). Reservierungen werden vorerst <b>nicht</b> zu externen Einträgen.</td></tr>
-    <tr><td>Konflikt (beide Seiten seit dem letzten Abgleich geändert)</td><td><b>Die jüngere Änderung gewinnt</b> (Event-Zeit in Rundblick vs. <code>lastModifiedDate</code> extern).</td></tr>
-    <tr><td>Externe Termine → Rundblick</td><td>Ein externer Termin kann <b>von Hand</b> zu einer Aufgabe (bzw. verknüpften Buchung) gemacht werden. <b>Nie automatisch.</b></td></tr>
-    <tr><td>Verknüpfen oder umwandeln?</td><td><b>Verknüpfen</b> – die Buchung bleibt in Rundblick (Aufgabe, Auslastung, Herkunfts-Symbol) und wird gespiegelt. Symbol an der Buchung: Lucide <code>link-2</code> in der Farbe des Zielkalenders.</td></tr>
-    <tr><td>Extern gelöscht</td><td><b>Verknüpfung lösen, Buchung behalten</b>, Hinweis an der Buchung.</td></tr>
-    <tr><td>Buchung gelöscht</td><td>Der externe Eintrag wird <b>nur mitgelöscht, wenn Rundblick ihn angelegt hat</b>. War der Termin zuerst extern da (aus ihm wurde eine Aufgabe gemacht), bleibt er erhalten. Technisch: <code>ursprung: 'rundblick' | 'extern'</code> in <code>BuchungVerknuepft</code> (fehlt bei älteren Events → <code>'rundblick'</code>).</td></tr>
-  </table>
-  <h3>Umsetzung (Skizze)</h3>
+  <h3>Offline-first</h3>
   <ul>
-    <li><b>Domain state:</b> Events <code>BuchungVerknuepft { buchungId, kalender, externeUid, stand }</code>, <code>BuchungAbgeglichen { buchungId, stand }</code>, <code>VerknuepfungGeloest { buchungId, grund }</code>. <code>externeUid</code> = <code>calendarItemExternalIdentifier</code> (geräteübergreifend gleich; passt auch für die spätere Web-App mit Google-/CalDAV-Provider). <code>stand</code> = Fingerabdruck aus Titel, Beginn, Dauer, Notiz.</li>
-    <li><b>Rundblick → extern:</b> Jede Änderung an einer verknüpften Buchung schreibt der Body sofort über den Kalender-Provider (idempotent: Werte setzen), danach <code>BuchungAbgeglichen</code>.</li>
-    <li><b>Extern → Rundblick:</b> bei jeder Synchronisation (macOS-Meldung, alle 5 min, Knopf) Abgleich je Verknüpfung: extern geändert → normale Commands (<code>buchungAendern</code>, Meta <code>quelle: sync</code>) + <code>BuchungAbgeglichen</code>. Beide geändert → jüngere gewinnt. Der Abgleich ist eine pure Funktion im Body (gut testbar).</li>
-    <li><b>Keine Echos:</b> Nach jedem Schreiben wird der Stand sofort aktualisiert.</li>
-    <li><b>Darstellung:</b> Verknüpfte Buchung erscheint im Kalender <b>einmal</b> – als Rundblick-Buchung mit Verknüpfungs-Symbol und Farbe des Zielkalenders; der externe Doppelgänger wird über die UID ausgeblendet.</li>
-    <li><b>Neu im Swift-Helfer/Provider:</b> <code>anlegen</code>, <code>aendern</code>, <code>loeschen</code>; beim Lesen zusätzlich UID und <code>lastModifiedDate</code>.</li>
+    <li>Service Worker speichert die App → startet auch ohne Netz. Alle bekannten Events liegen in IndexedDB; daraus entsteht der Stand wie am Desktop.</li>
+    <li>Jede Änderung wird sofort lokal gespeichert; eigene Events kommen in eine <b>Warteschlange</b>. Online: eigene Gerätedatei aus dem lokalen Speicher komplett neu hochladen (nur dieses Gerät schreibt sie; Revisionsprüfung), fremde Änderungen per Dropbox-Cursor holen, nach HLC einsortieren; danach Longpoll.</li>
+    <li>Gleichzeitige Änderungen: feingranulare Events → verschiedene Felder vertragen sich; dasselbe Feld → spätere Änderung (HLC) gewinnt.</li>
+    <li>Anzeige: Wolken-Symbol (Lucide <code>Cloud</code> / <code>CloudUpload</code> mit Anzahl / <code>CloudOff</code>), Tipp = Abgleich.</li>
+    <li>iOS: <code>navigator.storage.persist()</code>; sofort hochladen, damit keine Änderungen nur lokal liegen.</li>
   </ul>
+  <h3>Schritte</h3>
+  <ol>
+    <li>Dropbox-App „Rundblick“ anlegen (Nutzer, App Console).</li>
+    <li>UI-Entwurf der Phone App.</li>
+    <li>Browser-Provider + Abgleich (mit Tests), Web-Composition-Root, PWA-Hülle.</li>
+    <li>Netlify-Site, erste Anmeldung, Umzug in den App-Ordner (s. u.).</li>
+  </ol>
+  <p class="muted"><b>Achtung App-Ordner:</b> Dropbox legt den Ordner beim ersten Verbinden selbst an. Existiert <code>Apps/Rundblick</code> schon (Desktop-App), kann Dropbox einen anderen Namen wählen. Darum vor dem ersten Verbinden den vorhandenen Ordner kurz umbenennen, verbinden, Inhalt zurückschieben.</p>
+  <p><b>Verworfen:</b> A (Mac als Server – nur bei laufendem Mac) und C (zentraler Server mit Datenbank – Datendopplung).</p>
 </main>
 </div>
 </body>
