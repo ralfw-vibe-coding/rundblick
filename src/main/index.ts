@@ -91,7 +91,9 @@ async function starte(): Promise<void> {
   const takt = setInterval(() => {
     if (systemUhr.heute() !== heute) { heute = systemUhr.heute(); body.tageswechsel(); }
   }, 60_000);
-  const sync = setInterval(() => { void body.synchronisieren(); }, 15 * 60_000);
+  // Externe Kalender (EventKit): beim Start, beim Fokussieren des Fensters, bei Änderungsmeldung von macOS
+  // und zusätzlich alle 5 Minuten
+  const sync = setInterval(() => { void body.synchronisieren(); }, 5 * 60_000);
   void body.synchronisieren();
 
   // Entwicklungshilfe: RB_SCREENSHOT=pfad.png [RB_JS=…] → Fenster abfotografieren und beenden

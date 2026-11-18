@@ -727,4 +727,4 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .day-side .row .chk { margin-top: 1px; }
 .day-side .row .t { flex-wrap: wrap; row-gap: 0; column-gap: 6px; }
 .day-side .row .t .tt { white-space: normal; overflow: visible; overflow-wrap: break-word; hyphens: auto; }
-.day-side .row .right > :not(.muell) { display: none; }
+.day-side .row .right > :not(.muell):not(.bk) { display: none; }  /* gebuchte Zeit wie in der Liste, Status ausgeblendet */

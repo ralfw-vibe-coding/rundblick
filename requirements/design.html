@@ -457,7 +457,7 @@
   <h3>Synchronisation mit EventKit</h3>
   <ul>
     <li>Der Swift-Helfer läuft als Kindprozess des Main-Prozesses und spricht JSON-Zeilen über stdin/stdout: <code>{"op":"kalender"}</code>, <code>{"op":"termine","von":"…","bis":"…"}</code>, <code>{"op":"schreiben",…}</code>.</li>
-    <li>EventKit meldet Änderungen selbst (<code>EKEventStoreChanged</code>). Der Helfer gibt sie als <code>{"ereignis":"geaendert"}</code> weiter, und der Body ruft <code>synchronisieren()</code> auf. Ein Polling ist nicht nötig. Die Synchronisation mit iCloud und Google erledigt macOS selbst.</li>
+    <li>EventKit meldet Änderungen selbst (<code>EKEventStoreChanged</code>). Der Helfer gibt sie als <code>{"ereignis":"geaendert"}</code> weiter, und der Body ruft <code>synchronisieren()</code> auf. Zusätzlich holt Rundblick die Termine beim Start, beim Fokussieren des Fensters und <b>alle 5 Minuten</b> (Nutzerwunsch). Die Synchronisation mit iCloud und Google erledigt macOS selbst.</li>
     <li>Serien sind bereits aufgelöst: EventKit liefert Einzeltermine pro Zeitraum.</li>
     <li>Der Cache hält das Fenster −30 / +180 Tage vor, damit Queries nie auf den Helfer warten.</li>
     <li>Fehlt die Berechtigung oder stürzt der Helfer ab, ändert sich kein Domain state. Der Client zeigt einen Hinweis, zum Beispiel „Kalenderzugriff in den Systemeinstellungen erlauben“.</li>
