@@ -60,10 +60,11 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 **Timeline** (`sichten/timeline.ts`)
 - Bewusst **dezent, ohne Schrift im Verlauf**: Kopf mit KW und Tagen, **Auslastungsbalken im Tageskopf** (wie im Kalender, mit Warndreieck), bei großem Zoom Stunden.
 - **Symbolzeile** für Punktuelles: Frist (gefüllte Raute in Listenfarbe), Wiedervorlage (`CalendarClock`), Reservierung (`Hourglass`, Rundblick-Farbe bzw. „frei“).
-- **Strichzeile** für Termine (eigene und externe, Kalenderfarbe) als dünne Striche von Beginn bis Ende, bei Überlappung **gestaffelt**.
-- Überfahren → Tooltip; **Klick** auf Symbol/Strich → Info-Fenster mit mehr Angaben und „Details öffnen“ (Schublade: Aufgabe, Buchung bzw. externer Termin).
-- **Klick auf einen Tag** (Kopf oder freie Fläche) markiert ihn → darunter **Leitlinien** von jedem Eintrag zu einer Beschriftung mit Details (Klick darauf öffnet die Schublade); nochmal klicken = weg. Die Markierung holt den Tag nur waagerecht in den Blick.
+- **Strichzeile** für Termine (eigene und externe, Kalenderfarbe) als Striche (8 px) von Beginn bis Ende, bei Überlappung **gestaffelt**.
+- Überfahren → Tooltip; **Klick** auf Symbol/Strich → Info-Fenster mit mehr Angaben (**kein Knopf**); **nochmal klicken** – auf den Eintrag oder ins Fenster – öffnet die Schublade (Aufgabe, Buchung bzw. externer Termin).
+- **Klick auf einen Tag** (Kopf oder freie Fläche) markiert ihn → darunter (unterhalb der Strichzeile) **Leitlinien** von jedem Eintrag zu einer Beschriftung mit Details (Klick darauf öffnet die Schublade); Beschriftungen bleiben **im Block ihres Tages** (nach links gerückt, sonst mit „…“ gekürzt, voller Text im Tooltip); nochmal klicken = weg. Die Markierung holt den Tag nur waagerecht in den Blick.
 - Hineinziehen: in die Symbolzeile = Reservierung, in die Strichzeile = Termin.
+- **Zoom** (Regler oder ⌘ + Mausrad) zeichnet nur den Timeline-Inhalt neu, nicht die Werkzeugleiste – sonst ließe sich der Regler nicht ziehen.
 
 **Logbuch**
 - Eigene Sicht: was an einem Tag **explizit abgehakt** wurde – abgeschlossene Aufgaben (Zeitpunkt = Event `AufgabeAbgeschlossen`) und abgehakte Checklisten-Punkte in Aufgaben-Notizen (Zeitpunkt des `BeschreibungGeaendert`, in dem der Punkt abgehakt wurde) – plus **Notizen**. Wieder geöffnet/aufgehakt/verworfen → raus; archiviert bleibt (mit Archiv-Symbol).

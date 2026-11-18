@@ -933,3 +933,12 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 /* Zonen nehmen Ziehen an; die Tagesflächen darin markieren den Tag per Klick */
 .tl2-zone { pointer-events: auto; }
 .tl2-zone .tl2-sym, .tl2-zone .tl2-strich { z-index: 1; }
+/* Timeline: dickere Termin-Striche, Beschriftungen im Tagesblock, Info-Fenster klickbar */
+.tl2-strich { height: 8px; border-radius: 4px; }
+.tl2-strich::before { top: -3px; bottom: -3px; }
+.tl2-label { overflow: hidden; }
+.tl2-label .tx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.tl2-info.klickbar { cursor: pointer; }
+.tl2-info.klickbar:hover { border-color: var(--own); box-shadow: 0 0 0 3px var(--own-soft), 0 12px 40px rgba(0,0,0,.18); }
+.tl2-info .hinweis-klick { margin-top: 6px; font-size: 11px; color: var(--mute); }
+.tl2-info .punkt { width: 12px; height: 8px; border-radius: 4px; }

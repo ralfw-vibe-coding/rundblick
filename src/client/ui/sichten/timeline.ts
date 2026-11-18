@@ -2,7 +2,7 @@
 //   Kopf: KW, Tage (Klick markiert) mit Auslastungsbalken wie im Kalender, bei großem Zoom Stunden.
 //   Symbolzeile: Punktuelles – Frist (Raute), Wiedervorlage, Reservierung.
 //   Strichzeile: Termine als Striche von Beginn bis Ende, bei Überlappung gestaffelt (eigene + externe).
-//   Überfahren → Tooltip; Klick → Info-Fenster mit „Details öffnen“ (Schublade).
+//   Überfahren → Tooltip; Klick → Info-Fenster; nochmal klicken (auf Eintrag oder Fenster) → Schublade.
 //   Markierter Tag → darunter Leitlinien von jedem Eintrag zu einer Beschriftung mit Details.
 import { dauerText, differenz, kurz, kw, monat, relativ, tagImMonat, uhrzeit, WT, WT_LANG, wochentag } from '../../../basis/datum';
 import type { BuchungDto, ExternDto, Tag, Zeitraum } from '../../../body/interface';
@@ -23,7 +23,7 @@ type Eintrag = {
   breite?: number; bahn?: number;
 };
 
-const SYM = 16, SYM_ABSTAND = 15, STRICH = 4, STRICH_ABSTAND = 8, ZEILE = 20;
+const SYM = 16, SYM_ABSTAND = 15, STRICH = 8, STRICH_ABSTAND = 12, ZEILE = 20;
 let EINTRAEGE = new Map<string, Eintrag>();
 
 const herkunftText = (b: BuchungDto) => (b.herkunft === 'board' ? 'Aufgabe auf dem Kanban-Board' : b.herkunft === 'liste' ? 'Aufgabe in der Aufgabenliste' : 'Buchung ohne Aufgabe');
@@ -132,6 +132,12 @@ export function timelineZeichnen(z: Zeitraum, pph: number, h0: number, h1: numbe
   // Details des markierten Tages: Leitlinien nach unten zu Beschriftungen
   let details = '', hDetails = 0;
   const iM = markiert ? differenz(start, markiert) : -1;
+  // Beschriftungen bleiben im Block ihres Tages: links ab dem Eintrag, notfalls nach links gerückt, sonst gekürzt
+  const tagLinks = iM * dayW, tagRechts = tagLinks + dayW, minBreite = Math.min(170, dayW - 8);
+  const labelLage = (x: number) => {
+    const links = Math.max(tagLinks + 4, Math.min(x, tagRechts - 4 - minBreite));
+    return `left:${links}px;max-width:${tagRechts - 4 - links}px`;
+  };
   if (iM >= 0 && iM < N) {
     const liste = [...EINTRAEGE.values()].filter(e => e.datum === markiert).sort((a, b) => a.x - b.x || a.y - b.y);
     hDetails = 14 + Math.max(1, liste.length) * ZEILE;
@@ -139,7 +145,7 @@ export function timelineZeichnen(z: Zeitraum, pph: number, h0: number, h1: numbe
     details = liste.map((e, k) => {
       const yLabel = oben + 14 + k * ZEILE + ZEILE / 2;
       return `<span class="tl2-leit" style="left:${e.x}px;top:${e.y}px;height:${yLabel - e.y}px;border-color:${e.farbe}"></span>`
-        + `<span class="tl2-label" data-tl="${e.key}" style="left:${e.x}px;top:${yLabel - 9}px;--lf:${e.farbe}">${e.symbol ? `<span class="sy">${e.symbol}</span>` : ''}${esc(e.zeile)}</span>`;
+        + `<span class="tl2-label" data-tl="${e.key}" title="${esc(e.zeile)}" style="${labelLage(e.x)};top:${yLabel - 9}px;--lf:${e.farbe}">${e.symbol ? `<span class="sy">${e.symbol}</span>` : ''}<span class="tx">${esc(e.zeile)}</span></span>`;
     }).join('') || `<span class="tl2-label leer" style="left:${iM * dayW + 6}px;top:${oben + 14}px">An diesem Tag ist nichts eingetragen.</span>`;
   }
 
@@ -161,9 +167,11 @@ function symbolFuer(e: Eintrag): string {
   return I.reservierung;
 }
 
-// ---------- Klick: Info-Fenster mit „Details öffnen“ ----------
+// ---------- Klick: Info-Fenster; nochmal klicken → Schublade ----------
 let fenster: HTMLDivElement | null = null;
-function fensterZu(): void { fenster?.remove(); fenster = null; }
+/** zu welchem Eintrag das offene Info-Fenster gehört (zweiter Klick darauf öffnet die Schublade) */
+let fensterFuer: string | null = null;
+function fensterZu(): void { fenster?.remove(); fenster = null; fensterFuer = null; }
 addEventListener('keydown', e => { if (e.key === 'Escape') fensterZu(); });
 addEventListener('mousedown', e => { if (fenster && !(e.target as HTMLElement).closest('.tl2-info, [data-tl]')) fensterZu(); });
 
@@ -185,16 +193,20 @@ export function timelineBinden(el: HTMLElement): void {
     if (!e) return;
     // Beschriftung unter dem markierten Tag: direkt öffnen; Symbol/Strich: erst Info-Fenster
     if (t.classList.contains('tl2-label')) { if (e.oeffnen) oeffnen(e.oeffnen); return; }
+    // zweiter Klick auf denselben Eintrag → Details
+    if (fensterFuer === e.key && e.oeffnen) { const o = e.oeffnen; fensterZu(); oeffnen(o); return; }
     fensterZu();
+    fensterFuer = e.key;
     fenster = document.createElement('div');
     fenster.className = 'pop tl2-info';
     fenster.innerHTML = `<div class="kopf"><span class="sy" style="color:${e.farbe}">${e.symbol || '<span class="punkt" style="background:' + e.farbe + '"></span>'}</span><b>${esc(e.titel)}</b></div>
       ${e.info.map(z => `<div class="z">${esc(z)}</div>`).join('')}
-      ${e.oeffnen ? `<button class="btn" data-oeffnen="1">${I.rechts}Details öffnen</button>` : ''}`;
+      ${e.oeffnen ? '<div class="hinweis-klick">Klick: Details</div>' : ''}`;
+    if (e.oeffnen) { fenster.classList.add('klickbar'); fenster.title = 'Klick: Details öffnen'; }
     document.body.appendChild(fenster);
     const r = t.getBoundingClientRect();
     fenster.style.left = `${Math.min(r.left, innerWidth - 300)}px`;
     fenster.style.top = `${Math.min(r.bottom + 6, innerHeight - fenster.offsetHeight - 8)}px`;
-    fenster.querySelector<HTMLElement>('[data-oeffnen]')?.addEventListener('click', () => { const o = e.oeffnen!; fensterZu(); oeffnen(o); });
+    fenster.addEventListener('click', () => { if (!e.oeffnen) return; const o = e.oeffnen; fensterZu(); oeffnen(o); });
   }, true);
 }

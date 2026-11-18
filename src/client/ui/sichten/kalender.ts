@@ -49,6 +49,8 @@ export class KalenderSicht implements Sicht {
   readonly bereiche: Bereich[] = ['kalender', 'aufgaben'];
   private heute = '';
   private scrollX: number | null = null;
+  /** zuletzt gezeichneter Zeitraum der Timeline – Zoom zeichnet nur den Inhalt neu, nicht den Regler */
+  private tlZeitraum: Zeitraum | null = null;
   private el: HTMLElement | null = null;
   private dichte: Dichte = 'full';
 
@@ -93,7 +95,7 @@ export class KalenderSicht implements Sicht {
       case 'tage3': case 'woche': inhalt = woche(z, z.tage, dichte); break;
       case 'monat': inhalt = monatsRaster(z, z.tage, anker, dichte); break;
       case 'monate3': inhalt = `<div class="months">${[0, 1, 2].map(i => { const m = plusMonate(anker, i); const s = montag(monatsErster(m)); const t = z.tage.filter(x => x.datum >= s && x.datum <= plusTage(s, 41)); return `<div class="mm"><div class="mm-h">${MON_LANG[monat(m)]} ${jahr(m)}</div>${monatsRaster(z, t, m, 'compact')}</div>`; }).join('')}</div>`; break;
-      case 'timeline': inhalt = timelineZeichnen(z, this.z.pph, H0, H1, MARKIERT); break;
+      case 'timeline': this.tlZeitraum = z; inhalt = timelineZeichnen(z, this.z.pph, H0, H1, MARKIERT); break;
     }
     el.innerHTML = `<div class="cal ${dichte}">
       <div class="cal-tb">
@@ -101,7 +103,7 @@ export class KalenderSicht implements Sicht {
         ${zeitansicht ? `<button class="ganztag ${this.z.ganzerTag ? 'on' : ''}" data-cal-ganz="1" title="${this.z.ganzerTag ? 'Nur Tageszeit zeigen (davor/danach nur, wenn dort Termine sind)' : `Ganzen Tag zeigen (0–24 Uhr) – sonst ${e.tageszeit.von}–${e.tageszeit.bis} Uhr`}">${this.z.ganzerTag ? I.einklappen : I.ausklappen}</button>` : ''}
         <div class="nav"><button data-cal-nav="-1" title="zurück">${I.links}</button><button data-cal-nav="0">Heute</button><button data-cal-nav="1" title="vor">${I.rechts}</button></div>
         ${this.z.ansicht !== 'timeline' ? `<span class="title">${titel(this.z.ansicht, anker)}</span>`
-          : `<span class="zoom">Zoom <input type="range" min="2" max="48" value="${this.z.pph}" data-cal-zoom /> <span>${this.z.pph < 6 ? 'Wochen' : this.z.pph < 20 ? 'Tage' : 'Stunden'}</span></span>`}
+          : `<span class="zoom">Zoom <input type="range" min="2" max="48" value="${this.z.pph}" data-cal-zoom /> <span class="zoom-stufe">${zoomStufe(this.z.pph)}</span></span>`}
         <span class="spacer"></span>
         ${dichte === 'full' ? `<span class="legend"><span><i style="background:var(--own)"></i>Termin</span><span><i style="border:1.5px dashed var(--own)"></i>Reservierung</span><span><i style="background:var(--free)"></i>ohne Aufgabe</span><span><i style="background:#9ca3af"></i>extern</span></span>` : ''}
       </div>
@@ -176,32 +178,48 @@ export class KalenderSicht implements Sicht {
       if (sc && this.dichte === 'full') sc.scrollTop = Math.max(0, ((KERN.von - H0) / SPAN) * sc.scrollHeight - 10);
     }
     if (this.z.ansicht === 'timeline') {
-      const sc = el.querySelector<HTMLElement>('.tl-scroll')!;
-      const start = plusTage(montag(anker), -7), dayW = SPAN * this.z.pph;
-      sc.scrollLeft = this.scrollX ?? Math.max(0, (differenz(start, this.z.markiert ?? this.heute) - 1) * dayW);
-      sc.onscroll = () => { this.scrollX = sc.scrollLeft; };
-      const zoom = (pph: number, cx: number) => {
-        pph = Math.max(2, Math.min(48, Math.round(pph)));
-        if (pph === this.z.pph) return;
-        const t = (sc.scrollLeft + cx) / (SPAN * this.z.pph);
-        this.z.pph = pph;
-        this.scrollX = t * SPAN * pph - cx;
-        void this.neu();
-      };
+      // Regler: nur einmal je Zeichnung binden – beim Ziehen wird nur der Inhalt neu gezeichnet
       const r = el.querySelector<HTMLInputElement>('[data-cal-zoom]')!;
-      r.oninput = () => zoom(Number(r.value), sc.clientWidth / 2);
-      sc.onwheel = ev => {
-        if (!(ev.ctrlKey || ev.metaKey)) return;
-        ev.preventDefault();
-        zoom(this.z.pph * Math.exp(-ev.deltaY * 0.01), ev.clientX - sc.getBoundingClientRect().left);
-      };
-      (el as HTMLElement & { _tl?: unknown })._tl = { start, pph: this.z.pph, h0: H0, h1: H1 };
-      timelineBinden(el);
+      r.oninput = () => this.zoomen(el, anker, Number(r.value), el.querySelector<HTMLElement>('.tl-scroll')!.clientWidth / 2);
+      this.timelineEinrichten(el, anker);
     }
+  }
+
+  /** Scrollposition, Mausrad-Zoom und Klicks der Timeline (nach jedem Zeichnen des Inhalts) */
+  private timelineEinrichten(el: HTMLElement, anker: string): void {
+    const sc = el.querySelector<HTMLElement>('.tl-scroll')!;
+    const start = plusTage(montag(anker), -7), dayW = SPAN * this.z.pph;
+    sc.scrollLeft = this.scrollX ?? Math.max(0, (differenz(start, this.z.markiert ?? this.heute) - 1) * dayW);
+    sc.onscroll = () => { this.scrollX = sc.scrollLeft; };
+    sc.onwheel = ev => {
+      if (!(ev.ctrlKey || ev.metaKey)) return;
+      ev.preventDefault();
+      this.zoomen(el, anker, this.z.pph * Math.exp(-ev.deltaY * 0.01), ev.clientX - sc.getBoundingClientRect().left);
+    };
+    (el as HTMLElement & { _tl?: unknown })._tl = { start, pph: this.z.pph, h0: H0, h1: H1 };
+    timelineBinden(el);
+  }
+
+  /** Zoom um den Punkt cx (px im sichtbaren Ausschnitt); zeichnet nur den Timeline-Inhalt neu */
+  private zoomen(el: HTMLElement, anker: string, pph: number, cx: number): void {
+    pph = Math.max(2, Math.min(48, Math.round(pph)));
+    const sc = el.querySelector<HTMLElement>('.tl-scroll');
+    if (pph === this.z.pph || !sc || !this.tlZeitraum) return;
+    const t = (sc.scrollLeft + cx) / (SPAN * this.z.pph);
+    this.z.pph = pph;
+    this.scrollX = t * SPAN * pph - cx;
+    el.querySelector<HTMLElement>('.cal-b')!.innerHTML = timelineZeichnen(this.tlZeitraum, pph, H0, H1, MARKIERT);
+    const stufe = el.querySelector<HTMLElement>('.zoom-stufe');
+    if (stufe) stufe.textContent = zoomStufe(pph);
+    const r = el.querySelector<HTMLInputElement>('[data-cal-zoom]');
+    if (r && Number(r.value) !== pph) r.value = String(pph);
+    this.timelineEinrichten(el, anker);
   }
 
   private async neu(): Promise<void> { if (this.el) await this.render(this.el, this.dichte); }
 }
+
+const zoomStufe = (pph: number) => (pph < 6 ? 'Wochen' : pph < 20 ? 'Tage' : 'Stunden');
 
 function titel(a: KalAnsicht, anker: string): string {
   if (a === 'tag') return `${WT_LANG[wochentag(anker)]}, ${tagImMonat(anker)}. ${MON_LANG[monat(anker)]}`;
