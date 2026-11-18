@@ -843,3 +843,6 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .hk svg.lu { width: 11px; height: 11px; }
 .ev.own .hk { opacity: .85; }
 .resv .hk, .me .hk { margin-left: 3px; }
+/* „+n weitere“ in der Monatszelle: deutlich, aber ruhig */
+.mc .me.mehr { color: var(--own); font-weight: 600; cursor: pointer; }
+.mc .me.mehr:hover { text-decoration: underline; }

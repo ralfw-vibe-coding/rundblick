@@ -102,10 +102,24 @@ export class KalenderSicht implements Sicht {
       </div>
       <div class="cal-b">${inhalt}</div></div>`;
     this.binden(el, anker);
+    monatEinpassen(el);
+    if (!el.dataset.einpassen) {
+      // ändert sich die Zellgröße (Trenner, Fenster), neu einpassen
+      el.dataset.einpassen = '1';
+      new ResizeObserver(() => monatEinpassen(el)).observe(el);
+    }
   }
 
   private binden(el: HTMLElement, anker: string): void {
     el.onclick = e => {
+      const mehr = (e.target as HTMLElement).closest<HTMLElement>('.me.mehr');
+      if (mehr) {
+        // „+n weitere“: schon ein Klick öffnet den Tag
+        this.z.ansicht = this.ansichten.includes('tag') ? 'tag' : 'tage3';
+        this.z.anker = mehr.closest<HTMLElement>('.mc[data-day]')!.dataset.day!;
+        void this.neu();
+        return;
+      }
       const t = e.target as HTMLElement;
       const v = t.closest<HTMLElement>('[data-cal-view]'), n = t.closest<HTMLElement>('[data-cal-nav]');
       if (t.closest('[data-cal-ganz]')) { this.z.ganzerTag = !this.z.ganzerTag; void this.neu(); return; }
@@ -272,7 +286,6 @@ function tagSeite(t: Tag, l: Aufgabenliste, heute: string): string {
  *  unten die Auslastung. */
 function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte): string {
   const m = monat(anker);
-  const max = dichte === 'full' ? 6 : 3;
   const zellen = tage.slice(0, 42).map(t => {
     const ev = ereignisse(t).sort((a, b) => a.s - b.s);
     const farbe = (e: Ev) => (e.b ? (e.b.aufgabeId ? 'var(--own)' : 'var(--free)') : e.x!.farbe);
@@ -284,13 +297,40 @@ function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte): 
         ? `<div class="me term ${e.b.aufgabeId ? 'own' : 'frei'} ${e.b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${e.b.id}"${e.b.aufgabeId ? ` data-task="${e.b.aufgabeId}"` : ''} style="--kf:${farbe(e)}" title="${esc(`${uhrzeit(e.s)}–${uhrzeit(e.e)} ${e.titel}`)}"><span class="zt">${uhrzeit(e.s)}</span>${herkunft(e.b)}<span class="tt">${esc(e.titel)}</span></div>`
         : `<div class="me term extern" style="--kf:${e.x!.farbe}" title="${esc(`${uhrzeit(e.s)}–${uhrzeit(e.e)} ${e.titel} · ${e.x!.kalender}`)}"><span class="zt">${uhrzeit(e.s)}</span><span class="tt">${esc(e.titel)}</span></div>`),
     ];
-    const liste = eintraege.slice(0, max).join('') + (eintraege.length > max ? `<div class="me mehr">+${eintraege.length - max} weitere</div>` : '');
+    // alle Einträge – wie viele in die Zelle passen, misst monatEinpassen() nach dem Zeichnen
+    const liste = eintraege.join('');
     const anders = monat(t.datum) !== m;
     return `<div class="mc ${anders ? 'other' : ''} ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-res="${t.datum}" data-day="${t.datum}" title="Doppelklick: Buchung ohne Aufgabe eintragen">
       <div class="mh" title="Doppelklick: Tag öffnen"><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>
       <div class="mb"><div class="mpunkte" title="Termine im Tagesverlauf (${H0}–${H1} Uhr)">${punkte}</div><div class="mliste">${liste}</div></div>${kapazitaetsBalken(t.auslastung)}</div>`;
   }).join('');
   return `<div class="mo ${dichte}"><div class="mo-h">${WT.map(w => `<div>${w}</div>`).join('')}</div><div class="mo-g">${zellen}</div></div>`;
+}
+
+/**
+ * Monatszellen: Passen nicht alle Einträge in die Zelle, werden die letzten ausgeblendet und durch
+ * „+n weitere“ ersetzt (Doppelklick öffnet den Tag). Gemessen wird nach dem Zeichnen, weil die
+ * Zellhöhe vom Platz in der Rasterzelle abhängt.
+ */
+export function monatEinpassen(el: HTMLElement): void {
+  el.querySelectorAll<HTMLElement>('.mc .mliste').forEach(liste => {
+    liste.querySelector('.me.mehr')?.remove();
+    const eintraege = [...liste.querySelectorAll<HTMLElement>(':scope > .me')];
+    eintraege.forEach(e => { e.style.display = ''; });
+    if (liste.scrollHeight <= liste.clientHeight + 1) return;
+    const mehr = document.createElement('div');
+    mehr.className = 'me mehr';
+    mehr.title = 'Doppelklick: Tag öffnen';
+    liste.appendChild(mehr);
+    let versteckt = 0;
+    // der erste Eintrag bleibt immer sichtbar (sonst stünde nur „+n“ in der Zelle)
+    for (let i = eintraege.length - 1; i >= 1 && liste.scrollHeight > liste.clientHeight + 1; i--) {
+      eintraege[i]!.style.display = 'none';
+      versteckt++;
+      mehr.textContent = `+${versteckt} weitere`;
+    }
+    mehr.textContent = `+${versteckt} weitere`;
+  });
 }
 
 function timeline(z: Zeitraum, pph: number): string {
