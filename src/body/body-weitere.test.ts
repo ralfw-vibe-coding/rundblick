@@ -282,3 +282,16 @@ describe('Kalenderzugriff und Synchronisation', () => {
     expect(n).toBe(0);
   });
 });
+
+describe('Herkunft einer Buchung', () => {
+  it('Board, wenn die Aufgabe einen Status hat; sonst Liste; freie Buchung ohne Herkunft', async () => {
+    const { body } = aufbau();
+    const mitStatus = id(await body.aufgabeErfassen({ titel: 'B', status: 'inarbeit', buchung: { datum: '2026-11-18', start: '09:00' } }), 'aufgabeId');
+    await body.aufgabeErfassen({ titel: 'L', buchung: { datum: '2026-11-18' } });
+    await body.buchungEintragen({ titel: 'F', datum: '2026-11-18', start: '11:00' });
+    const t = (await body.zeitraum({ von: '2026-11-18', bis: '2026-11-18' })).tage[0]!;
+    expect([...t.termine, ...t.reservierungen].map(b => [b.titel, b.herkunft])).toEqual([['B', 'board'], ['F', null], ['L', 'liste']]);
+    await body.statusSetzen({ aufgabeId: mitStatus, status: null });
+    expect((await body.aufgabe({ aufgabeId: mitStatus }))!.buchungsliste[0]!.herkunft).toBe('liste');
+  });
+});

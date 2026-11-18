@@ -199,14 +199,19 @@ function evHtml(e: Ev, dichte: Dichte): string {
   if (e.b) {
     const b = e.b;
     const tip = `${b.titel}${b.aufgabentitel && b.aufgabentitel !== b.titel ? ` (Aufgabe: ${b.aufgabentitel})` : ''} · ${uhrzeit(b.s)}–${uhrzeit(b.e)}${b.belegt ? '' : ' · belegt keine Kapazität'}`;
-    return `<div class="ev own ${b.aufgabeId ? '' : 'frei'} ${b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="${pos}" title="${esc(tip)}">${esc(b.titel)}${zeit}<span class="zieh" data-zieh="${b.id}" data-dauer="${b.dauer}" title="Ziehen: Dauer ändern"></span></div>`;
+    return `<div class="ev own ${b.aufgabeId ? '' : 'frei'} ${b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="${pos}" title="${esc(tip)}">${herkunft(b)}${esc(b.titel)}${zeit}<span class="zieh" data-zieh="${b.id}" data-dauer="${b.dauer}" title="Ziehen: Dauer ändern"></span></div>`;
   }
   const x = e.x!;
   return `<div class="ev extern ${x.belegt ? 'belegt' : ''}" style="${pos};--kf:${x.farbe}" title="${esc(`${x.titel} · ${uhrzeit(e.s)}–${uhrzeit(e.e)} · ${x.konto} / ${x.kalender}${x.belegt ? ' · belegt Kapazität' : ''}${x.ort ? ' · ' + x.ort : ''}`)}">${esc(x.titel)}${zeit}</div>`;
 }
 
+/** kleines Symbol: Aufgabe steht auf dem Board (hat Status) oder nur in der Aufgabenliste; freie Buchungen ohne */
+export const herkunft = (b: BuchungDto) => b.herkunft
+  ? `<span class="hk" title="${b.herkunft === 'board' ? 'Aufgabe auf dem Kanban-Board' : 'Aufgabe in der Aufgabenliste'}">${b.herkunft === 'board' ? I.board : I.liste}</span>`
+  : '';
+
 export const resHtml = (r: BuchungDto) =>
-  `<div class="resv ${r.aufgabeId ? '' : 'frei'} ${r.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} title="${esc(`${r.aufgabeId ? '' : 'Freie '}Reservierung: ${r.titel} · ${dauerText(r.dauer)}${r.belegt ? '' : ' · belegt keine Kapazität'}`)}"><b>${dauerText(r.dauer).replace(' ', '')}</b><span>${esc(r.titel)}</span></div>`;
+  `<div class="resv ${r.aufgabeId ? '' : 'frei'} ${r.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} title="${esc(`${r.aufgabeId ? '' : 'Freie '}Reservierung: ${r.titel} · ${dauerText(r.dauer)}${r.belegt ? '' : ' · belegt keine Kapazität'}`)}"><b>${dauerText(r.dauer).replace(' ', '')}</b>${herkunft(r)}<span>${esc(r.titel)}</span></div>`;
 
 const ganztags = (t: Tag) => t.extern.filter(x => x.start === null).map(x => `<div class="ext-ganz" style="background:${x.farbe}" title="${esc(`${x.titel} · ganztägig · ${x.kalender}`)}">${esc(x.titel)}</div>`).join('');
 
@@ -274,9 +279,9 @@ function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte): 
     const punkte = ev.map(e => `<i style="top:${Math.min(100, Math.max(0, pct(e.s)))}%;background:${farbe(e)}" title="${esc(`${uhrzeit(e.s)} ${e.titel}`)}"></i>`).join('');
     const eintraege = [
       ...t.extern.filter(x => x.start === null).map(x => `<div class="me ganz" style="--kf:${x.farbe}" title="${esc(`${x.titel} · ganztägig · ${x.kalender}`)}"><span class="tt">${esc(x.titel)}</span></div>`),
-      ...t.reservierungen.map(r => `<div class="me res ${r.aufgabeId ? '' : 'frei'} ${r.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} title="${esc(`Reservierung ${dauerText(r.dauer)}: ${r.titel}`)}"><span class="zt">${dauerText(r.dauer).replace(' ', '')}</span><span class="tt">${esc(r.titel)}</span></div>`),
+      ...t.reservierungen.map(r => `<div class="me res ${r.aufgabeId ? '' : 'frei'} ${r.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} title="${esc(`Reservierung ${dauerText(r.dauer)}: ${r.titel}`)}"><span class="zt">${dauerText(r.dauer).replace(' ', '')}</span>${herkunft(r)}<span class="tt">${esc(r.titel)}</span></div>`),
       ...ev.map(e => e.b
-        ? `<div class="me term ${e.b.aufgabeId ? 'own' : 'frei'} ${e.b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${e.b.id}"${e.b.aufgabeId ? ` data-task="${e.b.aufgabeId}"` : ''} style="--kf:${farbe(e)}" title="${esc(`${uhrzeit(e.s)}–${uhrzeit(e.e)} ${e.titel}`)}"><span class="zt">${uhrzeit(e.s)}</span><span class="tt">${esc(e.titel)}</span></div>`
+        ? `<div class="me term ${e.b.aufgabeId ? 'own' : 'frei'} ${e.b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${e.b.id}"${e.b.aufgabeId ? ` data-task="${e.b.aufgabeId}"` : ''} style="--kf:${farbe(e)}" title="${esc(`${uhrzeit(e.s)}–${uhrzeit(e.e)} ${e.titel}`)}"><span class="zt">${uhrzeit(e.s)}</span>${herkunft(e.b)}<span class="tt">${esc(e.titel)}</span></div>`
         : `<div class="me term extern" style="--kf:${e.x!.farbe}" title="${esc(`${uhrzeit(e.s)}–${uhrzeit(e.e)} ${e.titel} · ${e.x!.kalender}`)}"><span class="zt">${uhrzeit(e.s)}</span><span class="tt">${esc(e.titel)}</span></div>`),
     ];
     const liste = eintraege.slice(0, max).join('') + (eintraege.length > max ? `<div class="me mehr">+${eintraege.length - max} weitere</div>` : '');
@@ -301,9 +306,9 @@ function timeline(z: Zeitraum, pph: number): string {
     hg += `<div class="dl" style="left:${links}px"></div>`;
     if (dayW >= 34) tage += `<span class="${t.datum === z.heute ? 'today' : ''}" style="left:${links}px;width:${dayW}px">${dayW >= 80 ? WT[wd] + ' ' : ''}${tagImMonat(t.datum)}${dayW >= 80 ? '.' + (monat(t.datum) + 1) + '.' : ''}</span>`;
     if (pph >= 22) for (let h = H0 + 1; h < H1; h += pph >= 40 ? 1 : 2) std += `<span style="left:${links + (h - H0) * pph}px">${h}</span>`;
-    for (const b of t.termine) bahn.termine += `<div class="tl-it own ${b.aufgabeId ? '' : 'frei'}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="left:${x(i, b.s)}px;width:${Math.max(6, (b.dauer / 60) * pph - 2)}px;top:6px" title="${esc(`${b.titel} · ${b.start}`)}">${esc(b.titel)}</div>`;
+    for (const b of t.termine) bahn.termine += `<div class="tl-it own ${b.aufgabeId ? '' : 'frei'}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="left:${x(i, b.s)}px;width:${Math.max(6, (b.dauer / 60) * pph - 2)}px;top:6px" title="${esc(`${b.titel} · ${b.start}`)}">${herkunft(b)}${esc(b.titel)}</div>`;
     let off = H0 * 60;
-    for (const r of t.reservierungen) { bahn.res += `<div class="tl-it resv ${r.aufgabeId ? '' : 'frei'}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} style="left:${x(i, off)}px;width:${Math.max(6, (r.dauer / 60) * pph - 2)}px;top:6px" title="${esc(`Reservierung ${dauerText(r.dauer)}: ${r.titel}`)}"><b>${dauerText(r.dauer).replace(' ', '')}</b> ${esc(r.titel)}</div>`; off += r.dauer; }
+    for (const r of t.reservierungen) { bahn.res += `<div class="tl-it resv ${r.aufgabeId ? '' : 'frei'}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} style="left:${x(i, off)}px;width:${Math.max(6, (r.dauer / 60) * pph - 2)}px;top:6px" title="${esc(`Reservierung ${dauerText(r.dauer)}: ${r.titel}`)}"><b>${dauerText(r.dauer).replace(' ', '')}</b> ${herkunft(r)}${esc(r.titel)}</div>`; off += r.dauer; }
     const ext = anordnen(t.extern.filter(e => e.start !== null).map(e => ({ kind: 'extern' as const, s: e.start!, e: Math.max(e.ende!, e.start! + 15), lane: 0, n: 1, titel: e.titel, x: e })));
     ext.forEach(e => { maxExt = Math.max(maxExt, e.lane + 1); bahn.ext += `<div class="tl-it extern" style="left:${x(i, e.s)}px;width:${Math.max(6, ((e.e - e.s) / 60) * pph - 2)}px;top:${4 + e.lane * 24}px;--kf:${e.x!.farbe}" title="${esc(`${e.titel} · ${uhrzeit(e.s)} · ${e.x!.kalender}`)}">${esc(e.titel)}</div>`; });
     maxF = Math.max(maxF, t.fristen.length);

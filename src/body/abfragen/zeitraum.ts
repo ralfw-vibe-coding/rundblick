@@ -13,6 +13,7 @@ export function buchungDto(b: BuchungZ, aufgaben: Map<string, AufgabeZ>): Buchun
   return {
     id: b.id, aufgabeId: b.aufgabeId, titel: b.titel, beschreibung: b.beschreibung, aufgabentitel: a ? a.titel : null,
     datum: b.datum, start: b.start, dauer: b.dauer, belegt: b.belegt, abgeschlossen: !!a?.abgeschlossen,
+    herkunft: a ? (a.status ? 'board' : 'liste') : null,
   };
 }
 

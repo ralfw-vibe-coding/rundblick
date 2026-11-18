@@ -42,6 +42,8 @@ export type Board = {
 export type BuchungDto = {
   id: Id; aufgabeId: Id | null; titel: string; beschreibung: string; aufgabentitel: string | null;
   datum: Datum; start: Uhrzeit | null; dauer: Minuten; belegt: boolean; abgeschlossen: boolean;
+  /** wo die zugehörige Aufgabe steht: auf dem Board (hat Status) oder nur in der Aufgabenliste; null = freie Buchung */
+  herkunft: 'board' | 'liste' | null;
 };
 
 export type ExternDto = {

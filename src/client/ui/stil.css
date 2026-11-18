@@ -838,3 +838,8 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .drawer .dh .notiz-symbol svg.lu { width: 18px; height: 18px; }
 .drawer .dh .titel-anzeige { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drawer .db.notizschublade { display: flex; flex-direction: column; }
+/* Herkunft einer Buchung im Kalender: Board (Status) oder Aufgabenliste – dezent vor dem Titel */
+.hk { display: inline-grid; place-items: center; vertical-align: -1px; margin-right: 3px; opacity: .75; flex: none; }
+.hk svg.lu { width: 11px; height: 11px; }
+.ev.own .hk { opacity: .85; }
+.resv .hk, .me .hk { margin-left: 3px; }

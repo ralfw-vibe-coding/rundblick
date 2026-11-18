@@ -162,7 +162,95 @@ async function stufeLogbuch(k: Kontext): Promise<void> {
   await notiz('Zum Testen: mich in eine Aufgabe umwandeln\nDer Rest wird zur Notiz der Aufgabe. #test', 0, '12:15');
 }
 
+// ---------------- Stufe 3: Buchungen und Kalender ----------------
+// Tageskapazität Standard: Mo–Do 6 h, Fr 5 h, Sa/So 0. Die Tage werden ab morgen gesucht, damit jede
+// Auslastungsstufe genau einen Tag hat. Titel: „Board ·“ = Aufgabe mit Status (Symbol Board),
+// „Liste ·“ = ohne Status (Symbol Liste), „Frei ·“ = Buchung ohne Aufgabe (kein Symbol).
+async function stufe3({ neu, d, heute, body }: Kontext): Promise<void> {
+  const tage = (wt: number[], n: number) => { const r: string[] = []; for (let i = 1; r.length < n && i < 40; i++) if (wt.includes(wochentag(d(i)))) r.push(d(i)); return r; };
+  const [gruen, gelb, rot, ueber, raender, voll] = tage([0, 1, 2, 3], 6) as [string, string, string, string, string, string];
+  const [freitag] = tage([4], 1) as [string];
+  const [samstag] = tage([5], 1) as [string];
+
+  const buche = async (aufgabeId: string, datum: string, dauer: number, start: string | null = null, extra: { titel?: string; beschreibung?: string; belegt?: boolean } = {}) => {
+    const r = await body.buchungAnlegen({ aufgabeId, datum, start, dauer });
+    if (!r.ok) throw new Error(r.fehler.join(' '));
+    if (extra.titel || extra.beschreibung || extra.belegt === false) await body.buchungAendern({ buchungId: r.ids!.buchungId!, ...extra });
+  };
+  const frei = async (titel: string, datum: string, dauer: number, start: string | null = null, extra: { beschreibung?: string; belegt?: boolean } = {}) => {
+    const r = await body.buchungEintragen({ titel, datum, start, dauer, beschreibung: extra.beschreibung });
+    if (!r.ok) throw new Error(r.fehler.join(' '));
+    if (extra.belegt === false) await body.buchungAendern({ buchungId: r.ids!.buchungId!, belegt: false });
+  };
+
+  // ---- Aufgaben (Board = mit Status, Liste = ohne)
+  const angebot = await neu({ titel: 'Board · Angebot Hüttner (mehrere Buchungen)', status: 'inarbeit', frist: gelb, tags: ['kunde'], verantwortlich: 'Ralf' });
+  const folien = await neu({ titel: 'Board · Folien überarbeiten', status: 'bereit', frist: gelb });
+  const spike = await neu({ titel: 'Board · Spike Event Store', status: 'bereit' });
+  const blockiert = await neu({ titel: 'Board · wartet auf Rückmeldung', status: 'blockiert', frist: gelb });
+  const workshop = await neu({ titel: 'Board · Workshop vorbereiten (langer Termin)', status: 'inarbeit' });
+  const steuer = await neu({ titel: 'Liste · Steuerunterlagen sortieren', frist: d(-1) });
+  const lesen = await neu({ titel: 'Liste · Fachartikel lesen' });
+  const frueh = await neu({ titel: 'Liste · Frühsport (vor der Tageszeit)' });
+  const spaet = await neu({ titel: 'Liste · Abendcall USA (nach der Tageszeit)' });
+  const garage = await neu({ titel: 'Liste · Garage aufräumen (Wochenende)' });
+  const projekt = await neu({ titel: 'Liste · Langfristprojekt (Buchungen über Wochen)', frist: d(30) });
+  const erledigt = await neu({ titel: 'Board · Erledigt und abgeschlossen (Buchung blass)', status: 'erledigt' });
+  await neu({ titel: 'Liste · Frist überfällig (ohne Buchung)', frist: d(-3) });
+  await neu({ titel: 'Liste · Frist am gelben Tag (drei Fristen an einem Tag)', frist: gelb });
+  await neu({ titel: 'Liste · Wiedervorlage in 3 Tagen (taucht dann auf)', wiedervorlage: d(3) });
+
+  // ---- heute: Termin am Morgen, Termin am Nachmittag, Reservierung, abgeschlossene Aufgabe
+  await buche(lesen, heute, 60, '08:00');
+  await buche(spike, heute, 60, '16:00');
+  await buche(steuer, heute, 90);
+  await buche(erledigt, heute, 30);
+  await body.aufgabeAbschliessen({ aufgabeId: erledigt });
+
+  // ---- je ein Tag pro Auslastungsstufe (Kapazität 6 h)
+  // grün: 3 h = 50 %
+  await buche(angebot, gruen, 120);
+  await buche(lesen, gruen, 60, '10:00');
+  // gelb: 5 h = 83 % (+ ein Arzttermin, der keine Kapazität belegt)
+  await buche(folien, gelb, 180);
+  await buche(blockiert, gelb, 120, '14:00');
+  await frei('Frei · Zahnarzt (belegt keine Kapazität)', gelb, 45, '08:00', { belegt: false, beschreibung: 'Kontrolle' });
+  // rot: 5¾ h = 96 % (Buchung mit eigenem Titel und eigener Notiz)
+  await buche(angebot, rot, 60, '09:00', { titel: 'Angebot: Kalkulation mit Markus', beschreibung: 'Eigener Titel und eigene Notiz der Buchung – die Aufgabe heißt anders.' });
+  await buche(spike, rot, 240);
+  await frei('Frei · Belege sortieren', rot, 45);
+  // überbucht: 7½ h = 125 % (rot mit Warndreieck)
+  await buche(angebot, ueber, 120);
+  await buche(folien, ueber, 180, '13:00');
+  await buche(spike, ueber, 150);
+
+  // ---- Raster: vor und nach der Tageszeit, überlappende Termine
+  await buche(frueh, raender, 45, '06:00');
+  await buche(spaet, raender, 60, '21:30');
+  await buche(angebot, raender, 90, '10:00', { titel: 'Überlappung 1 (10:00–11:30)' });
+  await buche(lesen, raender, 30, '10:30', { titel: 'Überlappung 2 (10:30–11:00)' });
+  await frei('Frei · Überlappung 3 (11:00–12:00)', raender, 60, '11:00');
+
+  // ---- voller Tag: viele kurze Termine → im Monat „+n weitere“
+  const viele = [angebot, folien, lesen, spike, frueh, blockiert, projekt, workshop];
+  for (let i = 0; i < viele.length; i++) await buche(viele[i]!, voll, 30, `${String(8 + i).padStart(2, '0')}:00`, { titel: `Kurztermin ${i + 1} von ${viele.length}` });
+  await frei('Frei · Kurzreservierung', voll, 30);
+
+  // ---- Freitag: langer Termin 13–17 Uhr (Kapazität 5 h → 80 %)
+  await buche(workshop, freitag, 240, '13:00');
+  // ---- Samstag: Kapazität 0 → jede Buchung überbucht
+  await buche(garage, samstag, 60);
+
+  // ---- über Wochen und den Monatswechsel
+  // (nur Werktage, nicht auf den Stufen-Tagen oben)
+  const belegt = new Set([gruen, gelb, rot, ueber, raender, voll, freitag]);
+  const spaeter = tage([0, 1, 2, 3, 4], 30).filter(x => !belegt.has(x) && x > voll);
+  for (const x of [spaeter[0], spaeter[3], spaeter[7], spaeter[12], spaeter[17]]) if (x) await buche(projekt, x, 90);
+  await frei('Frei · zum Testen: aus mir eine Aufgabe machen', spaeter[1]!, 60, null, { beschreibung: 'Schublade öffnen → „Aufgabe daraus machen“, oder auf Liste/Board ziehen.' });
+}
+
 const STUFEN: Record<string, { name: string; f: (k: Kontext) => Promise<void> }> = {
+  '3': { name: 'Buchungen und Kalender', f: stufe3 },
   logbuch: { name: 'Logbuch (Stufe 2 + Notizen und Abgehaktes)', f: stufeLogbuch },
   '1': { name: 'Aufgaben in der Liste', f: stufe1 },
   '2': { name: 'Status und Board', f: stufe2 },
