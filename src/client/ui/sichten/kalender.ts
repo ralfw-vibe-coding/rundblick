@@ -9,6 +9,7 @@ import { auslastungsAnteil, auslastungsStufe, kapazitaetsBalken, zeile } from '.
 import { esc } from '../dom';
 import { I } from '../icons';
 import type { Dichte, Sicht } from './sicht';
+import { timelineBinden, timelineZeichnen } from './timeline';
 
 export type KalAnsicht = 'tag' | 'tage3' | 'woche' | 'monat' | 'monate3' | 'timeline';
 export type KalZustand = { ansicht: KalAnsicht; anker: string | null; pph: number; ganzerTag?: boolean; /** markierter Tag – bleibt beim Wechsel der Ansicht im Blick */ markiert?: string | null };
@@ -92,7 +93,7 @@ export class KalenderSicht implements Sicht {
       case 'tage3': case 'woche': inhalt = woche(z, z.tage, dichte); break;
       case 'monat': inhalt = monatsRaster(z, z.tage, anker, dichte); break;
       case 'monate3': inhalt = `<div class="months">${[0, 1, 2].map(i => { const m = plusMonate(anker, i); const s = montag(monatsErster(m)); const t = z.tage.filter(x => x.datum >= s && x.datum <= plusTage(s, 41)); return `<div class="mm"><div class="mm-h">${MON_LANG[monat(m)]} ${jahr(m)}</div>${monatsRaster(z, t, m, 'compact')}</div>`; }).join('')}</div>`; break;
-      case 'timeline': inhalt = timeline(z, this.z.pph); break;
+      case 'timeline': inhalt = timelineZeichnen(z, this.z.pph, H0, H1, MARKIERT); break;
     }
     el.innerHTML = `<div class="cal ${dichte}">
       <div class="cal-tb">
@@ -195,6 +196,7 @@ export class KalenderSicht implements Sicht {
         zoom(this.z.pph * Math.exp(-ev.deltaY * 0.01), ev.clientX - sc.getBoundingClientRect().left);
       };
       (el as HTMLElement & { _tl?: unknown })._tl = { start, pph: this.z.pph, h0: H0, h1: H1 };
+      timelineBinden(el);
     }
   }
 
@@ -361,49 +363,6 @@ export function monatEinpassen(el: HTMLElement): void {
     }
     mehr.textContent = `+${versteckt} weitere`;
   });
-}
-
-function timeline(z: Zeitraum, pph: number): string {
-  const dayW = SPAN * pph, N = z.tage.length, start = z.tage[0]!.datum;
-  const x = (i: number, min: number) => i * dayW + ((min - H0 * 60) / 60) * pph;
-  let oben = '', tage = '', std = '', hg = '';
-  const bahn = { fristen: '', termine: '', res: '', ext: '', wv: '', last: '' };
-  let maxF = 1, maxExt = 1;
-  z.tage.forEach((t, i) => {
-    const wd = wochentag(t.datum), links = i * dayW;
-    if (wd === 0) oben += `<span style="left:${links}px">KW ${kw(t.datum)} · ${kurz(t.datum)}</span>`;
-    if (wd > 4) hg += `<div class="we" style="left:${links}px;width:${dayW}px"></div>`;
-    hg += `<div class="dl" style="left:${links}px"></div>`;
-    if (t.datum === MARKIERT) hg += `<div class="tl-markiert markiert" style="left:${links}px;width:${dayW}px"></div>`;
-    if (dayW >= 34) tage += `<span class="${t.datum === z.heute ? 'today' : ''} ${t.datum === MARKIERT ? 'mk' : ''}" data-markier="${t.datum}" title="Klick: Tag markieren" style="left:${links}px;width:${dayW}px">${dayW >= 80 ? WT[wd] + ' ' : ''}${tagImMonat(t.datum)}${dayW >= 80 ? '.' + (monat(t.datum) + 1) + '.' : ''}</span>`;
-    if (pph >= 22) for (let h = H0 + 1; h < H1; h += pph >= 40 ? 1 : 2) std += `<span style="left:${links + (h - H0) * pph}px">${h}</span>`;
-    for (const b of t.termine) bahn.termine += `<div class="tl-it own ${b.aufgabeId ? '' : 'frei'}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="left:${x(i, b.s)}px;width:${Math.max(6, (b.dauer / 60) * pph - 2)}px;top:6px" title="${esc(`${b.titel} · ${b.start}`)}">${herkunft(b)}${esc(b.titel)}</div>`;
-    let off = H0 * 60;
-    for (const r of t.reservierungen) { bahn.res += `<div class="tl-it resv ${r.aufgabeId ? '' : 'frei'}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} style="left:${x(i, off)}px;width:${Math.max(6, (r.dauer / 60) * pph - 2)}px;top:6px" title="${esc(`Reservierung ${dauerText(r.dauer)}: ${r.titel}`)}"><b>${dauerText(r.dauer).replace(' ', '')}</b> ${herkunft(r)}${esc(r.titel)}</div>`; off += r.dauer; }
-    const ext = anordnen(t.extern.filter(e => e.start !== null).map(e => ({ kind: 'extern' as const, s: e.start!, e: Math.max(e.ende!, e.start! + 15), lane: 0, n: 1, titel: e.titel, x: e })));
-    ext.forEach(e => { maxExt = Math.max(maxExt, e.lane + 1); bahn.ext += `<div class="tl-it extern" data-extern="${esc(e.x!.id)}" data-datum="${e.x!.datum}" style="left:${x(i, e.s)}px;width:${Math.max(6, ((e.e - e.s) / 60) * pph - 2)}px;top:${4 + e.lane * 24}px;--kf:${e.x!.farbe}" title="${esc(`${e.titel} · ${uhrzeit(e.s)} · ${e.x!.kalender}`)}">${esc(e.titel)}</div>`; });
-    maxF = Math.max(maxF, t.fristen.length);
-    t.fristen.forEach((f, k) => { bahn.fristen += `<div class="tl-mark" data-task="${f.aufgabeId}" style="--dfarbe:var(--d-${f.dringlichkeit});left:${x(i, H1 * 60) - 4}px;top:${4 + k * 18}px;flex-direction:row-reverse" title="${esc('Frist: ' + f.titel)}"><span class="dia">${I.frist}</span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(f.titel)}</span>` : ''}</div>`; });
-    t.wiedervorlagen.forEach((w, k) => { bahn.wv += `<div class="tl-mark wv" data-task="${w.aufgabeId}" style="left:${x(i, H0 * 60) + 6}px;top:${5 + k * 18}px" title="${esc('Wiedervorlage: ' + w.titel)}"><span class="dia">${I.frist}</span>${dayW >= 60 ? `<span style="max-width:${dayW - 22}px">${esc(w.titel)}</span>` : ''}</div>`; });
-    const a = t.auslastung, p = auslastungsAnteil(a), stufe = auslastungsStufe(p);
-    bahn.last += `<div class="tl-last st-${stufe}" title="${esc(`${dauerText(a.belegt)} von ${dauerText(a.kapazitaet)}${stufe === 'ueber' ? ' – überbucht!' : ''}`)}" style="left:${links + 3}px;width:${dayW - 6}px;height:${(Math.min(1.15, p) / 1.15) * 30}px"></div>`
-      + (dayW >= 60 && (a.belegt || a.kapazitaet) ? `<span class="tl-last-text st-${stufe}" style="left:${links + 6}px">${stufe === 'ueber' ? I.warnung : ''}${dauerText(a.belegt).replace(' ', '')} / ${dauerText(a.kapazitaet).replace(' ', '')}</span>`
-        : stufe === 'ueber' ? `<span class="tl-last-text st-ueber" style="left:${links + 4}px">${I.warnung}</span>` : '');
-  });
-  const iHeute = differenz(start, z.heute);
-  const jetzt = iHeute >= 0 && iHeute < N ? `<div class="tl-now" style="left:${x(iHeute, Math.min(Math.max(z.jetzt, H0 * 60), H1 * 60))}px"></div>` : '';
-  const spur = (k: keyof typeof bahn, label: string, h: number, drop?: string) => `<div class="tl-lane" style="height:${h}px" ${drop ? `data-drop-tl="${drop}"` : ''}><span class="ll">${label}</span>${bahn[k]}</div>`;
-  return `<div class="tl"><div class="tl-scroll"><div class="tl-inner" style="width:${N * dayW}px">
-    <div class="tl-head"><div class="r top">${oben}</div>${tage ? `<div class="r">${tage}</div>` : ''}${std ? `<div class="r hrs">${std}</div>` : ''}</div>
-    <div style="position:relative"><div class="tl-bg">${hg}</div>
-      ${spur('fristen', 'Fristen', 8 + maxF * 18)}
-      ${spur('termine', 'Termine', 34, 'termin')}
-      ${spur('res', 'Reservierungen', 34, 'res')}
-      ${spur('ext', 'Extern', 10 + maxExt * 24)}
-      ${spur('wv', 'Wiedervorlage', 26)}
-      ${spur('last', 'Auslastung', 50)}
-      ${jetzt}
-    </div></div></div></div>`;
 }
 
 function agendaMini(z: Zeitraum): string {

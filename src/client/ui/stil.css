@@ -887,3 +887,49 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .tl-markiert { position: absolute; top: 0; bottom: 0; box-shadow: inset 2px 0 0 var(--markiert), inset -2px 0 0 var(--markiert); background: color-mix(in srgb, var(--markiert) 5%, transparent); pointer-events: none; }
 .tl-head .r span[data-markier] { cursor: pointer; }
 .tl-head .r span.mk { color: var(--markiert); font-weight: 700; }
+
+/* ===== Timeline (neu): dezent – Symbole und Striche, Details per Tooltip/Klick/markiertem Tag ===== */
+.tl2 .tl-head .r.tage { height: 30px; }
+.tl2 .tl-head .r .tl2-tag { position: absolute; top: 0; height: 30px; padding: 3px 0 0; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; cursor: pointer; font-size: 11px; color: var(--ink2); white-space: nowrap; overflow: hidden; }
+.tl2 .tl-head .r .tl2-tag .nm { padding-left: 4px; }
+.tl2 .tl-head .r .tl2-tag .cap { margin: 0 4px; height: 4px; }
+.tl2 .tl-head .r .tl2-tag.today .nm { color: var(--today); font-weight: 700; }
+.tl2 .tl-head .r .tl2-tag.mk .nm { color: var(--markiert); font-weight: 700; }
+.tl2 .tl-head .r .tl2-tag:hover { background: var(--panel2); }
+.tl2-koerper { position: relative; }
+.tl2-flaeche { position: absolute; top: 0; bottom: 0; cursor: pointer; }
+.tl2-flaeche:hover { background: rgba(79, 70, 229, .03); }
+.tl2-zone { position: absolute; left: 0; right: 0; pointer-events: none; }
+.tl2-zone.str { border-top: 1px dashed #ece9e3; }
+.tl2-zone.over { background: rgba(79, 70, 229, .06); pointer-events: auto; }
+.tl2-sym, .tl2-strich { pointer-events: auto; cursor: pointer; }
+.tl2-sym { position: absolute; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 4px; }
+.tl2-sym svg.lu { width: 12px; height: 12px; }
+.tl2-sym:hover, .tl2-sym.hl { background: color-mix(in srgb, currentColor 14%, #fff); }
+.tl2-strich { position: absolute; height: 4px; border-radius: 2px; opacity: .85; }
+.tl2-strich::before { content: ''; position: absolute; left: 0; right: 0; top: -4px; bottom: -4px; } /* größere Trefferfläche */
+.tl2-strich:hover, .tl2-strich.hl { opacity: 1; box-shadow: 0 0 0 2px #fff, 0 0 0 3px currentColor; }
+.tl2-leit { position: absolute; width: 0; border-left: 1px solid; opacity: .45; pointer-events: none; }
+.tl2-label { position: absolute; display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 6px; border-left: 3px solid var(--lf); background: #fff; border-radius: 0 4px 4px 0; font-size: 11px; line-height: 16px; color: var(--ink2); white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,.06); cursor: pointer; z-index: 2; }
+.tl2-label:hover { color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.tl2-label .sy { display: inline-grid; color: var(--lf); }
+.tl2-label .sy svg.lu { width: 11px; height: 11px; }
+.tl2-label.leer { border-left-color: var(--line2); color: var(--mute); cursor: default; }
+.tl2-info { position: fixed; z-index: 95; width: 280px; padding: 10px 12px; font-size: 12px; color: var(--ink2); line-height: 1.5; }
+.tl2-info .kopf { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 13px; color: var(--ink); }
+.tl2-info .kopf .sy { display: inline-grid; place-items: center; }
+.tl2-info .kopf .sy svg.lu { width: 14px; height: 14px; }
+.tl2-info .punkt { display: inline-block; width: 10px; height: 4px; border-radius: 2px; }
+.tl2-info .btn { margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; }
+.tl2-info .btn svg.lu { width: 13px; height: 13px; }
+/* alte Regel „.tl-head .r span“ (absolut) gilt nicht innerhalb der neuen Tageszellen */
+.tl2 .tl-head .r .tl2-tag span { position: static; border: 0; height: auto; padding: 0; top: auto; font-weight: inherit; }
+.tl2 .tl-head .r .tl2-tag .nm { padding-left: 4px; }
+.tl2 .tl-head .r .tl2-tag .cap-w { display: flex; align-items: center; gap: 3px; margin: 0 4px; }
+.tl2 .tl-head .r .tl2-tag .cap-w .cap { flex: 1; margin: 0; }
+.tl2 .tl-head .r .tl2-tag .cap-warn svg.lu { width: 11px; height: 11px; }
+/* Fristen-Raute gefüllt, damit sie in der Symbolzeile gut sichtbar ist */
+.tl2-sym.frist svg.lu { fill: currentColor; }
+/* Zonen nehmen Ziehen an; die Tagesflächen darin markieren den Tag per Klick */
+.tl2-zone { pointer-events: auto; }
+.tl2-zone .tl2-sym, .tl2-zone .tl2-strich { z-index: 1; }
