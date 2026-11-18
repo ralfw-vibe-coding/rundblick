@@ -69,10 +69,15 @@ export function timelineZeichnen(z: Zeitraum, pph: number, h0: number, h1: numbe
     if (wd === 0) kwZeile += `<span style="left:${links}px">KW ${kw(t.datum)} · ${kurz(t.datum)}</span>`;
     if (wd > 4) hg += `<div class="we" style="left:${links}px;width:${dayW}px"></div>`;
     hg += `<div class="dl" style="left:${links}px"></div>`;
-    if (t.datum === markiert) hg += `<div class="tl-markiert" style="left:${links}px;width:${dayW}px"></div>`;
+    // Rahmen um die ganze Tagesspalte (Kopf, Stunden, Körper): heute in Heute-Farbe, markiert in Akzentfarbe
+    const rahmen = t.datum === markiert ? 'markiert' : t.datum === z.heute ? 'heute' : '';
+    if (rahmen) hg += `<div class="tl2-rahmen ${rahmen}" style="left:${links}px;width:${dayW}px"></div>`;
     const name = dayW >= 80 ? `${WT[wd]} ${tagImMonat(t.datum)}.${monat(t.datum) + 1}.` : dayW >= 34 ? `${tagImMonat(t.datum)}` : '';
     tagZeile += `<span class="tl2-tag ${t.datum === z.heute ? 'today' : ''} ${t.datum === markiert ? 'mk markiert' : ''}" data-markier="${t.datum}" title="${esc(`${WT_LANG[wd]}, ${kurz(t.datum)} – Klick: Details darunter zeigen`)}" style="left:${links}px;width:${dayW}px"><span class="nm">${name}</span>${kapazitaetsBalken(t.auslastung)}</span>`;
-    if (pph >= 22) for (let h = h0 + 1; h < h1; h += pph >= 40 ? 1 : 2) stdZeile += `<span style="left:${links + (h - h0) * pph}px">${h}</span>`;
+    if (pph >= 22) {
+      if (rahmen) stdZeile += `<span class="tl2-rahmen-std ${rahmen}" style="left:${links}px;width:${dayW}px"></span>`;
+      for (let h = h0 + 1; h < h1; h += pph >= 40 ? 1 : 2) stdZeile += `<span style="left:${links + (h - h0) * pph}px">${h}</span>`;
+    }
     // Trefferflächen je Tag (Klick markiert den Tag)
     treffer += `<div class="tl2-flaeche" data-markier="${t.datum}" title="Klick: Details zu diesem Tag zeigen" style="left:${links}px;width:${dayW}px"></div>`;
 

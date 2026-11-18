@@ -960,3 +960,13 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .tl2-marke .lz { position: absolute; top: 2px; left: 4px; white-space: nowrap; font-size: 11px; font-weight: 600; color: #fff; background: var(--own); border-radius: 4px; padding: 0 6px; line-height: 16px; }
 .tl2-label[draggable="true"], .tl2-label[draggable="true"]:active { cursor: pointer; }
 .tl2-zone.over { background: transparent; }
+/* Timeline: Rahmen um die ganze Tagesspalte – heute (Heute-Farbe), markiert (Akzentfarbe; hat Vorrang) */
+.tl2 { --rf: var(--today); }
+.tl2 .tl-head .r .tl2-tag.today { box-shadow: inset 2px 0 0 var(--today), inset -2px 0 0 var(--today), inset 0 2px 0 var(--today); border-radius: 4px 4px 0 0; }
+.tl2 .tl-head .r .tl2-tag.mk { box-shadow: inset 2px 0 0 var(--markiert), inset -2px 0 0 var(--markiert), inset 0 2px 0 var(--markiert); border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--markiert) 6%, transparent); }
+.tl2 .tl-head .r .tl2-rahmen-std { position: absolute; top: 0; height: 20px; padding: 0; border: 0; pointer-events: none; }
+.tl2-rahmen { position: absolute; top: 0; bottom: 0; pointer-events: none; border-radius: 0 0 4px 4px; }
+.tl2-rahmen.heute, .tl2 .tl-head .r .tl2-rahmen-std.heute { box-shadow: inset 2px 0 0 var(--today), inset -2px 0 0 var(--today); }
+.tl2-rahmen.heute { box-shadow: inset 2px 0 0 var(--today), inset -2px 0 0 var(--today), inset 0 -2px 0 var(--today); }
+.tl2-rahmen.markiert, .tl2 .tl-head .r .tl2-rahmen-std.markiert { box-shadow: inset 2px 0 0 var(--markiert), inset -2px 0 0 var(--markiert); background: color-mix(in srgb, var(--markiert) 5%, transparent); }
+.tl2-rahmen.markiert { box-shadow: inset 2px 0 0 var(--markiert), inset -2px 0 0 var(--markiert), inset 0 -2px 0 var(--markiert); }
