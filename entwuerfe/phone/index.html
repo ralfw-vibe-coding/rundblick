@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rundblick Phone App – Entwurf</title>
+<script src="lucide.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f3f0; --panel: #fff; --panel2: #faf9f7; --line: #e7e4de; --line2: #d9d5cd;
+    --ink: #1d1d1f; --ink2: #44444a; --mute: #8a8890; --own: #4f46e5; --own-soft: #e9e8fd;
+    --d-ueberfaellig: #ef5b5b; --d-heute: #b4141c; --d-woche: #e8710a; --d-spaeter: #c99400;
+    --st-fertig: #16a34a; --over: #d92d20;
+    --kat-offen: #94a3b8; --kat-begonnen: #d97706; --kat-beendet: #16a34a;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; color: var(--ink);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: #e9e7e2; }
+  .seite { max-width: 1760px; margin: 0 auto; padding: 28px 24px 60px; }
+  h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -.01em; }
+  .lead { color: var(--ink2); max-width: 900px; line-height: 1.55; font-size: 14px; margin: 0 0 22px; }
+  .reihe { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .rahmen { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .rahmen .unter { font-size: 12px; color: var(--mute); max-width: 390px; text-align: center; line-height: 1.45; }
+  svg.lucide { width: 18px; height: 18px; stroke-width: 2; flex: none; }
+
+  /* ---------- Telefon ---------- */
+  .phone { width: 390px; height: 844px; border-radius: 52px; background: #111; padding: 12px; box-shadow: 0 30px 60px rgba(0,0,0,.25); }
+  .bildschirm { position: relative; width: 100%; height: 100%; border-radius: 42px; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+  .statusleiste { height: 47px; flex: none; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 28px 6px; font-size: 15px; font-weight: 600; }
+  .statusleiste .insel { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 120px; height: 34px; border-radius: 20px; background: #111; }
+
+  .kopf { display: flex; align-items: center; gap: 8px; padding: 6px 16px 8px; flex: none; }
+  .kopf .logo { width: 22px; height: 22px; border-radius: 50%; background: conic-gradient(#4f46e5 0 33%, #d97706 0 66%, #2f7cf6 0); box-shadow: inset 0 0 0 5px var(--bg); }
+  .kopf b { font-size: 17px; letter-spacing: -.01em; }
+  .kopf .titel { font-size: 22px; font-weight: 700; letter-spacing: -.02em; flex: 1; }
+  .knopf { border: 0; background: none; padding: 6px; border-radius: 10px; color: var(--ink2); display: grid; place-items: center; cursor: pointer; }
+  .knopf:active { background: rgba(0,0,0,.06); }
+  .wolke { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--mute); padding: 4px 8px; border-radius: 12px; background: #fff; border: 1px solid var(--line); cursor: pointer; }
+  .wolke.wartet { color: var(--own); border-color: var(--own-soft); }
+  .wolke.offline { color: var(--over); }
+  .wolke svg.lucide { width: 15px; height: 15px; }
+
+  .erfassen { margin: 0 12px 8px; display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line2); border-radius: 14px; padding: 10px 12px; flex: none; }
+  .erfassen svg.lucide { color: var(--own); }
+  .erfassen input { flex: 1; border: 0; outline: none; font: inherit; font-size: 16px; background: none; }
+  .erfassen:focus-within { border-color: var(--own); box-shadow: 0 0 0 3px var(--own-soft); }
+  .filter { margin: 0 12px 8px; display: flex; gap: 6px; overflow-x: auto; flex: none; scrollbar-width: none; }
+  .filter::-webkit-scrollbar { display: none; }
+  .filter span { white-space: nowrap; font-size: 13px; padding: 4px 10px; border-radius: 14px; background: #fff; border: 1px solid var(--line); color: var(--ink2); }
+  .filter span.an { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .inhalt { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 12px; scrollbar-width: none; }
+  .inhalt::-webkit-scrollbar { display: none; }
+
+  /* Liste */
+  .abschnitt { display: flex; align-items: center; gap: 6px; padding: 14px 18px 6px; font-size: 13px; font-weight: 700; color: var(--mute); cursor: pointer; user-select: none; }
+  .abschnitt .n { font-weight: 500; }
+  .abschnitt svg.lucide { width: 14px; height: 14px; transition: transform .15s; }
+  .abschnitt.offen svg.lucide { transform: rotate(90deg); }
+  .abschnitt.ueberfaellig { color: var(--d-ueberfaellig); } .abschnitt.heute { color: var(--d-heute); }
+  .abschnitt.woche { color: var(--d-woche); } .abschnitt.spaeter { color: var(--d-spaeter); }
+  .gruppe { margin: 0 12px; background: #fff; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+  .zeile-huelle { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .zeile-huelle:last-child { border-bottom: 0; }
+  .aktionen { position: absolute; inset: 0 0 0 auto; display: flex; }
+  .aktionen button { width: 72px; border: 0; color: #fff; display: grid; place-items: center; gap: 2px; font-size: 11px; cursor: pointer; }
+  .aktionen .arch { background: #8a8890; }
+  .aktionen .muell { background: #d9d5cd; color: var(--ink2); }
+  .aktionen .muell.fragen { background: var(--over); color: #fff; font-size: 22px; font-weight: 700; }
+  .zeile { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; background: #fff; transition: transform .2s; touch-action: pan-y; cursor: pointer; }
+  .zeile.frisch { animation: frisch 5s ease-out; }
+  @keyframes frisch { 0%, 70% { background: #fff3c4; } 100% { background: #fff; } }
+  .kreis { border: 0; background: none; padding: 0; color: var(--line2); flex: none; cursor: pointer; margin-top: -1px; }
+  .kreis svg.lucide { width: 22px; height: 22px; }
+  .zeile.erledigt .kreis { color: var(--st-fertig); }
+  .zeile .mitte { flex: 1; min-width: 0; }
+  .zeile .t { font-size: 16px; line-height: 1.3; }
+  .zeile.erledigt .t .tt { text-decoration: line-through; color: var(--mute); }
+  .frist { white-space: nowrap; font-size: 13px; font-weight: 600; margin-left: 6px; display: inline-flex; align-items: center; gap: 3px; vertical-align: 1px; }
+  .frist svg.lucide { width: 11px; height: 11px; fill: currentColor; }
+  .frist.ueberfaellig { color: var(--d-ueberfaellig); } .frist.heute { color: var(--d-heute); } .frist.woche { color: var(--d-woche); } .frist.spaeter { color: var(--d-spaeter); }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .chip { font-size: 12px; padding: 1px 7px; border-radius: 10px; background: #efece6; color: var(--ink2); white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
+  .chip.person { background: #e8f4ee; color: #1f6b46; } .chip.ort { background: #f1eefb; color: #5b4bb0; }
+  .chip svg.lucide { width: 11px; height: 11px; }
+  .sdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+
+  /* Board */
+  .kats { display: flex; gap: 6px; margin: 0 12px 8px; flex: none; }
+  .kats button { flex: 1; border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 7px 4px; font: inherit; font-size: 13px; color: var(--ink2); border-bottom: 3px solid; cursor: pointer; }
+  .kats button b { font-weight: 700; color: var(--ink); }
+  .spalten { flex: 1; min-height: 0; display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 0 12px 12px; scrollbar-width: none; }
+  .spalten::-webkit-scrollbar { display: none; }
+  .spalte { flex: 0 0 86%; scroll-snap-align: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; min-height: 0; }
+  .spalte-h { display: flex; align-items: center; gap: 7px; padding: 12px 14px 8px; font-weight: 700; font-size: 15px; }
+  .spalte-h .kat { font-size: 11px; font-weight: 500; color: var(--mute); margin-left: auto; }
+  .spalte-h .n { color: var(--mute); font-weight: 500; }
+  .karten { flex: 1; overflow-y: auto; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: none; }
+  .karte { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; display: flex; gap: 8px; cursor: pointer; user-select: none; }
+  .karte.gedrueckt { transform: scale(.97); box-shadow: 0 8px 20px rgba(0,0,0,.12); transition: transform .15s; }
+  .karte .t { font-size: 15px; line-height: 1.3; }
+  .punkte { display: flex; justify-content: center; gap: 5px; padding: 0 0 6px; flex: none; }
+  .punkte i { width: 6px; height: 6px; border-radius: 50%; background: var(--line2); }
+  .punkte i.an { background: var(--ink2); }
+
+  /* Logbuch */
+  .tag-h { padding: 14px 18px 6px; font-size: 13px; font-weight: 700; color: var(--mute); }
+  .tag-h.heute { color: var(--ink); }
+  .eintrag { display: flex; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: #fff; }
+  .eintrag:last-child { border-bottom: 0; }
+  .eintrag .sym { color: var(--st-fertig); flex: none; margin-top: 1px; }
+  .eintrag .sym.notiz { color: var(--own); }
+  .eintrag .zeit { font-size: 12px; color: var(--mute); width: 38px; flex: none; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .eintrag .t { font-size: 15px; line-height: 1.35; }
+  .eintrag .eu { font-size: 12px; color: var(--mute); margin-top: 2px; }
+
+  /* Reiterleiste */
+  .reiter { flex: none; display: flex; border-top: 1px solid var(--line); background: rgba(255,255,255,.92); backdrop-filter: blur(12px); padding: 6px 8px 26px; }
+  .reiter button { flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: var(--mute); padding: 4px 0; cursor: pointer; }
+  .reiter button svg.lucide { width: 24px; height: 24px; }
+  .reiter button.an { color: var(--own); }
+
+  /* Aufgabe (Vollbild) */
+  .detail { position: absolute; inset: 0; background: var(--bg); transform: translateX(100%); transition: transform .25s cubic-bezier(.2,.8,.2,1); display: flex; flex-direction: column; z-index: 5; }
+  .detail.offen { transform: none; }
+  .detail .kopf { padding-top: 53px; }
+  .detail .titel-feld { font-size: 20px; font-weight: 700; border: 0; background: none; outline: none; width: 100%; font-family: inherit; color: var(--ink); resize: none; line-height: 1.3; padding: 0; }
+  .detail .koerper { flex: 1; overflow-y: auto; padding: 4px 16px 30px; display: flex; flex-direction: column; gap: 14px; scrollbar-width: none; }
+  .feld label { display: block; font-size: 11px; color: var(--mute); margin-bottom: 5px; }
+  .feld .wert { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 15px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 44px; }
+  .feld .wert.leer { color: var(--mute); }
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .status-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .status-chips button { white-space: nowrap; border: 1px solid var(--line); background: #fff; border-radius: 16px; padding: 6px 11px; font: inherit; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .status-chips button.an { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .notiz { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 15px; line-height: 1.5; }
+  .notiz .cb { display: flex; gap: 8px; align-items: center; padding: 3px 0; cursor: pointer; }
+  .notiz .cb svg.lucide { width: 18px; height: 18px; color: var(--line2); }
+  .notiz .cb.an svg.lucide { color: var(--st-fertig); }
+  .notiz .cb.an span { text-decoration: line-through; color: var(--mute); }
+  .bilder { display: flex; gap: 8px; }
+  .bilder .bild { width: 64px; height: 64px; border-radius: 10px; background: linear-gradient(135deg,#dfe7f7,#f7e4d4); position: relative; }
+  .bilder .bild b { position: absolute; top: -5px; left: -5px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 11px; display: grid; place-items: center; }
+  .bilder .neu { width: 64px; height: 64px; border-radius: 10px; border: 1.5px dashed var(--line2); display: grid; place-items: center; color: var(--mute); }
+  .kopf .muell2.fragen { background: var(--over); color: #fff; font-weight: 700; width: 34px; height: 34px; font-size: 18px; }
+
+  /* Auswahlblatt (langes Drücken) */
+  .blatt-hg { position: absolute; inset: 0; background: rgba(0,0,0,.25); z-index: 8; display: none; }
+  .blatt-hg.offen { display: block; }
+  .blatt { position: absolute; left: 8px; right: 8px; bottom: 8px; background: #fff; border-radius: 18px; padding: 8px 0 14px; z-index: 9; transform: translateY(110%); transition: transform .22s; }
+  .blatt.offen { transform: none; }
+  .blatt .bt { font-size: 13px; color: var(--mute); text-align: center; padding: 6px 12px 10px; border-bottom: 1px solid var(--line); }
+  .blatt button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; padding: 13px 18px; font: inherit; font-size: 16px; cursor: pointer; }
+  .blatt button + button { border-top: 1px solid var(--line); }
+
+  .toast { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); background: rgba(29,29,31,.9); color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 12px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; z-index: 10; }
+  .toast.zeigen { opacity: 1; }
+
+  .notizfeld { margin: 0 12px 4px; display: flex; gap: 8px; background: #fff; border: 1px solid var(--line2); border-radius: 14px; padding: 10px 12px; flex: none; }
+  .notizfeld svg.lucide { color: var(--own); }
+  .notizfeld input { flex: 1; border: 0; outline: none; font: inherit; font-size: 16px; }
+  .erkl { max-width: 1100px; margin-top: 30px; font-size: 14px; line-height: 1.6; color: var(--ink2); }
+  .erkl h2 { font-size: 16px; color: var(--ink); margin: 18px 0 6px; }
+  .erkl li { margin: 3px 0; }
+</style>
+</head>
+<body>
+<div class="seite">
+  <h1>Rundblick Phone App – Entwurf</h1>
+  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig) · auf dem Board waagerecht wischen, Karte lange drücken = verschieben · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände).</p>
+  <div class="reihe" id="reihe"></div>
+
+  <div class="erkl">
+    <h2>Grundsätze</h2>
+    <ul>
+      <li><b>Ein Bildschirm, eine Sicht.</b> Unten drei Reiter: <b>Liste · Board · Logbuch</b>. Oben immer die Schnellerfassung (Syntax wie am Desktop: <code>#tag</code>, <code>@person</code>, <code>!fr</code> …).</li>
+      <li><b>Gleiche Sprache wie der Desktop:</b> Abschnitte und Farben der Liste, Kategorien und Spalten des Boards, Abschließen-Kreis, Frist hinter dem Titel, Chips für Tags/@/Ort, nur Lucide-Symbole, zerstörende Aktionen zweistufig.</li>
+      <li><b>Touch statt Maus:</b> Mülleimer und Archiv per Wischen (statt Überfahren); Reihenfolge und Board-Spalte per langem Drücken (Auswahlblatt) statt Ziehen über Spalten; Aufgabe als Vollbild-Ansicht statt Schublade, „‹“ zurück.</li>
+      <li><b>Offline-first:</b> Die Wolke oben zeigt den Abgleich mit der Dropbox: <i>abgeglichen</i> · <i>n Änderungen warten</i> · <i>offline</i>. Alles funktioniert ohne Netz.</li>
+      <li><b>Board am Handy:</b> eine Spalte pro Bildschirmbreite, waagerecht wischen; oben die drei Kategorien als Sprungmarken mit offenen Karten je Kategorie.</li>
+      <li><b>Logbuch:</b> oben eine Notiz-Eingabe, darunter die Tage (neuester oben) mit abgeschlossenen Aufgaben (runder Haken), abgehakten Punkten (eckiger Haken) und Notizen.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const ICON = n => `<i data-lucide="${n}"></i>`;
+const HEUTE = new Date(); HEUTE.setHours(0,0,0,0);
+const tag = n => { const d = new Date(HEUTE); d.setDate(d.getDate() + n); return d; };
+const WT = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+const fristText = d => { const n = Math.round((d - HEUTE) / 864e5); return n === 0 ? 'Heute' : n === 1 ? 'Morgen' : n === -1 ? 'Gestern' : n > 1 && n < 7 ? `${WT[d.getDay()]} ${d.getDate()}.${d.getMonth()+1}.` : `${d.getDate()}.${d.getMonth()+1}.`; };
+const sonntag = (() => { const d = new Date(HEUTE); d.setDate(d.getDate() + ((7 - d.getDay()) % 7)); return d; })();
+const abschnittVon = a => { if (a.done) return 'fertig'; if (a.wv && a.wv > HEUTE) return 'zurueck'; if (!a.frist) return 'ohne'; const n = Math.round((a.frist - HEUTE) / 864e5); return n < 0 ? 'ueberfaellig' : n === 0 ? 'heute' : a.frist <= sonntag ? 'woche' : 'spaeter'; };
+const ABSCHNITTE = [['ueberfaellig','Überfällig'],['heute','Heute fällig'],['woche','Diese Woche'],['spaeter','Später'],['ohne','Ohne Frist'],['zurueck','Zurückgestellt'],['fertig','Abgeschlossen']];
+const SPALTEN = [
+  { id: 'idee', name: 'Idee', kat: 'Nicht begonnen', farbe: '#c4b5a5' }, { id: 'backlog', name: 'Backlog', kat: 'Nicht begonnen', farbe: '#94a3b8' },
+  { id: 'bereit', name: 'Bereit', kat: 'Nicht begonnen', farbe: '#475569' }, { id: 'inarbeit', name: 'In Arbeit', kat: 'Begonnen', farbe: '#d97706' },
+  { id: 'blockiert', name: 'Blockiert', kat: 'Begonnen', farbe: '#e11d48' }, { id: 'erledigt', name: 'Erledigt', kat: 'Beendet', farbe: '#16a34a' },
+];
+const KATS = [['Nicht begonnen','--kat-offen'],['Begonnen','--kat-begonnen'],['Beendet','--kat-beendet']];
+
+function daten() {
+  let n = 0; const A = (titel, o = {}) => ({ id: 'a' + (++n), titel, tags: [], person: '', ort: '', frist: null, wv: null, status: null, done: false, notiz: '', ...o });
+  return [
+    A('Steuerunterlagen ans Steuerbüro', { frist: tag(-2), tags: ['büro'] }),
+    A('Rechnung Office Day an Merck', { frist: tag(0), status: 'bereit', tags: ['büro'] }),
+    A('Angebot Möbeltischlerei Hüttner', { frist: tag(1), status: 'inarbeit', tags: ['kunde'], person: 'Ralf', notiz: 'Drei Pakete anbieten.\n[x] Referenzen sammeln\n[ ] Preise kalkulieren\n[ ] Mail an Hüttner' }),
+    A('Folien „Prompting 2026“ überarbeiten', { frist: tag(3), status: 'bereit', tags: ['workshop'] }),
+    A('Geschenk für Lena', { frist: tag(9), tags: ['privat'] }),
+    A('Website-Texte Villa Kunterbunt prüfen', { frist: tag(12), status: 'backlog', tags: ['kunde'] }),
+    A('Bansko Apotheke wg Malaria-Medikament', { ort: 'Bansko', tags: ['reise'] }),
+    A('Blogartikel Vibe-Coding-Ampel', { status: 'blockiert', person: 'Markus', tags: ['blog'] }),
+    A('Podcast über Vibe Coding', { status: 'idee', tags: ['blog'] }),
+    A('Fahrradkette ölen', { tags: ['privat'] }),
+    A('Winterreifen wechseln', { wv: tag(5), tags: ['auto'] }),
+    A('Workshop-Feedback auswerten', { status: 'erledigt', done: true, tags: ['workshop'] }),
+  ];
+}
+
+function telefon(start, titel, unter) {
+  const r = document.createElement('div'); r.className = 'rahmen';
+  r.innerHTML = `<div class="phone"><div class="bildschirm"></div></div><div class="unter"><b>${titel}</b><br>${unter}</div>`;
+  document.getElementById('reihe').appendChild(r);
+  app(r.querySelector('.bildschirm'), start);
+}
+
+function app(bs, start) {
+  const aufgaben = daten();
+  const z = { sicht: start === 'detail' ? 'liste' : start, offen: new Set(['ueberfaellig','heute','woche','spaeter','ohne']), wolke: 0, frisch: null };
+  const notizen = [
+    { zeit: '09:12', t: 'Telefonat mit Markus: Rohschnitt Freitag fertig #vorgestellt', notiz: true },
+    { zeit: '08:40', t: 'Workshop-Feedback auswerten', unter: 'Aufgabe abgeschlossen' },
+  ];
+  bs.innerHTML = `<div class="statusleiste"><span>9:41</span><span class="insel"></span><span>${ICON('wifi')}</span></div><div class="haupt" style="flex:1;min-height:0;display:flex;flex-direction:column"></div>
+    <nav class="reiter"><button data-sicht="liste">${ICON('list')}Liste</button><button data-sicht="board">${ICON('square-kanban')}Board</button><button data-sicht="logbuch">${ICON('notebook-pen')}Logbuch</button></nav>
+    <div class="detail"></div><div class="blatt-hg"></div><div class="blatt"></div><div class="toast"></div>`;
+  const haupt = bs.querySelector('.haupt'), detail = bs.querySelector('.detail');
+  const toast = t => { const e = bs.querySelector('.toast'); e.textContent = t; e.classList.add('zeigen'); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove('zeigen'), 1800); };
+  const wolke = () => [`${ICON('cloud-check')}abgeglichen`, `${ICON('cloud-upload')}2 warten`, `${ICON('cloud-off')}offline`][z.wolke];
+  const kopf = t => `<div class="kopf"><span class="logo"></span><span class="titel">${t}</span><span class="wolke ${['','wartet','offline'][z.wolke]}" data-wolke>${wolke()}</span></div>`;
+  const frist = a => { if (!a.frist || a.done) return ''; const k = abschnittVon({ ...a, wv: null }); return `<span class="frist ${k === 'ohne' ? '' : k}">${ICON('diamond')}${fristText(a.frist)}</span>`; };
+  const chips = a => [...a.tags.map(t => `<span class="chip">#${t}</span>`), a.person ? `<span class="chip person">@${a.person}</span>` : '', a.ort ? `<span class="chip ort">${ICON('map-pin')}${a.ort}</span>` : ''].join('');
+  const sdot = a => { const s = SPALTEN.find(x => x.id === a.status); return s ? `<span class="chip"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</span>` : ''; };
+
+  function liste() {
+    let h = kopf('Aufgaben') + `<div class="erfassen">${ICON('plus')}<input placeholder="Neue Aufgabe … #tag @person !fr" enterkeyhint="done"></div>
+      <div class="filter"><span class="an">Alle</span><span>#kunde</span><span>#büro</span><span>#privat</span><span>@Ralf</span></div><div class="inhalt">`;
+    for (const [k, name] of ABSCHNITTE) {
+      const as = aufgaben.filter(a => abschnittVon(a) === k);
+      if (!as.length) continue;
+      const offen = z.offen.has(k);
+      h += `<div class="abschnitt ${k} ${offen ? 'offen' : ''}" data-abschnitt="${k}">${ICON('chevron-right')}${name} <span class="n">${as.length}</span></div>`;
+      if (offen) h += `<div class="gruppe">${as.map(a => `<div class="zeile-huelle"><div class="aktionen"><button class="arch" data-arch="${a.id}">${ICON('archive')}Archiv</button><button class="muell" data-muell="${a.id}">${ICON('trash-2')}</button></div>
+        <div class="zeile ${a.done ? 'erledigt' : ''} ${z.frisch === a.id ? 'frisch' : ''}" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON(a.done ? 'circle-check' : 'circle')}</button>
+        <div class="mitte"><div class="t"><span class="tt">${a.titel}</span>${frist(a)}</div>${chips(a) || sdot(a) ? `<div class="meta">${sdot(a)}${chips(a)}</div>` : ''}</div></div></div>`).join('')}</div>`;
+    }
+    return h + '</div>';
+  }
+
+  function board() {
+    const sp = SPALTEN.map(s => ({ ...s, karten: aufgaben.filter(a => a.status === s.id && !a.done) }));
+    return kopf('Board') + `<div class="kats">${KATS.map(([k, v]) => `<button data-kat="${k}" style="border-bottom-color:var(${v})"><b>${sp.filter(s => s.kat === k).reduce((n, s) => n + s.karten.length, 0)}</b> ${k}</button>`).join('')}</div>
+      <div class="spalten">${sp.map(s => `<div class="spalte" data-spalte="${s.id}"><div class="spalte-h"><span class="sdot" style="background:${s.farbe}"></span>${s.name} <span class="n">${s.karten.length}</span><span class="kat">${s.kat}</span></div>
+        <div class="karten">${s.karten.map(a => `<div class="karte" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON('circle')}</button><div class="mitte"><div class="t">${a.titel}${frist(a)}</div>${chips(a) ? `<div class="meta">${chips(a)}</div>` : ''}</div></div>`).join('') || '<div style="color:var(--mute);font-size:13px;padding:8px 4px">leer</div>'}</div></div>`).join('')}</div>
+      <div class="punkte">${sp.map((s, i) => `<i class="${i === 0 ? 'an' : ''}"></i>`).join('')}</div>`;
+  }
+
+  function logbuch() {
+    const tage = [
+      ['Heute', notizen.map(n => `<div class="eintrag"><span class="zeit">${n.zeit}</span><span class="sym ${n.notiz ? 'notiz' : ''}">${ICON(n.notiz ? 'sticky-note' : 'circle-check')}</span><div><div class="t">${n.t}</div>${n.unter ? `<div class="eu">${n.unter}</div>` : ''}</div></div>`)],
+      ['Gestern', [`<div class="eintrag"><span class="zeit">17:05</span><span class="sym">${ICON('square-check')}</span><div><div class="t">Referenzen sammeln</div><div class="eu">Punkt in „Angebot Möbeltischlerei Hüttner“</div></div></div>`,
+        `<div class="eintrag"><span class="zeit">11:20</span><span class="sym">${ICON('circle-check')}</span><div><div class="t">Reisekosten Oktober einreichen</div></div></div>`]],
+      ['Mo 16.11.', [`<div class="eintrag"><span class="zeit"></span><span class="sym notiz">${ICON('sticky-note')}</span><div><div class="t">Idee: Rundblick fürs Handy als PWA #rundblick</div></div></div>`]],
+    ];
+    return kopf('Logbuch') + `<div class="notizfeld">${ICON('notebook-pen')}<input placeholder="Notiz … #tag" enterkeyhint="done"></div><div class="inhalt">` +
+      tage.map(([t, es]) => `<div class="tag-h ${t === 'Heute' ? 'heute' : ''}">${t}</div><div class="gruppe">${es.join('')}</div>`).join('') + '</div>';
+  }
+
+  function detailZeigen(id) {
+    const a = aufgaben.find(x => x.id === id);
+    const notiz = a.notiz ? a.notiz.split('\n').map((l, i) => { const m = l.match(/^\[( |x)\] (.*)/); return m ? `<div class="cb ${m[1] === 'x' ? 'an' : ''}" data-cb="${i}">${ICON(m[1] === 'x' ? 'square-check' : 'square')}<span>${m[2]}</span></div>` : `<div>${l}</div>`; }).join('') : '<span style="color:var(--mute)">Notiz …</span>';
+    detail.innerHTML = `<div class="kopf"><button class="knopf" data-zurueck>${ICON('chevron-left')}</button><span style="flex:1"></span><button class="knopf" data-arch="${a.id}">${ICON('archive')}</button><button class="knopf muell2" data-muell2="${a.id}">${ICON('trash-2')}</button></div>
+      <div class="koerper">
+        <div style="display:flex;gap:10px;align-items:flex-start"><button class="kreis" data-kreis="${a.id}" style="margin-top:2px">${ICON(a.done ? 'circle-check' : 'circle')}</button><textarea class="titel-feld" rows="2">${a.titel}</textarea></div>
+        <div class="feld"><label>Status</label><div class="status-chips"><button class="${!a.status ? 'an' : ''}" data-status="">ohne</button>${SPALTEN.map(s => `<button class="${a.status === s.id ? 'an' : ''}" data-status="${s.id}"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</button>`).join('')}</div></div>
+        <div class="zwei"><div class="feld"><label>Frist</label><div class="wert ${a.frist ? '' : 'leer'}">${ICON('diamond')}${a.frist ? fristText(a.frist) : '–'}</div></div><div class="feld"><label>Wiedervorlage</label><div class="wert ${a.wv ? '' : 'leer'}">${ICON('calendar-clock')}${a.wv ? fristText(a.wv) : '–'}</div></div></div>
+        <div class="zwei"><div class="feld"><label>Verantwortlich</label><div class="wert ${a.person ? '' : 'leer'}">${a.person ? `<span class="chip person">@${a.person}</span>` : '–'}</div></div><div class="feld"><label>Ort</label><div class="wert ${a.ort ? '' : 'leer'}">${a.ort ? `<span class="chip ort">${ICON('map-pin')}${a.ort}</span>` : '–'}</div></div></div>
+        <div class="feld"><label>Tags</label><div class="wert ${a.tags.length ? '' : 'leer'}">${a.tags.map(t => `<span class="chip">#${t}</span>`).join('') || '–'}</div></div>
+        <div class="feld"><label>Notiz</label><div class="notiz">${notiz}</div></div>
+        <div class="feld"><label>Bilder</label><div class="bilder">${a.id === 'a3' ? '<div class="bild"><b>1</b></div>' : ''}<div class="neu">${ICON('image-plus')}</div></div></div>
+      </div>`;
+    detail.dataset.id = id;
+    detail.classList.add('offen');
+    lucide.createIcons({ root: detail });
+  }
+
+  function zeichnen() {
+    haupt.innerHTML = z.sicht === 'liste' ? liste() : z.sicht === 'board' ? board() : logbuch();
+    bs.querySelectorAll('.reiter button').forEach(b => b.classList.toggle('an', b.dataset.sicht === z.sicht));
+    lucide.createIcons({ root: bs });
+    wischenAnbinden();
+    const sp = haupt.querySelector('.spalten');
+    if (sp) sp.onscroll = () => { const i = Math.round(sp.scrollLeft / (sp.clientWidth * .86 + 10)); haupt.querySelectorAll('.punkte i').forEach((p, j) => p.classList.toggle('an', j === i)); };
+  }
+
+  // Wischen nach links → Archiv / Mülleimer
+  function wischenAnbinden() {
+    haupt.querySelectorAll('.zeile').forEach(zl => {
+      let x0 = null, dx = 0;
+      zl.addEventListener('pointerdown', e => { x0 = e.clientX; dx = 0; zl.style.transition = 'none'; });
+      zl.addEventListener('pointermove', e => { if (x0 === null) return; dx = Math.min(0, e.clientX - x0); if (dx < -6) zl.style.transform = `translateX(${Math.max(-144, dx)}px)`; });
+      const ende = () => { if (x0 === null) return; zl.style.transition = ''; const auf = dx < -60; zl.style.transform = auf ? 'translateX(-144px)' : ''; zl.dataset.wisch = auf ? '1' : ''; if (Math.abs(dx) > 6) zl.dataset.gewischt = '1'; x0 = null; };
+      zl.addEventListener('pointerup', ende); zl.addEventListener('pointerleave', ende);
+    });
+  }
+
+  // langes Drücken auf eine Karte → Auswahlblatt „Verschieben nach“
+  let druck = null;
+  bs.addEventListener('pointerdown', e => {
+    const k = e.target.closest('.karte'); if (!k || e.target.closest('.kreis')) return;
+    druck = setTimeout(() => { druck = 'lang'; k.classList.add('gedrueckt'); blatt(k.dataset.id); }, 450);
+  });
+  bs.addEventListener('pointerup', () => { if (druck && druck !== 'lang') clearTimeout(druck); setTimeout(() => { bs.querySelectorAll('.gedrueckt').forEach(x => x.classList.remove('gedrueckt')); }, 200); });
+  function blatt(id) {
+    const a = aufgaben.find(x => x.id === id);
+    bs.querySelector('.blatt').innerHTML = `<div class="bt">„${a.titel}“ verschieben nach</div>${SPALTEN.map(s => `<button data-nach="${s.id}"><span class="sdot" style="background:${s.farbe}"></span>${s.name}${a.status === s.id ? ' <span style="color:var(--mute);font-size:13px">(jetzt)</span>' : ''}</button>`).join('')}<button data-nach="nach-oben">${ICON('arrow-up-to-line')}Ganz nach oben in der Spalte</button>`;
+    bs.querySelector('.blatt').dataset.id = id;
+    lucide.createIcons({ root: bs.querySelector('.blatt') });
+    bs.querySelector('.blatt').classList.add('offen'); bs.querySelector('.blatt-hg').classList.add('offen');
+  }
+  const blattZu = () => { bs.querySelector('.blatt').classList.remove('offen'); bs.querySelector('.blatt-hg').classList.remove('offen'); };
+
+  let fragenId = null, fragenT;
+  bs.addEventListener('click', e => {
+    const t = e.target;
+    const q = s => t.closest(s);
+    if (druck === 'lang') { druck = null; if (!q('.blatt')) return; }
+    if (q('[data-sicht]')) { z.sicht = q('[data-sicht]').dataset.sicht; zeichnen(); return; }
+    if (q('[data-wolke]')) { z.wolke = (z.wolke + 1) % 3; zeichnen(); toast(['Abgeglichen mit der Dropbox', '2 Änderungen warten auf Netz', 'Offline – alles wird lokal gespeichert'][z.wolke]); return; }
+    if (q('[data-abschnitt]')) { const k = q('[data-abschnitt]').dataset.abschnitt; z.offen.has(k) ? z.offen.delete(k) : z.offen.add(k); zeichnen(); return; }
+    if (q('[data-kreis]')) { const a = aufgaben.find(x => x.id === q('[data-kreis]').dataset.kreis); a.done = !a.done; toast(a.done ? 'Abgeschlossen' : 'Wieder offen'); zeichnen(); if (detail.classList.contains('offen')) detailZeigen(a.id); return; }
+    if (q('[data-arch]')) { const id = q('[data-arch]').dataset.arch; aufgaben.splice(aufgaben.findIndex(x => x.id === id), 1); detail.classList.remove('offen'); toast('Archiviert'); zeichnen(); return; }
+    const m = q('[data-muell]') || q('[data-muell2]');
+    if (m) {
+      const id = m.dataset.muell || m.dataset.muell2;
+      if (fragenId !== id) { fragenId = id; m.classList.add('fragen'); m.textContent = '?'; clearTimeout(fragenT); fragenT = setTimeout(() => { fragenId = null; zeichnen(); if (detail.classList.contains('offen')) detailZeigen(detail.dataset.id); }, 5000); return; }
+      fragenId = null; aufgaben.splice(aufgaben.findIndex(x => x.id === id), 1); detail.classList.remove('offen'); toast('Gelöscht'); zeichnen(); return;
+    }
+    if (q('[data-zurueck]')) { detail.classList.remove('offen'); zeichnen(); return; }
+    if (q('[data-status]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); a.status = q('[data-status]').dataset.status || null; detailZeigen(a.id); return; }
+    if (q('[data-cb]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); const l = a.notiz.split('\n'); const i = +q('[data-cb]').dataset.cb; l[i] = l[i].startsWith('[x]') ? l[i].replace('[x]', '[ ]') : l[i].replace('[ ]', '[x]'); a.notiz = l.join('\n'); detailZeigen(a.id); return; }
+    if (q('[data-nach]')) { const a = aufgaben.find(x => x.id === bs.querySelector('.blatt').dataset.id); const n = q('[data-nach]').dataset.nach; if (n !== 'nach-oben') { a.status = n; toast(`Nach „${SPALTEN.find(s => s.id === n).name}“ verschoben`); } else toast('Ganz nach oben'); blattZu(); zeichnen(); return; }
+    if (q('.blatt-hg')) { blattZu(); return; }
+    if (q('[data-kat]')) { const k = q('[data-kat]').dataset.kat; const i = SPALTEN.findIndex(s => s.kat === k); const sp = haupt.querySelector('.spalten'); sp.scrollTo({ left: i * (sp.clientWidth * .86 + 10), behavior: 'smooth' }); return; }
+    const zl = q('.zeile'); if (zl) { if (zl.dataset.gewischt) { zl.dataset.gewischt = ''; return; } if (zl.dataset.wisch) { zl.style.transform = ''; zl.dataset.wisch = ''; return; } detailZeigen(zl.dataset.id); return; }
+    const k = q('.karte'); if (k) { detailZeigen(k.dataset.id); return; }
+  });
+  bs.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const inp = e.target;
+    if (!inp.value.trim()) return;
+    if (inp.closest('.erfassen')) {
+      const text = inp.value.trim(); const tags = [...text.matchAll(/#(\S+)/g)].map(m => m[1]); const person = (text.match(/@(\S+)/) || [])[1] || '';
+      const fr = /!heute/.test(text) ? tag(0) : /!morgen/.test(text) ? tag(1) : /!fr/.test(text) ? tag((5 - HEUTE.getDay() + 7) % 7) : null;
+      const a = { id: 'n' + Date.now(), titel: text.replace(/[#@!]\S+/g, '').trim(), tags, person, ort: '', frist: fr, wv: null, status: null, done: false, notiz: '' };
+      aufgaben.unshift(a); z.frisch = a.id; z.offen.add(abschnittVon(a)); inp.value = ''; toast('Erfasst – wird abgeglichen'); zeichnen();
+    } else if (inp.closest('.notizfeld')) {
+      notizen.unshift({ zeit: new Date().toTimeString().slice(0, 5), t: inp.value.trim(), notiz: true }); inp.value = ''; zeichnen();
+    }
+  });
+  zeichnen();
+  if (start === 'detail') detailZeigen('a3');
+}
+
+telefon('liste', 'Liste', 'Abschnitte wie am Desktop · Wischen nach links = Archiv / Mülleimer (zweistufig) · oben Schnellerfassung und Tag-Filter');
+telefon('detail', 'Aufgabe', 'Vollbild statt Schublade · Status als Chips · Notiz mit abhakbarer Checkliste · Bilder · „‹“ zurück');
+telefon('board', 'Board', 'Eine Spalte pro Breite, waagerecht wischen · Kategorien oben als Sprungmarken · Karte lange drücken = verschieben');
+telefon('logbuch', 'Logbuch', 'Notiz-Eingabe oben · Tage, neuester oben · runder Haken = Aufgabe, eckiger = Punkt, Notiz-Symbol');
+</script>
+</body>
+</html>
