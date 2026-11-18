@@ -846,3 +846,17 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 /* „+n weitere“ in der Monatszelle: deutlich, aber ruhig */
 .mc .me.mehr { color: var(--own); font-weight: 600; cursor: pointer; }
 .mc .me.mehr:hover { text-decoration: underline; }
+/* Spiegelung in Google/iCloud: Link-Symbol in der Farbe des Zielkalenders */
+.lk { display: inline-grid; place-items: center; vertical-align: -1px; margin-right: 3px; flex: none; color: var(--kf); }
+.lk svg.lu { width: 11px; height: 11px; }
+.ev.own .lk { color: #fff; background: var(--kf); border-radius: 3px; padding: 1px; }
+.ev.own .lk svg.lu { width: 10px; height: 10px; }
+.lk.gross svg.lu { width: 18px; height: 18px; }
+.spiegel-zeile { display: flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; }
+.spiegel-zeile .lk svg.lu { width: 15px; height: 15px; }
+.spiegel-zeile select { flex: 1; min-width: 0; }
+.spiegel-zeile .btn { display: inline-flex; align-items: center; gap: 5px; }
+.spiegel-zeile .btn svg.lu { width: 14px; height: 14px; }
+.hinweis-zeile { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; color: #9a5b00; background: #fff7e8; border-radius: 6px; padding: 6px 8px; }
+.hinweis-zeile svg.lu { width: 14px; height: 14px; flex: none; margin-top: 1px; }
+[data-extern] { cursor: pointer; }

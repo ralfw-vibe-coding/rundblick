@@ -608,7 +608,7 @@
     <li><b>Hosting:</b> statische Seite als installierbare Web-App (PWA).</li>
     <li><b>Verworfen:</b> A (Mac als Server – nur bei laufendem Mac) und C (zentraler Server mit Datenbank – Datendopplung).</li>
   </ul>
-  <h2 id="sync">17 Buchungen ↔ Google/iCloud (Zwei-Wege-Sync) – entschieden 18.11.2026</h2>
+  <h2 id="sync">17 Buchungen ↔ Google/iCloud (Zwei-Wege-Sync) – entschieden und gebaut 18.11.2026</h2>
   <p>Aus einer Buchung lässt sich ein Eintrag in Google Calendar oder iCloud machen; danach bleiben beide Seiten synchron.</p>
   <h3>Entscheidungen</h3>
   <table>
@@ -616,8 +616,8 @@
     <tr><td>Welche Buchungen?</td><td><b>Nur Termine</b> (mit Uhrzeit). Reservierungen werden vorerst <b>nicht</b> zu externen Einträgen.</td></tr>
     <tr><td>Konflikt (beide Seiten seit dem letzten Abgleich geändert)</td><td><b>Die jüngere Änderung gewinnt</b> (Event-Zeit in Rundblick vs. <code>lastModifiedDate</code> extern).</td></tr>
     <tr><td>Externe Termine → Rundblick</td><td>Ein externer Termin kann <b>von Hand</b> zu einer Aufgabe (bzw. verknüpften Buchung) gemacht werden. <b>Nie automatisch.</b></td></tr>
-    <tr><td>Verknüpfen oder umwandeln?</td><td><i>Annahme, noch zu bestätigen:</i> verknüpfen – die Buchung bleibt in Rundblick (Aufgabe, Auslastung, Herkunfts-Symbol) und wird gespiegelt.</td></tr>
-    <tr><td>Extern gelöscht</td><td><i>Annahme, noch zu bestätigen:</i> Verknüpfung lösen, Buchung behalten, Hinweis an der Buchung.</td></tr>
+    <tr><td>Verknüpfen oder umwandeln?</td><td><b>Verknüpfen</b> – die Buchung bleibt in Rundblick (Aufgabe, Auslastung, Herkunfts-Symbol) und wird gespiegelt. Symbol an der Buchung: Lucide <code>link-2</code> in der Farbe des Zielkalenders.</td></tr>
+    <tr><td>Extern gelöscht</td><td><b>Verknüpfung lösen, Buchung behalten</b>, Hinweis an der Buchung.</td></tr>
   </table>
   <h3>Umsetzung (Skizze)</h3>
   <ul>

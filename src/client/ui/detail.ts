@@ -1,7 +1,7 @@
 // Detail-Schublade: Aufgabe oder Buchung ansehen und direkt bearbeiten.
 // Jede Feldänderung wird sofort als Command an den Body geschickt.
 // Kopf: [Abschließen-Kreis] Titel … [Archiv] [Mülleimer] [×]
-import { dauerText, kurz, plusTage, WT, wochentag } from '../../basis/datum';
+import { dauerText, kurz, plusTage, uhrzeit, WT, wochentag } from '../../basis/datum';
 import type { AufgabeDetails } from '../../body/interface';
 import { body } from './body';
 import { buchungArt, ICON, kapazitaetsBalken, muellKnopf, statusPunkt } from './bausteine';
@@ -165,8 +165,9 @@ function buchungsliste(a: AufgabeDetails): string {
 }
 
 export async function buchungOeffnen(id: string): Promise<void> {
-  const b = await body.buchung({ buchungId: id });
+  const [b, e] = await Promise.all([body.buchung({ buchungId: id }), body.einstellungen()]);
   if (!b) { schliessen(); return; }
+  const ziele = e.kalender.filter(k => k.schreibbar);
   aktuell = { art: 'buchung', id };
   const s = el();
   s.innerHTML = `<div class="dh"><input class="titel-input" data-f="titel" value="${esc(b.titel)}">${muellKnopf('stornieren', 'Buchung löschen', id)}${knopf('zu', ICON.zu, 'Schließen (Esc)')}</div>
@@ -178,6 +179,14 @@ export async function buchungOeffnen(id: string): Promise<void> {
       ${feld('Dauer', `<span class="dur"><button data-dur="-15">${I.minus}</button><b>${dauerText(b.dauer)}</b><button data-dur="15">${I.plus}</button></span><span class="durq">${[30, 45, 60, 90, 120, 180, 240].map(m => `<button data-dauer="${m}" class="${b.dauer === m ? 'on' : ''}">${dauerText(m).replace(' ', '')}</button>`).join('')}</span>`)}
       ${feld('Kapazität', `<label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)"><input type="checkbox" data-f="belegt" ${b.belegt ? 'checked' : ''}> belegt ${dauerText(b.dauer)} der Tageskapazität</label>`)}
       <div class="muted" style="font-size:12px">${buchungArt(b)} · ${b.start ? 'mit Uhrzeit' : 'ohne Uhrzeit – erscheint im Reservierungsband'}</div>
+      ${b.hinweis ? `<div class="hinweis-zeile">${I.warnung}<span>${esc(b.hinweis)}</span></div>` : ''}
+      ${feld('Google / iCloud', b.spiegel
+        ? `<div class="spiegel-zeile"><span class="lk" style="--kf:${b.spiegel.farbe}">${I.spiegel}</span><span>Gespiegelt in <b>${esc(b.spiegel.kalender)}</b>${b.spiegel.konto ? ` · ${esc(b.spiegel.konto)}` : ''}</span><button class="btn" data-d="loesen" title="Spiegelung beenden – Buchung und externer Eintrag bleiben">${I.spiegelLoesen} Verknüpfung lösen</button></div>`
+        : !b.start
+          ? '<div class="muted" style="font-size:12px">Nur Termine (mit Uhrzeit) lassen sich in Google/iCloud spiegeln.</div>'
+          : ziele.length
+            ? `<div class="spiegel-zeile"><select data-spiegelziel>${ziele.map(k => `<option value="${esc(k.id)}">${esc(k.name)}${k.konto ? ` · ${esc(k.konto)}` : ''}</option>`).join('')}</select><button class="btn" data-d="spiegeln" title="Termin im gewählten Kalender anlegen und synchron halten">${I.spiegel} Spiegeln</button></div>`
+            : '<div class="muted" style="font-size:12px">Kein beschreibbarer Kalender verfügbar (Kalenderzugriff in den Einstellungen prüfen).</div>')}
       ${b.aufgabeId
         ? feld('Gehört zu Aufgabe', `<a href="#" data-d="aufgabe" style="color:var(--own)">${esc(b.aufgabentitel)}</a>`)
         : '<div class="muted" style="line-height:1.5;font-size:12px">Freie Buchung ohne Aufgabe. Wird mehr daraus: „→ Aufgabe daraus machen“ – Titel und Notiz wandern mit, die Buchung bleibt und gehört dann zur Aufgabe. Oder die Buchung auf Liste/Board ziehen.</div>'}
@@ -202,6 +211,11 @@ export async function buchungOeffnen(id: string): Promise<void> {
     if (dur) return aendern({ buchungId: id, dauer: dur.dataset.dauer ? Number(dur.dataset.dauer) : Math.max(15, b.dauer + Number(dur.dataset.dur)) });
     const d = t.closest<HTMLElement>('[data-d]')?.dataset.d;
     if (d === 'zu') schliessen();
+    if (d === 'spiegeln') {
+      const ziel = s.querySelector<HTMLSelectElement>('[data-spiegelziel]')!.value;
+      if (pruefe(await body.buchungSpiegeln({ buchungId: id, kalenderId: ziel }), 'Gespiegelt')) void buchungOeffnen(id);
+    }
+    if (d === 'loesen' && pruefe(await body.verknuepfungLoesen({ buchungId: id }), 'Verknüpfung gelöst')) void buchungOeffnen(id);
     if (d === 'aufgabe') { ev.preventDefault(); void aufgabeOeffnen(b.aufgabeId!); }
     if (d === 'aufgabeMachen') {
       const r = await body.aufgabeAusBuchung({ buchungId: id });
@@ -212,6 +226,37 @@ export async function buchungOeffnen(id: string): Promise<void> {
   auswahlMelden();
 }
 
+// ---------- Externer Termin (Google/iCloud) ----------
+// Nur lesen; von Hand lässt sich daraus eine Aufgabe machen (die Buchung bleibt mit dem Termin verknüpft).
+export async function externOeffnen(externId: string, datum: string): Promise<void> {
+  const z = await body.zeitraum({ von: datum, bis: datum });
+  const x = z.tage[0]?.extern.find(e => e.id === externId);
+  if (!x) { schliessen(); return; }
+  aktuell = null;
+  const s = el();
+  const zeit = x.start === null ? 'ganztägig' : `${uhrzeit(x.start)}–${uhrzeit(x.ende!)}`;
+  s.innerHTML = `<div class="dh"><span class="lk gross" style="--kf:${x.farbe}" title="${esc(x.kalender)}">${I.tag}</span><div class="titel-input" style="flex:1">${esc(x.titel)}</div>${knopf('zu', ICON.zu, 'Schließen (Esc)')}</div>
+    <div class="db">
+      <div class="fld-grid">
+        ${feld('Wann', `<div>${WT[wochentag(x.datum)]} ${kurz(x.datum)} · ${zeit}</div>`)}
+        ${feld('Kalender', `<div><span class="sdot" style="background:${x.farbe}"></span> ${esc(x.kalender)}${x.konto ? ` · ${esc(x.konto)}` : ''}</div>`)}
+      </div>
+      ${x.ort ? feld('Ort', `<div>${esc(x.ort)}</div>`) : ''}
+      ${x.notiz ? feld('Notiz', `<div style="white-space:pre-wrap">${esc(x.notiz)}</div>`) : ''}
+      <div class="muted" style="font-size:12px;line-height:1.5">Externer Termin – bearbeitet wird er in der Kalender-App. ${x.start === null ? 'Ganztägige Termine lassen sich nicht übernehmen.' : 'Wird eine Aufgabe daraus, bleibt ihre Buchung mit diesem Termin verknüpft (Änderungen gehen in beide Richtungen).'}</div>
+    </div>
+    ${x.start === null ? '' : `<div class="df"><button class="btn primary" data-d="ausExtern">${I.zurAufgabe} Aufgabe daraus machen</button></div>`}`;
+  s.onchange = null;
+  s.onclick = async ev => {
+    const d = (ev.target as HTMLElement).closest<HTMLElement>('[data-d]')?.dataset.d;
+    if (d === 'zu') schliessen();
+    if (d === 'ausExtern') {
+      const r = await body.aufgabeAusExtern({ externId });
+      if (pruefe(r, 'Aufgabe erstellt') && r.ok) { markieren(r.ids!.aufgabeId!); void aufgabeOeffnen(r.ids!.aufgabeId!); }
+    }
+  };
+  s.classList.add('open');
+}
 
 // ---------- Notiz (Logbuch) ----------
 // Kopf: [Notiz-Symbol] Titel (= erste Zeile) … [→ Aufgabe] [Mülleimer] [×]

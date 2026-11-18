@@ -1,7 +1,7 @@
 // Alle Symbole der Oberfläche kommen aus Lucide (https://lucide.dev) – als SVG-Strings für die HTML-Vorlagen.
 import {
   Archive, ArchiveRestore, ArrowDown, ArrowUp, Calendar, CalendarClock, CalendarSync, CalendarRange, ChartGantt, Check, ChevronLeft,
-  ChevronRight, Circle, CircleCheck, Clock, Columns2, Diamond, ChevronsDownUp, ChevronsUpDown, Hourglass, List, MapPin, Maximize2, Minimize2, Minus,
+  ChevronRight, Circle, Link2, Unlink2, CircleCheck, Clock, Columns2, Diamond, ChevronsDownUp, ChevronsUpDown, Hourglass, List, MapPin, Maximize2, Minimize2, Minus,
   NotebookPen, StickyNote, SquareCheck, ListPlus, Paperclip, Pencil, Plus, ImagePlus, RefreshCw, RotateCcw, Rows2, Settings, SquareKanban, Trash2, TriangleAlert, X,
 } from 'lucide';
 
@@ -24,4 +24,5 @@ export const I = {
   termin: k(Clock), reservierung: k(Hourglass), offen: k(Circle), erledigt: k(CircleCheck),
   hoch: k(ArrowUp), runter: k(ArrowDown), anhang: k(Paperclip), bildHinzu: k(ImagePlus),
   logbuch: k(NotebookPen), notiz: k(StickyNote), punkt: k(SquareCheck), zurAufgabe: k(ListPlus),
+  spiegel: k(Link2), spiegelLoesen: k(Unlink2),
 };

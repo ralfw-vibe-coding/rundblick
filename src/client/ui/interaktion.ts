@@ -2,7 +2,7 @@
 import { dauerText, plusTage, relativ, uhrzeit } from '../../basis/datum';
 import type { CommandStatus } from '../../body/interface';
 import { body } from './body';
-import { aufgabeOeffnen, buchungOeffnen, notizOeffnen, schliessen } from './detail';
+import { aufgabeOeffnen, buchungOeffnen, externOeffnen, notizOeffnen, schliessen } from './detail';
 import { ICON } from './bausteine';
 import { I } from './icons';
 import { esc, pruefe, toast } from './dom';
@@ -71,6 +71,8 @@ export function interaktionAnbinden(): void {
     if (n) { void notizOeffnen(n.dataset.notizId!); return; }
     const b = t.closest<HTMLElement>('[data-booking]');
     if (b) { void buchungOeffnen(b.dataset.booking!); return; }
+    const x = t.closest<HTMLElement>('[data-extern]');
+    if (x) { void externOeffnen(x.dataset.extern!, x.dataset.datum!); return; }
     const a = t.closest<HTMLElement>('[data-task]');
     if (a) void aufgabeOeffnen(a.dataset.task!, true);
   });

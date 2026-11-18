@@ -54,7 +54,7 @@ export type ExternDto = {
   id: string; kalender: string; konto: string; farbe: string; titel: string;
   /** Minuten seit Mitternacht; null = ganztägig */
   start: number | null; ende: number | null; belegt: boolean; ort: string;
-  notiz: string;
+  notiz: string; datum: Datum;
 };
 
 export type Auslastung = { belegt: Minuten; eigene: Minuten; extern: Minuten; nichtBelegend: Minuten; kapazitaet: Minuten };
