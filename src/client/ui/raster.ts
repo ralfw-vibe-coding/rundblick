@@ -264,8 +264,8 @@ export class Raster {
   // ---------- Arbeitsbereiche ----------
   private tabsZeichnen(): void {
     this.tabs.innerHTML = this.bereiche.map((w, i) => `<button data-ws="${i}" class="${i === this.aktiv ? 'on' : ''}" title="Taste ${i + 1} · Doppelklick: umbenennen">${esc(w.name)}</button>`).join('')
-      + `<button class="add" data-ws="neu" title="Neuer Arbeitsbereich">${I.plus}</button>`
-      + (this.bereiche.length > 1 ? `<button class="add" data-zweistufig="arbeitsbereichLoeschen" data-id="aktiv" title="Diesen Arbeitsbereich löschen">${I.minus}</button>` : '');
+      + `<button class="add" data-ws="neu" title="Neuer Arbeitsbereich">${I.bereichNeu}</button>`
+      + (this.bereiche.length > 1 ? `<button class="add" data-zweistufig="arbeitsbereichLoeschen" data-id="aktiv" title="Diesen Arbeitsbereich löschen">${I.bereichLoeschen}</button>` : '');
   }
   private tabKlick(e: Event): void {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-ws]'); if (!b) return;
