@@ -1025,3 +1025,5 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .einst { width: 520px; }
 .einst-reiter { flex-wrap: nowrap; min-width: 0; }
 .einst-reiter button { white-space: nowrap; }
+/* Kalender aktualisieren · Einstellungen · Update: immer ganz rechts in der Titelleiste */
+#syncBtn { margin-left: auto; }
