@@ -34,6 +34,22 @@
   .kopf .logo { width: 22px; height: 22px; border-radius: 50%; background: conic-gradient(#4f46e5 0 33%, #d97706 0 66%, #2f7cf6 0); box-shadow: inset 0 0 0 5px var(--bg); }
   .kopf b { font-size: 17px; letter-spacing: -.01em; }
   .kopf .titel { font-size: 22px; font-weight: 700; letter-spacing: -.02em; flex: 1; }
+  .zahnrad { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--ink2); cursor: pointer; margin-left: -6px; }
+  .zahnrad svg.lucide { width: 21px; height: 21px; }
+  /* Einstellungen (Schublade) */
+  .einst-gruppe { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .einst-zeile { display: flex; align-items: center; gap: 10px; padding: 11px 12px; font-size: 15px; border-bottom: 1px solid var(--line); min-height: 44px; }
+  .einst-zeile:last-child { border-bottom: 0; }
+  .einst-zeile .rechts { margin-left: auto; color: var(--mute); font-size: 14px; display: flex; align-items: center; gap: 5px; text-align: right; }
+  .einst-zeile .rechts svg.lucide { width: 15px; height: 15px; }
+  .einst-zeile .ok { color: var(--st-fertig); }
+  .einst-zeile .warn { color: var(--own); }
+  .einst-zeile input { margin-left: auto; border: 0; outline: none; font: inherit; font-size: 15px; text-align: right; color: var(--mute); background: none; width: 55%; }
+  .blatt.angaben-blatt .einst-knopf { display: flex; width: 100%; justify-content: center; align-items: center; gap: 6px; padding: 11px; border: 0; border-top: 1px solid var(--line); color: var(--own); font-size: 15px; font-weight: 600; background: #fff; }
+  .blatt.angaben-blatt .einst-knopf.gefahr { color: var(--over); }
+  .blatt.angaben-blatt .einst-knopf.fragen { background: var(--over); color: #fff; }
+  .blatt.angaben-blatt .einst-knopf svg.lucide { width: 17px; height: 17px; }
+  .einst-hinweis { font-size: 11px; color: var(--mute); margin-top: 5px; padding: 0 2px; line-height: 1.4; }
   .knopf { border: 0; background: none; padding: 6px; border-radius: 10px; color: var(--ink2); display: grid; place-items: center; cursor: pointer; }
   .knopf:active { background: rgba(0,0,0,.06); }
   .wolke { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--st-fertig); cursor: pointer; }
@@ -217,7 +233,7 @@
 <body>
 <div class="seite">
   <h1>Rundblick Phone App – Entwurf</h1>
-  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig), unter „Neu“ = Gesehen / Mülleimer, im Logbuch = Mülleimer (löscht Notiz, Punkt bzw. die ganze Aufgabe; eine gelöschte Aufgabe verschwindet auch aus dem Logbuch) · neu Erfasstes steht oben unter „Neu“ (zusätzlich in seiner Rubrik), bis man es öffnet oder wegwischt · lange drücken und ziehen = umsortieren (in der Liste innerhalb des Abschnitts, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
+  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig), unter „Neu“ = Gesehen / Mülleimer, im Logbuch = Mülleimer (löscht Notiz, Punkt bzw. die ganze Aufgabe; eine gelöschte Aufgabe verschwindet auch aus dem Logbuch) · neu Erfasstes steht oben unter „Neu“ (zusätzlich in seiner Rubrik), bis man es öffnet oder wegwischt · lange drücken und ziehen = umsortieren (in der Liste innerhalb des Abschnitts, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Zahnrad oben rechts = Einstellungen (Dropbox, Gerät, Abgleich, Version; im Logbuch-Telefon liegt zur Ansicht eine neue Version bereit) · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
   <div class="reihe" id="reihe"></div>
 
   <div class="erkl">
@@ -278,7 +294,7 @@ function app(bs, start) {
   const aufgaben = daten();
   const z = { sicht: start === 'detail' ? 'liste' : start, offen: new Set(['neu','ueberfaellig','heute','woche','spaeter','ohne']), wolke: 0, frisch: null, suche: false, filter: '', spalteZu: new Set(['erledigt']), angaben: false,
     // „Neu“: frisch erfasste Aufgaben stehen oben (zusätzlich in ihrer Rubrik), bis man sie öffnet oder wegwischt
-    neu: [] };
+    neu: [], abmeldenFragen: false, neueVersion: start === 'logbuch' };
   z.neu = aufgaben.filter(a => a.titel.startsWith('Geschenk')).map(a => a.id);
   let ln = 0; const L = (tag, zeit, t, art, unter = '', aufgabe = null) => ({ id: 'l' + (++ln), tag, zeit, t, art, unter,
     aufgabe: aufgabe ?? (art === 'aufgabe' ? aufgaben.find(a => a.titel === t)?.id ?? null : null) });
@@ -296,7 +312,7 @@ function app(bs, start) {
   const toast = t => { const e = bs.querySelector('.toast'); e.textContent = t; e.classList.add('zeigen'); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove('zeigen'), 1800); };
   // nur die Wolke: Haken = abgeglichen, Pfeil = Änderungen warten, durchgestrichen = offline
   const wolke = () => [ICON('cloud-check'), ICON('cloud-upload'), ICON('cloud-off')][z.wolke];
-  const kopf = t => `<div class="kopf"><span class="logo"></span><span class="titel">${t}</span><span class="wolke ${['','wartet','offline'][z.wolke]}" data-wolke title="${['abgeglichen','2 Änderungen warten','offline'][z.wolke]}">${wolke()}</span></div>`;
+  const kopf = t => `<div class="kopf"><span class="logo"></span><span class="titel">${t}</span><span class="wolke ${['','wartet','offline'][z.wolke]}" data-wolke title="${['abgeglichen','2 Änderungen warten','offline'][z.wolke]}">${wolke()}</span><span class="zahnrad" data-einst title="Einstellungen">${ICON('settings')}</span></div>`;
   const suche = () => `<div class="suche ${z.suche ? 'offen' : ''}"><div class="feld2">${ICON('search')}<input data-suche placeholder="Suchen … Titel, #tag, @person" value="${z.filter}"></div><button data-suche-zu>Abbrechen</button></div>`;
   const passt = a => !z.filter || [a.titel, ...a.tags.map(t => '#' + t), a.person ? '@' + a.person : ''].join(' ').toLowerCase().includes(z.filter.toLowerCase());
   const frist = a => { if (!a.frist || a.done) return ''; const k = abschnittVon({ ...a, wv: null }); return `<span class="frist ${k === 'ohne' ? '' : k}">${ICON('diamond')}${fristText(a.frist)}</span>`; };
@@ -361,6 +377,34 @@ function app(bs, start) {
         <div class="feld"><label>Status</label><div class="status-chips"><button class="${!a.status ? 'an' : ''}" data-status="">ohne</button>${SPALTEN.map(s => `<button class="${a.status === s.id ? 'an' : ''}" data-status="${s.id}"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</button>`).join('')}</div></div>
         <div class="zwei"><div class="feld"><label>Verantwortlich</label><div class="wert ${a.person ? '' : 'leer'}">${a.person ? `<span class="chip person">@${a.person}</span>` : '–'}</div></div><div class="feld"><label>Ort</label><div class="wert ${a.ort ? '' : 'leer'}">${a.ort ? `<span class="chip ort">${ICON('map-pin')}${a.ort}</span>` : '–'}</div></div></div>
         <div class="feld"><label>Tags</label><div class="wert ${a.tags.length ? '' : 'leer'}">${a.tags.map(t => `<span class="chip">#${t}</span>`).join('') || '–'}</div></div>
+      </div>`;
+    lucide.createIcons({ root: b });
+    bs.querySelector('.blatt-hg').classList.add('offen');
+  }
+  // Einstellungen: Dropbox, Gerät, Abgleich, Version – als Schublade von unten
+  function einstellungen() {
+    const b = bs.querySelector('.blatt');
+    const wartend = [0, 2, 2][z.wolke];
+    b.className = 'blatt angaben-blatt offen'; b.dataset.id = '';
+    b.innerHTML = `<div class="griff"></div><div class="bk">Einstellungen<button data-blatt-zu>Fertig</button></div><div class="angaben">
+      <div class="feld"><label>Dropbox</label><div class="einst-gruppe">
+        <div class="einst-zeile">${ICON('cloud')}Verbunden<span class="rechts ok">${ICON('check')}Ralf</span></div>
+        <div class="einst-zeile">Ordner<span class="rechts">Apps/Rundblick</span></div>
+        <button class="einst-knopf gefahr ${z.abmeldenFragen ? 'fragen' : ''}" data-abmelden>${z.abmeldenFragen ? (wartend ? `Abmelden? ${wartend} Änderungen gehen verloren` : 'Wirklich abmelden?') : 'Abmelden'}</button>
+      </div></div>
+      <div class="feld"><label>Gerät</label><div class="einst-gruppe">
+        <div class="einst-zeile">Name<span class="rechts">${ICON('lock')}iphone-ralf</span></div>
+      </div><div class="einst-hinweis">Eigene Datei <code>events/iphone-ralf.jsonl</code>. Der Name steht fest, sobald das Gerät etwas geschrieben hat.</div></div>
+      <div class="feld"><label>Abgleich</label><div class="einst-gruppe">
+        <div class="einst-zeile">Zuletzt<span class="rechts">${z.wolke === 2 ? 'vor 25 Min.' : 'vor 1 Min.'}</span></div>
+        <div class="einst-zeile">Wartende Änderungen<span class="rechts ${wartend ? 'warn' : ''}">${wartend || 'keine'}</span></div>
+        <div class="einst-zeile">Speicher<span class="rechts ok">${ICON('hard-drive')}dauerhaft</span></div>
+        <button class="einst-knopf" data-abgleichen>${ICON('refresh-cw')}Jetzt abgleichen</button>
+      </div></div>
+      <div class="feld"><label>Version</label><div class="einst-gruppe">
+        <div class="einst-zeile">Rundblick Phone<span class="rechts">Build 12</span></div>
+        ${z.neueVersion ? `<button class="einst-knopf" data-neu-laden>${ICON('circle-arrow-down')}Build 13 bereit – neu laden</button>` : `<div class="einst-zeile">Stand<span class="rechts ok">${ICON('check')}aktuell</span></div>`}
+      </div></div>
       </div>`;
     lucide.createIcons({ root: b });
     bs.querySelector('.blatt-hg').classList.add('offen');
@@ -539,14 +583,23 @@ function app(bs, start) {
       aufgabeLoeschen(id); detail.classList.remove('offen'); toast('Gelöscht'); zeichnen(); return;
     }
     if (q('[data-angaben]')) { angabenBlatt(aufgaben.find(x => x.id === detail.dataset.id)); return; }
-    if (q('[data-blatt-zu]')) { blattZu(); return; }
+    if (q('[data-blatt-zu]')) { z.abmeldenFragen = false; blattZu(); return; }
+    if (q('[data-einst]')) { z.abmeldenFragen = false; einstellungen(); return; }
+    if (q('[data-abgleichen]')) { z.wolke = z.wolke === 2 ? 2 : 0; zeichnen(); einstellungen(); toast(z.wolke === 2 ? 'Offline – Abgleich, sobald Netz da ist' : 'Abgeglichen mit der Dropbox'); return; }
+    if (q('[data-neu-laden]')) { z.neueVersion = false; blattZu(); toast('Neu geladen – Build 13'); return; }
+    if (q('[data-abmelden]')) {
+      // zweistufig: erster Tipp fragt, zweiter meldet ab; nach 5 s oder Tipp woanders zurück
+      if (!z.abmeldenFragen) { z.abmeldenFragen = true; einstellungen(); clearTimeout(fragenT); fragenT = setTimeout(() => { if (z.abmeldenFragen) { z.abmeldenFragen = false; if (bs.querySelector('.blatt.offen [data-abmelden]')) einstellungen(); } }, 5000); return; }
+      z.abmeldenFragen = false; blattZu(); toast('Abgemeldet (Entwurf: keine Wirkung)'); return;
+    }
+    if (z.abmeldenFragen && q('.blatt')) { z.abmeldenFragen = false; einstellungen(); return; }
     if (q('[data-spalte-zu]') || q('.spalte.zu')) { const id = (q('[data-spalte-zu]') || q('.spalte.zu')).dataset.spalteZu ?? q('.spalte.zu').dataset.spalte; z.spalteZu.has(id) ? z.spalteZu.delete(id) : z.spalteZu.add(id); zeichnen(); return; }
     if (q('[data-suche-zu]')) { z.suche = false; z.filter = ''; zeichnen(); return; }
     if (q('[data-zurueck]')) { detail.classList.remove('offen'); zeichnen(); return; }
     if (q('[data-status]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); a.status = q('[data-status]').dataset.status || null; detailZeigen(a.id); angabenBlatt(a); return; }
     if (q('[data-cb]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); const l = a.notiz.split('\n'); const i = +q('[data-cb]').dataset.cb; l[i] = l[i].startsWith('[x]') ? l[i].replace('[x]', '[ ]') : l[i].replace('[ ]', '[x]'); a.notiz = l.join('\n'); detailZeigen(a.id); return; }
     if (q('[data-nach]')) { const a = aufgaben.find(x => x.id === bs.querySelector('.blatt').dataset.id); const n = q('[data-nach]').dataset.nach; if (n !== 'nach-oben') { a.status = n; toast(`Nach „${SPALTEN.find(s => s.id === n).name}“ verschoben`); } else toast('Ganz nach oben'); blattZu(); zeichnen(); return; }
-    if (q('.blatt-hg')) { blattZu(); return; }
+    if (q('.blatt-hg')) { z.abmeldenFragen = false; blattZu(); return; }
     if (q('[data-kat]')) { const k = q('[data-kat]').dataset.kat; const id = SPALTEN.find(s => s.kat === k)?.id; const sp = haupt.querySelector('.spalten'); const el = sp.querySelector(`[data-spalte="${id}"]`); if (!el) return;
       // Lage aus dem DOM messen – stimmt egal, welche Spalten zugeklappt sind; offene Spalten rasten mittig ein, zugeklappte am Anfang
       const links = el.getBoundingClientRect().left - sp.getBoundingClientRect().left + sp.scrollLeft;
