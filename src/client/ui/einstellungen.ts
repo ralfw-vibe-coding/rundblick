@@ -13,10 +13,10 @@ let panel: HTMLDivElement | null = null;
 
 type Reiter = 'standards' | 'board' | 'kalender' | 'aktualisierung';
 const REITER: { id: Reiter; name: string; titel: string; icon: string }[] = [
-  { id: 'standards', name: 'Standards', titel: 'Standarddauer, Tageszeit, Kapazität', icon: I.einstellungen },
+  { id: 'standards', name: 'Std', titel: 'Standarddauer, Tageszeit, Kapazität', icon: I.einstellungen },
   { id: 'board', name: 'Board', titel: 'Board-Spalten und Spaltengruppen', icon: I.board },
-  { id: 'kalender', name: 'Kalender', titel: 'Externe Kalender (Google, iCloud)', icon: I.kalenderSync },
-  { id: 'aktualisierung', name: 'Updates', titel: 'Automatische Aktualisierung', icon: I.aktualisierung },
+  { id: 'kalender', name: 'Ext. Kalender', titel: 'Externe Kalender (Google, iCloud)', icon: I.kalenderSync },
+  { id: 'aktualisierung', name: 'Update', titel: 'Automatische Aktualisierung', icon: I.aktualisierung },
 ];
 /** zuletzt gewählter Reiter (pro Gerät im Browser-Speicher) */
 let reiter: Reiter = (localStorage.getItem('rb-einstellungen-reiter') as Reiter) ?? 'standards';
