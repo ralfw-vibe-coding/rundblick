@@ -953,3 +953,10 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
    sonst ist das Raster schmaler und die Tagesrahmen (heute/markiert) springen zwischen Kopf und Raster */
 .wk-scroll { scrollbar-gutter: stable; }
 .wk-h, .wk-res { overflow-y: hidden; scrollbar-gutter: stable; }
+/* Timeline: Einfügemarke beim Ziehen; Beschriftungen mit Zeigefinger (Klick öffnet, Ziehen geht trotzdem) */
+.tl2-marke { position: absolute; top: 0; bottom: 0; pointer-events: none; z-index: 5; }
+.tl2-marke.zeit { border-left: 2px solid var(--own); background: color-mix(in srgb, var(--own) 10%, transparent); }
+.tl2-marke.tag { background: color-mix(in srgb, var(--own) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--own) 40%, transparent); }
+.tl2-marke .lz { position: absolute; top: 2px; left: 4px; white-space: nowrap; font-size: 11px; font-weight: 600; color: #fff; background: var(--own); border-radius: 4px; padding: 0 6px; line-height: 16px; }
+.tl2-label[draggable="true"], .tl2-label[draggable="true"]:active { cursor: pointer; }
+.tl2-zone.over { background: transparent; }

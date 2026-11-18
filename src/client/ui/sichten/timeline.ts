@@ -4,11 +4,12 @@
 //   Strichzeile: Termine als Striche von Beginn bis Ende, bei Überlappung gestaffelt (eigene + externe).
 //   Überfahren → Tooltip; Klick → Info-Fenster; nochmal klicken (auf Eintrag oder Fenster) → Schublade.
 //   Markierter Tag → darunter Leitlinien von jedem Eintrag zu einer Beschriftung mit Details.
-import { dauerText, differenz, kurz, kw, monat, relativ, tagImMonat, uhrzeit, WT, WT_LANG, wochentag } from '../../../basis/datum';
+import { plusTage, dauerText, differenz, kurz, kw, monat, relativ, tagImMonat, uhrzeit, WT, WT_LANG, wochentag } from '../../../basis/datum';
 import type { BuchungDto, ExternDto, Tag, Zeitraum } from '../../../body/interface';
 import { kapazitaetsBalken } from '../bausteine';
 import { aufgabeOeffnen, buchungOeffnen, externOeffnen } from '../detail';
 import { esc } from '../dom';
+import { body } from '../body';
 import { I } from '../icons';
 
 type Oeffnen = { art: 'aufgabe'; id: string } | { art: 'buchung'; id: string } | { art: 'extern'; id: string; datum: string };
@@ -203,10 +204,56 @@ function oeffnen(o: Oeffnen): void {
   else void externOeffnen(o.id, o.datum);
 }
 
+// ---------- Einfügemarke beim Ziehen über die Timeline ----------
+// Strichzeile: senkrechte Linie am Terminbeginn (15-Minuten-Raster, wie beim Ablegen) mit „von–bis“.
+// Symbolzeile: der ganze Tag wird als Ziel für eine Reservierung hervorgehoben.
+let zugDauer = 60, standarddauer = 60;
+addEventListener('dragstart', e => {
+  zugDauer = standarddauer;
+  const b = (e.target as HTMLElement).closest<HTMLElement>('[data-booking]');
+  if (b) void body.buchung({ buchungId: b.dataset.booking! }).then(x => { if (x) zugDauer = x.dauer; });
+}, true);
+addEventListener('dragend', () => document.querySelectorAll('.tl2-marke').forEach(m => m.remove()), true);
+addEventListener('drop', () => document.querySelectorAll('.tl2-marke').forEach(m => m.remove()), true);
+
+function markeZeigen(koerper: HTMLElement, zone: HTMLElement, clientX: number): void {
+  let host: HTMLElement | null = koerper;
+  while (host && !(host as HTMLElement & { _tl?: unknown })._tl) host = host.parentElement;
+  if (!host) return;
+  const t = (host as HTMLElement & { _tl: { start: string; pph: number; h0: number; h1: number } })._tl;
+  const dayW = (t.h1 - t.h0) * t.pph;
+  const xx = clientX - zone.getBoundingClientRect().left;
+  const i = Math.floor(xx / dayW), datum = plusTage(t.start, i);
+  let m = koerper.querySelector<HTMLElement>(':scope > .tl2-marke');
+  if (!m) { m = document.createElement('div'); m.className = 'tl2-marke'; koerper.appendChild(m); }
+  if (zone.dataset.dropTl === 'termin') {
+    const min = Math.max(t.h0 * 60, Math.min(t.h1 * 60 - 15, Math.round((t.h0 * 60 + ((xx - i * dayW) / t.pph) * 60) / 15) * 15));
+    m.className = 'tl2-marke zeit';
+    m.style.left = `${i * dayW + ((min - t.h0 * 60) / 60) * t.pph}px`;
+    m.style.width = `${Math.max(2, (zugDauer / 60) * t.pph)}px`;
+    m.innerHTML = `<span class="lz">${WT[wochentag(datum)]} ${uhrzeit(min)}–${uhrzeit(Math.min(24 * 60, min + zugDauer))}</span>`;
+  } else {
+    m.className = 'tl2-marke tag';
+    m.style.left = `${i * dayW}px`;
+    m.style.width = `${dayW}px`;
+    m.innerHTML = `<span class="lz">Reservierung · ${WT[wochentag(datum)]} ${kurz(datum)}</span>`;
+  }
+}
+
 /** an die Timeline-Fläche binden (einmal je Zeichnung) */
 export function timelineBinden(el: HTMLElement): void {
   const tl = el.querySelector<HTMLElement>('.tl2');
   if (!tl) return;
+  void body.einstellungen().then(e => { standarddauer = e.standarddauer; });
+  const koerper = tl.querySelector<HTMLElement>('.tl2-koerper');
+  tl.addEventListener('dragover', e => {
+    const zone = (e.target as HTMLElement).closest<HTMLElement>('.tl2-zone');
+    if (!zone || !koerper) { koerper?.querySelector('.tl2-marke')?.remove(); return; }
+    markeZeigen(koerper, zone, e.clientX);
+  });
+  tl.addEventListener('dragleave', e => {
+    if (!tl.contains(e.relatedTarget as Node)) koerper?.querySelector('.tl2-marke')?.remove();
+  });
   tl.addEventListener('click', ev => {
     const t = (ev.target as HTMLElement).closest<HTMLElement>('[data-tl]');
     if (!t) return;
