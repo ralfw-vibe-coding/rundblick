@@ -80,6 +80,8 @@ export type EinstellungenDto = {
   spalten: StatusInfo[];
   kapazitaet: Minuten[];
   standarddauer: Minuten;
+  /** im Kalender sichtbare Tageszeit (volle Stunden, pro Gerät); davor/danach nur bei Terminen oder auf Wunsch */
+  tageszeit: { von: number; bis: number };
   kalender: KalenderEintrag[];
   zugriff: KalenderZugriff;
   letzteSynchronisation: string | null;
@@ -133,6 +135,7 @@ export interface Body {
   spalteEntfernen(c: { statusId: Id }): Promise<CommandStatus>;
   tageskapazitaetFestlegen(c: { wochentag: Wochentag; minuten: Minuten }): Promise<CommandStatus>;
   standarddauerFestlegen(c: { minuten: Minuten }): Promise<CommandStatus>;
+  tageszeitFestlegen(c: { von: number; bis: number }): Promise<CommandStatus>;
   // ---- Commands: externe Kalender & Gerät
   kalenderEinstellen(c: { kalenderId: string; sichtbar?: boolean; belegt?: boolean }): Promise<CommandStatus>;
   kalenderZugriffAnfragen(): Promise<CommandStatus>;
@@ -162,7 +165,7 @@ export type BodyMethode = Exclude<keyof Body, 'beiAenderung'>;
 export const BODY_METHODEN: readonly BodyMethode[] = [
   'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen', 'aufgabeVerschieben',
   'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung',
-  'spalteAnlegen', 'spalteUmbenennen', 'kategorieUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen',
+  'spalteAnlegen', 'spalteUmbenennen', 'kategorieUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen', 'tageszeitFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',
   'liste', 'board', 'zeitraum', 'aufgabe', 'buchung', 'einstellungen', 'erfassungVorschau', 'vorschlaege', 'layout', 'heute', 'anhang',
 ];

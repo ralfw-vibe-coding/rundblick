@@ -6,7 +6,7 @@ import { aufgabeOeffnen, buchungOeffnen, schliessen } from './detail';
 import { ICON } from './bausteine';
 import { esc, pruefe, toast } from './dom';
 import { markieren } from './frisch';
-import { H0, H1, SPANMIN } from './sichten/kalender';
+import { fensterVon } from './sichten/kalender';
 
 let heute = '';
 const heuteLaden = async () => { heute = (await body.heute()).datum; };
@@ -76,9 +76,9 @@ export function interaktionAnbinden(): void {
     const rb = t.closest<HTMLElement>('.rb[data-drop-res]'), dc = t.closest<HTMLElement>('.dcol[data-drop-day]');
     if (rb) neueFreieBuchung(e.clientX, e.clientY, rb.dataset.dropRes!, null);
     else if (dc) {
-      const r = dc.getBoundingClientRect();
-      const min = Math.floor((H0 * 60 + ((e.clientY - r.top) / r.height) * SPANMIN) / 30) * 30;
-      neueFreieBuchung(e.clientX, e.clientY, dc.dataset.dropDay!, uhrzeit(Math.max(H0 * 60, Math.min(H1 * 60 - 30, min))));
+      const r = dc.getBoundingClientRect(), f = fensterVon(dc);
+      const min = Math.floor((f.h0 * 60 + ((e.clientY - r.top) / r.height) * f.min) / 30) * 30;
+      neueFreieBuchung(e.clientX, e.clientY, dc.dataset.dropDay!, uhrzeit(Math.max(f.h0 * 60, Math.min(f.h1 * 60 - 30, min))));
     }
   });
 
@@ -102,7 +102,7 @@ export function interaktionAnbinden(): void {
       void body.buchung({ buchungId: b.dataset.booking! }).then(x => { if (x) z.dauer = x.dauer; });
       const spalte = b.closest<HTMLElement>('.dcol');
       if (spalte && b.classList.contains('ev')) {
-        z.versatz = ((e.clientY - b.getBoundingClientRect().top) / spalte.getBoundingClientRect().height) * SPANMIN;
+        z.versatz = ((e.clientY - b.getBoundingClientRect().top) / spalte.getBoundingClientRect().height) * fensterVon(spalte).min;
       }
     }
     e.dataTransfer!.setData('text/plain', JSON.stringify(zug));
@@ -146,8 +146,8 @@ export function interaktionAnbinden(): void {
       let host: HTMLElement | null = z;
       while (host && !(host as HTMLElement & { _tl?: unknown })._tl) host = host.parentElement;
       if (!host) return;
-      const tl = (host as HTMLElement & { _tl: { start: string; pph: number } })._tl;
-      const dayW = (H1 - H0) * tl.pph;
+      const tl = (host as HTMLElement & { _tl: { start: string; pph: number; h0: number; h1: number } })._tl;
+      const H0 = tl.h0, H1 = tl.h1, dayW = (H1 - H0) * tl.pph;
       const xx = e.clientX - z.getBoundingClientRect().left;
       const i = Math.floor(xx / dayW), datum = plusTage(tl.start, i);
       const min = Math.round((H0 * 60 + ((xx - i * dayW) / tl.pph) * 60) / 15) * 15;
@@ -161,7 +161,7 @@ export function interaktionAnbinden(): void {
     if (!griff) return;
     e.preventDefault(); e.stopPropagation();
     const ev = griff.parentElement!, spalte = ev.closest<HTMLElement>('.dcol')!;
-    const proPx = SPANMIN / spalte.clientHeight, start = e.clientY, alt = Number(griff.dataset.dauer), hoehe = ev.offsetHeight;
+    const proPx = fensterVon(spalte).min / spalte.clientHeight, start = e.clientY, alt = Number(griff.dataset.dauer), hoehe = ev.offsetHeight;
     ev.draggable = false;
     let neu = alt;
     const bewegen = (m: PointerEvent) => {
@@ -192,17 +192,18 @@ export function interaktionAnbinden(): void {
 // ---------- Einfügemarke beim Ziehen in Tages-, 3-Tages- und Wochenansicht ----------
 /** Startminute (15-Minuten-Raster) für die Mausposition in einer Tagesspalte */
 function startImRaster(spalte: HTMLElement, clientY: number, z: { dauer: number; versatz: number }): number {
-  const r = spalte.getBoundingClientRect();
-  const roh = H0 * 60 + ((clientY - r.top) / r.height) * SPANMIN - z.versatz;
-  return Math.max(H0 * 60, Math.min(H1 * 60 - 15, Math.round(roh / 15) * 15));
+  const r = spalte.getBoundingClientRect(), f = fensterVon(spalte);
+  const roh = f.h0 * 60 + ((clientY - r.top) / r.height) * f.min - z.versatz;
+  return Math.max(f.h0 * 60, Math.min(f.h1 * 60 - 15, Math.round(roh / 15) * 15));
 }
 
 let markeEl: HTMLDivElement | null = null;
 function marke(spalte: HTMLElement, start: number, dauer: number): void {
   if (!markeEl) { markeEl = document.createElement('div'); markeEl.className = 'einfuegemarke'; }
   if (markeEl.parentElement !== spalte) spalte.appendChild(markeEl);
-  const pct = (m: number) => ((m - H0 * 60) / SPANMIN) * 100;
-  const ende = Math.min(start + dauer, H1 * 60);
+  const f = fensterVon(spalte);
+  const pct = (m: number) => ((m - f.h0 * 60) / f.min) * 100;
+  const ende = Math.min(start + dauer, f.h1 * 60);
   markeEl.style.top = `${pct(start)}%`;
   markeEl.style.height = `${pct(ende) - pct(start)}%`;
   markeEl.innerHTML = `<span class="zeit">${uhrzeit(start)}–${uhrzeit(start + dauer)}</span>`;

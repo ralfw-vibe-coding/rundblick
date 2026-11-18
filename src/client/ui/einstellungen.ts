@@ -19,6 +19,10 @@ export async function einstellungenUmschalten(): Promise<void> {
   panel.addEventListener('change', async e => {
     const t = e.target as HTMLInputElement;
     if (t.dataset.kal) pruefe(await body.kalenderEinstellen({ kalenderId: t.dataset.kal, [t.dataset.f!]: t.checked }));
+    if (t.dataset.tz) {
+      const von = Number(panel!.querySelector<HTMLSelectElement>('[data-tz="von"]')!.value), bis = Number(panel!.querySelector<HTMLSelectElement>('[data-tz="bis"]')!.value);
+      pruefe(await body.tageszeitFestlegen({ von, bis }));
+    }
     if (t.dataset.wt) pruefe(await body.tageskapazitaetFestlegen({ wochentag: Number(t.dataset.wt) as Wochentag, minuten: Math.round(Number(t.value.replace(',', '.')) * 60) }));
     if (t.dataset.spName) pruefe(await body.spalteUmbenennen({ statusId: t.dataset.spName, name: t.value }));
     if (t.dataset.katName) pruefe(await body.kategorieUmbenennen({ kategorie: t.dataset.katName as KategorieId, name: t.value }));
@@ -86,6 +90,9 @@ export async function einstellungenZeichnen(): Promise<void> {
     ${e.letzteSynchronisation ? `<div class="info">zuletzt aktualisiert: ${new Date(e.letzteSynchronisation).toLocaleString('de-DE')}</div>` : ''}
     <h4>Standarddauer neuer Buchungen</h4>
     <div class="durq">${[15, 30, 45, 60, 90, 120].map(m => `<button data-std="${m}" class="${e.standarddauer === m ? 'on' : ''}">${dauerText(m).replace(' ', '')}</button>`).join('')}</div>
+    <h4>Tageszeit im Kalender</h4>
+    <div class="tageszeit">von <select data-tz="von">${stunden(0, 22, e.tageszeit.von)}</select> bis <select data-tz="bis">${stunden(2, 24, e.tageszeit.bis)}</select> Uhr
+      <span class="muted" style="font-size:11px">· davor/danach nur bei Terminen oder per Schalter in der Ansicht</span></div>
     <h4>Tageskapazität (Stunden)</h4>
     <div class="kapgrid">${WT.map((w, i) => `<label>${w}<input type="number" min="0" max="24" step="0.5" data-wt="${i + 1}" value="${e.kapazitaet[i]! / 60}"></label>`).join('')}</div>
     <h4>Board-Spalten</h4>
@@ -96,3 +103,6 @@ export async function einstellungenZeichnen(): Promise<void> {
     <div class="info">Ordner: ${esc(e.datenordner)}<br>Gerät: ${esc(e.geraet)} (eigene Event-Datei: events/${esc(e.geraet)}.jsonl)</div>`;
   if (aktiv?.wt) panel.querySelector<HTMLInputElement>(`[data-wt="${aktiv.wt}"]`)?.focus();
 }
+
+const stunden = (von: number, bis: number, gewaehlt: number) =>
+  Array.from({ length: bis - von + 1 }, (_, i) => von + i).map(h => `<option value="${h}" ${h === gewaehlt ? 'selected' : ''}>${String(h).padStart(2, '0')}</option>`).join('');

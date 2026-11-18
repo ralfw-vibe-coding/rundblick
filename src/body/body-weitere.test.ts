@@ -69,6 +69,17 @@ describe('Commands über den Body', () => {
     expect(await body.schnellErfassen({ text: '>xyz Friseur' })).toMatchObject({ ok: false });
   });
 
+  it('Tageszeit: Standard 7–21, gültige Werte werden gespeichert, ungültige abgelehnt', async () => {
+    const { body, gemeldet } = aufbau();
+    expect((await body.einstellungen()).tageszeit).toEqual({ von: 7, bis: 21 });
+    expect(await body.tageszeitFestlegen({ von: 6, bis: 22 })).toEqual({ ok: true });
+    expect(gemeldet.at(-1)).toEqual(['kalender', 'einstellungen']);
+    expect((await body.einstellungen()).tageszeit).toEqual({ von: 6, bis: 22 });
+    for (const x of [{ von: 10, bis: 11 }, { von: -1, bis: 8 }, { von: 8, bis: 25 }, { von: 7.5, bis: 20 }, { von: 20, bis: 8 }]) {
+      expect(await body.tageszeitFestlegen(x)).toMatchObject({ ok: false });
+    }
+  });
+
   it('Layout speichern und laden', async () => {
     const { body } = aufbau();
     expect(await body.layout()).toBeNull();

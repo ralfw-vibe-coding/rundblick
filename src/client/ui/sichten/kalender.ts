@@ -11,10 +11,32 @@ import { I } from '../icons';
 import type { Dichte, Sicht } from './sicht';
 
 export type KalAnsicht = 'tag' | 'tage3' | 'woche' | 'monat' | 'monate3' | 'timeline';
-export type KalZustand = { ansicht: KalAnsicht; anker: string | null; pph: number };
+export type KalZustand = { ansicht: KalAnsicht; anker: string | null; pph: number; ganzerTag?: boolean };
 
-export const H0 = 7, H1 = 21, SPAN = H1 - H0, SPANMIN = SPAN * 60;
+// Sichtbares Zeitfenster: eingestellte Tageszeit (KERN), erweitert um Termine davor/danach oder ganzer Tag.
+// Die Werte gelten jeweils für das gerade gezeichnete Raster; am Raster stehen sie als data-h0/data-h1,
+// damit Ziehen, Doppelklick und Dauer-Ziehen (interaktion.ts) mit demselben Fenster rechnen.
+let H0 = 7, H1 = 21, SPAN = 14, SPANMIN = 840, KERN = { von: 7, bis: 21 };
+function fensterSetzen(h0: number, h1: number, kern: { von: number; bis: number }): void {
+  H0 = h0; H1 = h1; SPAN = h1 - h0; SPANMIN = SPAN * 60; KERN = kern;
+}
 const pct = (min: number) => ((min - H0 * 60) / SPANMIN) * 100;
+/** Zeitfenster des Rasters, in dem ein Element liegt (für Interaktionen) */
+export function fensterVon(el: Element): { h0: number; h1: number; min: number } {
+  const r = el.closest<HTMLElement>('[data-h0]');
+  const h0 = Number(r?.dataset.h0 ?? 7), h1 = Number(r?.dataset.h1 ?? 21);
+  return { h0, h1, min: (h1 - h0) * 60 };
+}
+/** Tageszeit, erweitert auf volle Stunden um alle zeitgebundenen Termine der Tage */
+function erweitertesFenster(tage: Tag[], kern: { von: number; bis: number }): [number, number] {
+  let h0 = kern.von, h1 = kern.bis;
+  for (const t of tage) {
+    for (const b of t.termine) { h0 = Math.min(h0, Math.floor(b.s / 60)); h1 = Math.max(h1, Math.ceil(Math.min(b.e, 1440) / 60)); }
+    for (const x of t.extern) if (x.start !== null) { h0 = Math.min(h0, Math.floor(x.start / 60)); h1 = Math.max(h1, Math.ceil(Math.min(x.ende!, 1440) / 60)); }
+  }
+  return [Math.max(0, h0), Math.min(24, h1)];
+}
+const ZEITANSICHTEN: KalAnsicht[] = ['tag', 'tage3', 'woche'];
 const NAMEN: Record<KalAnsicht, string> = { tag: 'Tag', tage3: '3 Tage', woche: 'Woche', monat: 'Monat', monate3: '3 Monate', timeline: 'Timeline' };
 
 type Ev = { kind: 'own' | 'extern'; s: number; e: number; lane: number; n: number; titel: string; b?: BuchungDto & { s: number; e: number }; x?: ExternDto };
@@ -51,8 +73,11 @@ export class KalenderSicht implements Sicht {
       return;
     }
     const [von, bis] = this.bereich(anker);
-    const z = await body.zeitraum({ von, bis });
+    const [z, e] = await Promise.all([body.zeitraum({ von, bis }), body.einstellungen()]);
     this.heute = z.heute;
+    const zeitansicht = ZEITANSICHTEN.includes(this.z.ansicht);
+    const [h0, h1] = zeitansicht && this.z.ganzerTag ? [0, 24] : erweitertesFenster(z.tage, e.tageszeit);
+    fensterSetzen(h0, h1, e.tageszeit);
     let inhalt = '';
     switch (this.z.ansicht) {
       case 'tag': {
@@ -68,6 +93,7 @@ export class KalenderSicht implements Sicht {
     el.innerHTML = `<div class="cal ${dichte}">
       <div class="cal-tb">
         ${this.ansichten.length > 1 ? `<div class="seg">${this.ansichten.map(v => `<button data-cal-view="${v}" class="${this.z.ansicht === v ? 'on' : ''}">${NAMEN[v]}</button>`).join('')}</div>` : ''}
+        ${zeitansicht ? `<button class="ganztag ${this.z.ganzerTag ? 'on' : ''}" data-cal-ganz="1" title="${this.z.ganzerTag ? 'Nur Tageszeit zeigen (davor/danach nur, wenn dort Termine sind)' : `Ganzen Tag zeigen (0–24 Uhr) – sonst ${e.tageszeit.von}–${e.tageszeit.bis} Uhr`}">${this.z.ganzerTag ? I.einklappen : I.ausklappen}</button>` : ''}
         <div class="nav"><button data-cal-nav="-1" title="zurück">${I.links}</button><button data-cal-nav="0">Heute</button><button data-cal-nav="1" title="vor">${I.rechts}</button></div>
         ${this.z.ansicht !== 'timeline' ? `<span class="title">${titel(this.z.ansicht, anker)}</span>`
           : `<span class="zoom">Zoom <input type="range" min="2" max="48" value="${this.z.pph}" data-cal-zoom /> <span>${this.z.pph < 6 ? 'Wochen' : this.z.pph < 20 ? 'Tage' : 'Stunden'}</span></span>`}
@@ -82,6 +108,7 @@ export class KalenderSicht implements Sicht {
     el.onclick = e => {
       const t = e.target as HTMLElement;
       const v = t.closest<HTMLElement>('[data-cal-view]'), n = t.closest<HTMLElement>('[data-cal-nav]');
+      if (t.closest('[data-cal-ganz]')) { this.z.ganzerTag = !this.z.ganzerTag; void this.neu(); return; }
       if (v) { this.z.ansicht = v.dataset.calView as KalAnsicht; this.scrollX = null; void this.neu(); }
       if (n) {
         const k = Number(n.dataset.calNav);
@@ -101,7 +128,7 @@ export class KalenderSicht implements Sicht {
     };
     if (this.z.ansicht === 'woche' || this.z.ansicht === 'tag' || this.z.ansicht === 'tage3') {
       const sc = el.querySelector<HTMLElement>('.wk-scroll');
-      if (sc && this.dichte === 'full') sc.scrollTop = ((8 - H0) / SPAN) * sc.scrollHeight - 10;
+      if (sc && this.dichte === 'full') sc.scrollTop = Math.max(0, ((KERN.von - H0) / SPAN) * sc.scrollHeight - 10);
     }
     if (this.z.ansicht === 'timeline') {
       const sc = el.querySelector<HTMLElement>('.tl-scroll')!;
@@ -123,7 +150,7 @@ export class KalenderSicht implements Sicht {
         ev.preventDefault();
         zoom(this.z.pph * Math.exp(-ev.deltaY * 0.01), ev.clientX - sc.getBoundingClientRect().left);
       };
-      (el as HTMLElement & { _tl?: unknown })._tl = { start, pph: this.z.pph };
+      (el as HTMLElement & { _tl?: unknown })._tl = { start, pph: this.z.pph, h0: H0, h1: H1 };
     }
   }
 
@@ -193,9 +220,12 @@ function woche(z: Zeitraum, tage: Tag[], dichte: Dichte): string {
   for (let h = H0 + 1; h < H1; h++) stunden += `<span style="top:${((h - H0) / SPAN) * 100}%">${h}</span>`;
   const spalten = tage.map(t => {
     const jetzt = t.datum === z.heute && z.jetzt >= H0 * 60 && z.jetzt <= H1 * 60 ? `<div class="nowline" style="top:${pct(z.jetzt)}%"></div>` : '';
-    return `<div class="dcol ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-day="${t.datum}">${ereignisse(t).map(e => evHtml(e, dichte)).join('')}${jetzt}</div>`;
+    // Stunden außerhalb der eingestellten Tageszeit dezent schraffiert
+    const davor = KERN.von > H0 ? `<div class="ausserhalb" style="top:0;height:${pct(KERN.von * 60)}%"></div>` : '';
+    const danach = KERN.bis < H1 ? `<div class="ausserhalb" style="top:${pct(KERN.bis * 60)}%;bottom:0"></div>` : '';
+    return `<div class="dcol ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-day="${t.datum}">${davor}${danach}${ereignisse(t).map(e => evHtml(e, dichte)).join('')}${jetzt}</div>`;
   }).join('');
-  return `<div class="wk ${dichte}" style="--n:${n}">
+  return `<div class="wk ${dichte}" style="--n:${n};--stunden:${SPAN}" data-h0="${H0}" data-h1="${H1}">
     <div class="wk-row wk-h"><div></div>${kopf}</div>
     <div class="wk-row wk-res"><div class="lbl">Reser&shy;vie&shy;rung</div>${band}</div>
     <div class="wk-scroll"><div class="wk-grid"><div class="wk-row"><div class="hours">${stunden}</div>${spalten}</div></div></div>

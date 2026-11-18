@@ -26,6 +26,8 @@ export type BodyAbhaengigkeiten = {
 };
 
 const status = (e: Ergebnis, ids?: Record<string, string>): CommandStatus => (e.ok ? (ids ? { ok: true, ids } : { ok: true }) : e);
+/** bisheriges festes Fenster des Kalenders */
+export const TAGESZEIT_STANDARD = { von: 7, bis: 21 };
 const VORLAUF = 35, NACHLAUF = 200;
 
 export class RundblickBody implements Body {
@@ -124,6 +126,15 @@ export class RundblickBody implements Body {
   async tageskapazitaetFestlegen(c: Parameters<Body['tageskapazitaetFestlegen']>[0]) { return status(this.x.domain.tageskapazitaetFestlegen(c)); }
   async standarddauerFestlegen(c: Parameters<Body['standarddauerFestlegen']>[0]) { return status(this.x.domain.standarddauerFestlegen(c)); }
 
+  /** Sichtbare Tageszeit im Kalender – Darstellung pro Gerät, deshalb in den Einstellungen statt als Event */
+  async tageszeitFestlegen(c: { von: number; bis: number }): Promise<CommandStatus> {
+    const ganz = (x: number) => Number.isInteger(x) && x >= 0 && x <= 24;
+    if (!ganz(c.von) || !ganz(c.bis) || c.bis - c.von < 2) return { ok: false, fehler: ['Tageszeit: volle Stunden zwischen 0 und 24, mindestens 2 Stunden.'] };
+    this.x.einstellungen.schreiben('tageszeit', { von: c.von, bis: c.bis });
+    this.melde(['kalender', 'einstellungen']);
+    return { ok: true };
+  }
+
   // ---------------- Commands: externe Kalender & Gerät ----------------
   async kalenderEinstellen(c: { kalenderId: string; sichtbar?: boolean; belegt?: boolean }): Promise<CommandStatus> {
     const alle = this.kalenderEinstellungen();
@@ -203,6 +214,7 @@ export class RundblickBody implements Body {
       kategorien: d.kategorien(),
       spalten: d.spalten().map(s => ({ id: s.id, name: s.name, kategorie: s.kategorie })),
       kapazitaet: p.kapazitaet, standarddauer: p.standarddauer,
+      tageszeit: this.x.einstellungen.lesen('tageszeit', TAGESZEIT_STANDARD),
       kalender: this.x.cache.kalender().map(k => ({ ...k, ...(e[k.id] ?? KALENDER_STANDARD) })),
       zugriff: this.zugriffStand, letzteSynchronisation: this.x.cache.stand().zuletzt,
       datenordner: this.x.info.datenordner, geraet: this.x.info.geraet,

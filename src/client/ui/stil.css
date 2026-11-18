@@ -734,3 +734,12 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 @keyframes rb-pulsen { 50% { opacity: .35; transform: scale(.88); } }
 /* „−“ (Arbeitsbereich löschen) im Frage-Zustand */
 .ws .add.fragen { background: var(--over); color: #fff; font-weight: 700; }
+/* Sichtbares Zeitfenster: Raster so hoch wie die Stundenzahl; Zeit außerhalb der Tageszeit schraffiert */
+.wk.full .wk-grid { height: calc(var(--hh, 46px) * var(--stunden, 14)); }
+.dcol { background-size: 100% calc(100% / var(--stunden, 14)); }
+.dcol .ausserhalb { position: absolute; left: 0; right: 0; pointer-events: none; background: repeating-linear-gradient(135deg, rgba(0,0,0,.035) 0 6px, transparent 6px 12px); }
+.cal-tb .ganztag { border: 1px solid var(--line); background: #fff; border-radius: 5px; width: 26px; height: 24px; padding: 0; display: grid; place-items: center; color: var(--ink2); }
+.cal-tb .ganztag.on { background: var(--own-soft); border-color: var(--own); color: var(--own); }
+.cal-tb .ganztag svg.lu { width: 14px; height: 14px; }
+.einst .tageszeit { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.einst .tageszeit select { border: 1px solid var(--line2); border-radius: 5px; padding: 2px 4px; font: inherit; background: #fff; }
