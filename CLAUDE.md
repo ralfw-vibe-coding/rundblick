@@ -4,7 +4,7 @@ Electron-App für Aufgaben, Board und Kalender. Sprache in Oberfläche, Code-Bez
 Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15). Bedienung: `README.md`.
 
 ## Arbeitsweise
-- **Regelmäßig committen** (Repo `rundblick/`), Commit-Nachrichten auf Deutsch.
+- **Regelmäßig committen** (Repo `rundblick/`), Commit-Nachrichten auf Deutsch. GitHub: **öffentlich** unter `ralfw-vibe-coding/rundblick` (Remote `origin`, Zweig `main`) – nach Commits pushen; nichts Privates einchecken (Daten liegen in der Dropbox, nicht im Repo).
 - Vor jedem Commit: `npm run check` (Typecheck, Schichtregeln mit dependency-cruiser, Tests mit **≥ 90 % Abdeckung** für `src/body`, `src/domain`, `src/providers` – sonst bricht der Check ab).
 - App bauen und starten: `npm run app` → `dist/mac-arm64/Rundblick.app`, signiert mit **„HyperRec Code Signing“** (Schlüsselbund). Läuft die App, vorher `osascript -e 'quit app "Rundblick"'`, danach `open dist/mac-arm64/Rundblick.app`.
 - Sichtprüfung ohne die Daten des Nutzers anzufassen: `RB_PROFIL=/tmp/rb-prof RB_DATEN=/tmp/rb-s1 RB_KALENDER=beispiel RB_SCREENSHOT=/tmp/x.png RB_JS='(async()=>{…; return ergebnis})()' npx electron .` (vorher `npx electron-vite build`). Das Ergebnis von `RB_JS` erscheint als `RB_JS → …` auf der Konsole. Achtung: In diesem Modus hat das Fenster keinen System-Fokus – `focus()`/`blur()` lösen **keine** focusin/focusout-Ereignisse aus; im Test selbst `dispatchEvent(new FocusEvent('focusin'|'focusout', {bubbles:true}))` senden.
