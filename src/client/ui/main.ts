@@ -1,7 +1,7 @@
 // Einstieg der Oberfläche: Raster, Schnellerfassung, Einstellungen und Tastatur verdrahten.
 import { body } from './body';
 import { auffrischen, offen as schubladeOffen, schliessen as schubladeSchliessen, schliessenWenn as schubladeSchliessenWenn } from './detail';
-import { $, tippt } from './dom';
+import { $, pruefe, tippt } from './dom';
 import { einstellungenOffen, einstellungenSchliessen, einstellungenUmschalten, einstellungenZeichnen } from './einstellungen';
 import { interaktionAnbinden, zweistufigAnbinden } from './interaktion';
 import { I } from './icons';
@@ -13,6 +13,23 @@ const raster = new Raster($('#area'), $('#ws'));
 const erfassung = schnellerfassungAnbinden($('#qc'));
 interaktionAnbinden();
 $('#einstBtn').innerHTML = I.einstellungen;
+
+// Kalender manuell aktualisieren: Symbol dreht sich, solange geladen wird; Tooltip zeigt den letzten Stand
+const syncBtn = $('#syncBtn');
+syncBtn.innerHTML = I.zuruecksetzen;
+const syncTitel = async () => {
+  const z = (await body.einstellungen()).letzteSynchronisation;
+  syncBtn.title = `Kalender aktualisieren${z ? ` · zuletzt ${new Date(z).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr` : ''}`;
+};
+void syncTitel();
+syncBtn.onclick = async () => {
+  if (syncBtn.classList.contains('dreht')) return;
+  syncBtn.classList.add('dreht');
+  const [r] = await Promise.all([body.synchronisieren(), new Promise(ok => setTimeout(ok, 700))]);
+  syncBtn.classList.remove('dreht');
+  pruefe(r);
+  void syncTitel();
+};
 $('#einstBtn').onclick = () => void einstellungenUmschalten();
 document.addEventListener('mousedown', e => {
   if (einstellungenOffen() && !(e.target as HTMLElement).closest('.einst, #einstBtn')) einstellungenSchliessen();
@@ -21,7 +38,7 @@ document.addEventListener('mousedown', e => {
 body.beiAenderung(bereiche => {
   raster.aktualisieren(bereiche);
   void auffrischen();
-  if (bereiche.includes('einstellungen') || bereiche.includes('kalender')) void einstellungenZeichnen();
+  if (bereiche.includes('einstellungen') || bereiche.includes('kalender')) { void einstellungenZeichnen(); void syncTitel(); }
 });
 
 // Dateien, die nicht auf einem Ziel landen, dürfen das Fenster nicht verlassen (Electron würde sie öffnen)

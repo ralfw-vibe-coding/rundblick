@@ -4,6 +4,7 @@ import type { Bereich, Layout } from '../../body/interface';
 import { body } from './body';
 import { esc } from './dom';
 import { I } from './icons';
+import { zweistufigRegistrieren } from './interaktion';
 import { BoardSicht, type BoardZustand } from './sichten/board';
 import { KalenderSicht, type KalZustand } from './sichten/kalender';
 import { ListenSicht, type ListeZustand } from './sichten/liste';
@@ -61,6 +62,12 @@ export class Raster {
   constructor(private readonly flaeche: HTMLElement, private readonly tabs: HTMLElement) {
     this.tabs.addEventListener('click', e => this.tabKlick(e));
     this.tabs.addEventListener('dblclick', e => this.tabUmbenennen(e));
+    // „−“ ist zweistufig: 1. Klick → rotes „?“, 2. Klick löscht den aktiven Arbeitsbereich
+    zweistufigRegistrieren('arbeitsbereichLoeschen', async () => {
+      if (this.bereiche.length < 2) return;
+      this.bereiche.splice(this.aktiv, 1); this.aktiv = Math.max(0, this.aktiv - 1);
+      this.maxId = null; this.aufbauen();
+    });
     setInterval(() => this.speichern(), 4000);
     addEventListener('beforeunload', () => this.speichern());
   }
@@ -248,15 +255,12 @@ export class Raster {
   private tabsZeichnen(): void {
     this.tabs.innerHTML = this.bereiche.map((w, i) => `<button data-ws="${i}" class="${i === this.aktiv ? 'on' : ''}" title="Taste ${i + 1} · Doppelklick: umbenennen">${esc(w.name)}</button>`).join('')
       + `<button class="add" data-ws="neu" title="Neuer Arbeitsbereich">${I.plus}</button>`
-      + (this.bereiche.length > 1 ? `<button class="add" data-ws="weg" title="Diesen Arbeitsbereich löschen">${I.minus}</button>` : '')
-      + `<button class="add" data-ws="reset" title="Arbeitsbereiche auf Vorlagen zurücksetzen">${I.zuruecksetzen}</button>`;
+      + (this.bereiche.length > 1 ? `<button class="add" data-zweistufig="arbeitsbereichLoeschen" data-id="aktiv" title="Diesen Arbeitsbereich löschen">${I.minus}</button>` : '');
   }
   private tabKlick(e: Event): void {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-ws]'); if (!b) return;
     const w = b.dataset.ws!;
     if (w === 'neu') { this.bereiche.push({ name: `Bereich ${this.bereiche.length + 1}`, wurzel: Z(null) }); this.aktiv = this.bereiche.length - 1; }
-    else if (w === 'weg') { if (!confirm(`Arbeitsbereich „${this.bereiche[this.aktiv]!.name}“ löschen?`)) return; this.bereiche.splice(this.aktiv, 1); this.aktiv = Math.max(0, this.aktiv - 1); }
-    else if (w === 'reset') { if (!confirm('Alle Arbeitsbereiche auf die Vorlagen zurücksetzen?')) return; this.bereiche = vorlagen(); this.aktiv = 0; }
     else this.aktiv = Number(w);
     this.maxId = null; this.aufbauen();
   }

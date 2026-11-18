@@ -24,6 +24,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - **Nur Lucide-Icons** (`src/client/ui/icons.ts`, Objekt `I`). Keine Unicode-Symbole als Icons, keine eigenen SVGs. `<select>`-Optionen können kein SVG → Icon daneben.
 - **Zerstörende Aktionen zweistufig, keine Bestätigungsdialoge:** Symbol (Mülleimer, bei Bildern „×“) → 1. Klick verwandelt es in ein rotes „?“ → 2. Klick führt aus. Klick woanders oder 5 s ohne Klick → zurück. Umsetzung: `data-zweistufig="<aktion>"` + Handler `ZWEISTUFIG` in `interaktion.ts`.
 - Oberfläche = frei teilbares Raster mit Arbeitsbereichen; Überblick ist King.
+- Kopfzeile: Arbeitsbereiche · „+“ neuer Arbeitsbereich · „−“ aktuellen löschen (zweistufig) · Kalender aktualisieren · Einstellungen. Ein „Arbeitsbereiche zurücksetzen“ gibt es bewusst nicht.
 - Scrollbalken überall schmal (6 px) und dezent (hellgrau, ohne Spur) – global in `stil.css`.
 
 **Aufgabenliste**
@@ -46,7 +47,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 **Kalender**
 - Ziehen einer Aufgabe (aus Liste/Board) oder eines Termins in Tag/3 Tage/Woche: **keine Einfärbung der ganzen Tagesspalte**, sondern eine **Einfügemarke** – Linie am Terminbeginn (15-Minuten-Raster) mit Uhrzeit „von–bis“ und blassem Block in der Länge des Termins. Neue Termine bekommen die **Standarddauer** (Einstellungen), verschobene behalten ihre Dauer; beim Verschieben folgt die Marke der Oberkante des Termins (Anfasspunkt wird berücksichtigt), auch auf andere Tage.
 - **Auslastungsbalken** in Stufen (überall gleich: Band, Monat, Schublade, Timeline; Funktion `auslastungsStufe` in `bausteine.ts`): grün bis 66 % · gelb bis 85 % · rot bis 100 % · darüber rot mit Warndreieck (Lucide `TriangleAlert`). Tag ohne Kapazität mit Buchungen = überbucht.
-- **Externe Kalender** werden aktualisiert: beim Start, beim Fokussieren des Fensters, bei Änderungsmeldung von macOS (EventKit) und **alle 5 Minuten** (`src/main/index.ts`).
+- **Externe Kalender** werden aktualisiert: beim Start, beim Fokussieren des Fensters, bei Änderungsmeldung von macOS (EventKit) und **alle 5 Minuten** (`src/main/index.ts`); manuell über den Knopf mit dem Kreispfeil (Lucide `RotateCcw`) links neben dem Zahnrad – dreht sich während des Ladens, Tooltip zeigt „zuletzt HH:MM Uhr“.
 - **Seitenleiste der Tagesansicht:** nur „Überfällig“ und „Fällig <Tag>“ (plus „Taucht wieder auf“), als ziehbare Zeilen wie in der Aufgabenliste (Abschließen-Kreis, Raute in Listenfarben, gebuchte Zeit, Mülleimer; ohne Statuspunkt) – in den Tag ziehen = Termin. Keine Reservierungen, Termine oder Auslastung (stehen im Raster). Unten Hinweis: Doppelklick ins Raster/Reservierungsband = Buchung ohne Aufgabe.
 
 **Schublade (Aufgabe)**

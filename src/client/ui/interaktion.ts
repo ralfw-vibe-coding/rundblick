@@ -17,6 +17,8 @@ const ZWEISTUFIG: Record<string, (id: string) => Promise<void>> = {
   stornieren: async id => { pruefe(await body.buchungStornieren({ buchungId: id }), 'Buchung gelöscht'); },
   anhangEntfernen: async id => { const [aufgabeId, anhangId] = id.split('/'); pruefe(await body.anhangEntfernen({ aufgabeId: aufgabeId!, anhangId: anhangId! })); },
 };
+/** weitere zweistufige Aktionen (z. B. Arbeitsbereich löschen im Raster) */
+export function zweistufigRegistrieren(act: string, f: (id: string) => Promise<void>): void { ZWEISTUFIG[act] = f; }
 let fragenTimer: ReturnType<typeof setTimeout> | undefined;
 function fragenZuruecksetzen(ausser?: Element): void {
   document.querySelectorAll<HTMLElement>('[data-zweistufig].fragen').forEach(b => {
