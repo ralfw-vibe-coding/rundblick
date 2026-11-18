@@ -21,6 +21,15 @@ npm run demo           # Beispieldaten in /tmp/rundblick-demo, Beispiel-Kalender
 
 Entwicklung: `npm run dev` (Hot Reload), `npm run check` (Typecheck, Schichtregeln, Tests).
 
+## Installieren und aktualisieren
+
+```sh
+npm run app            # baut, signiert (HyperRec) und legt dist/Rundblick-<version>-b<build>-arm64.zip ab
+npm run installieren   # erste Installation nach /Applications
+```
+
+Danach aktualisiert sich Rundblick selbst: In **Einstellungen › Aktualisierung** einen Update-Ordner wählen (z. B. `dist/` dieses Repos oder einen geteilten Dropbox-Ordner). Rundblick sieht beim Start und alle 30 Minuten nach; liegt ein ZIP mit höherer Build-Nummer und gleicher Signatur dort, erscheint ein Punkt am Zahnrad und „Jetzt aktualisieren“ tauscht die App aus. Vor dem Packen committen – die Build-Nummer ist die Anzahl der Commits.
+
 ## Im Browser (z. B. für die Feedback-Extension)
 
 In der laufenden App: **Ansicht › Im Browser öffnen** (`⇧⌘B`). Das startet ein lokales Web-API auf `http://127.0.0.1:4718/` und öffnet die gleiche Oberfläche im Standardbrowser – mit denselben Daten, Änderungen erscheinen live in beiden. Nur über `127.0.0.1` erreichbar; Commands brauchen den Header `X-Rundblick: 1`, damit fremde Webseiten nichts auslösen können. Sofort beim Start: `RB_WEB=1` (Port: `RB_WEB_PORT`).
