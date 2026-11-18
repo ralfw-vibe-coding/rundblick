@@ -36,15 +36,22 @@
   .kopf .titel { font-size: 22px; font-weight: 700; letter-spacing: -.02em; flex: 1; }
   .knopf { border: 0; background: none; padding: 6px; border-radius: 10px; color: var(--ink2); display: grid; place-items: center; cursor: pointer; }
   .knopf:active { background: rgba(0,0,0,.06); }
-  .wolke { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--mute); padding: 4px 8px; border-radius: 12px; background: #fff; border: 1px solid var(--line); cursor: pointer; }
-  .wolke.wartet { color: var(--own); border-color: var(--own-soft); }
+  .wolke { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: var(--st-fertig); cursor: pointer; }
+  .wolke.wartet { color: var(--own); }
   .wolke.offline { color: var(--over); }
-  .wolke svg.lucide { width: 15px; height: 15px; }
+  .wolke svg.lucide { width: 22px; height: 22px; }
 
   .erfassen { margin: 0 12px 8px; display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line2); border-radius: 14px; padding: 10px 12px; flex: none; }
   .erfassen svg.lucide { color: var(--own); }
   .erfassen input { flex: 1; border: 0; outline: none; font: inherit; font-size: 16px; background: none; }
   .erfassen:focus-within { border-color: var(--own); box-shadow: 0 0 0 3px var(--own-soft); }
+  /* Suche: erscheint erst, wenn man die Liste oben herunterzieht */
+  .suche { margin: 0 12px; max-height: 0; opacity: 0; overflow: hidden; transition: max-height .22s, opacity .22s, margin .22s; flex: none; display: flex; gap: 8px; align-items: center; }
+  .suche.offen { max-height: 48px; opacity: 1; margin-bottom: 8px; }
+  .suche .feld2 { flex: 1; display: flex; align-items: center; gap: 6px; background: #e8e6e1; border-radius: 12px; padding: 8px 10px; color: var(--mute); }
+  .suche input { flex: 1; border: 0; background: none; outline: none; font: inherit; font-size: 16px; color: var(--ink); }
+  .suche button { border: 0; background: none; color: var(--own); font: inherit; font-size: 15px; cursor: pointer; padding: 0; }
+  .ziehhinweis { text-align: center; font-size: 12px; color: var(--mute); height: 0; overflow: hidden; transition: height .1s; flex: none; }
   .filter { margin: 0 12px 8px; display: flex; gap: 6px; overflow-x: auto; flex: none; scrollbar-width: none; }
   .filter::-webkit-scrollbar { display: none; }
   .filter span { white-space: nowrap; font-size: 13px; padding: 4px 10px; border-radius: 14px; background: #fff; border: 1px solid var(--line); color: var(--ink2); }
@@ -110,7 +117,7 @@
   .eintrag { display: flex; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); background: #fff; }
   .eintrag:last-child { border-bottom: 0; }
   .eintrag .sym { color: var(--st-fertig); flex: none; margin-top: 1px; }
-  .eintrag .sym.notiz { color: var(--own); }
+  .eintrag .sym.istnotiz { color: var(--own); }
   .eintrag .zeit { font-size: 12px; color: var(--mute); width: 38px; flex: none; margin-top: 2px; font-variant-numeric: tabular-nums; }
   .eintrag .t { font-size: 15px; line-height: 1.35; }
   .eintrag .eu { font-size: 12px; color: var(--mute); margin-top: 2px; }
@@ -143,6 +150,21 @@
   .bilder .bild { width: 64px; height: 64px; border-radius: 10px; background: linear-gradient(135deg,#dfe7f7,#f7e4d4); position: relative; }
   .bilder .bild b { position: absolute; top: -5px; left: -5px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 11px; display: grid; place-items: center; }
   .bilder .neu { width: 64px; height: 64px; border-radius: 10px; border: 1.5px dashed var(--line2); display: grid; place-items: center; color: var(--mute); }
+  /* Board: Spalten zuklappbar (schmaler Streifen mit senkrechtem Namen) */
+  .spalte-h { cursor: pointer; user-select: none; }
+  .spalte-h .chev svg.lucide { width: 14px; height: 14px; color: var(--mute); transform: rotate(90deg); transition: transform .15s; }
+  .spalte.zu { flex: 0 0 46px; scroll-snap-align: start; cursor: pointer; }
+  .spalte.zu .spalte-h { flex-direction: column; align-items: center; gap: 8px; padding: 12px 0; height: 100%; }
+  .spalte.zu .spalte-h .chev svg.lucide { transform: none; }
+  .spalte.zu .spalte-h .nm { writing-mode: vertical-rl; font-size: 14px; }
+  .spalte.zu .spalte-h .kat { display: none; }
+  /* Aufgabe: Notiz zuerst, Angaben nur bei Bedarf */
+  .angaben-zeile { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; cursor: pointer; font-size: 13px; color: var(--mute); }
+  .angaben-zeile .chev { margin-left: auto; }
+  .angaben-zeile .chev svg.lucide { width: 16px; height: 16px; transition: transform .15s; }
+  .angaben-zeile.offen .chev svg.lucide { transform: rotate(90deg); }
+  .angaben { display: flex; flex-direction: column; gap: 14px; }
+  .notiz.gross { min-height: 220px; }
   .kopf .muell2.fragen { background: var(--over); color: #fff; font-weight: 700; width: 34px; height: 34px; font-size: 18px; }
 
   /* Auswahlblatt (langes Drücken) */
@@ -168,7 +190,7 @@
 <body>
 <div class="seite">
   <h1>Rundblick Phone App – Entwurf</h1>
-  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig) · auf dem Board waagerecht wischen, Karte lange drücken = verschieben · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände).</p>
+  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig) · auf dem Board waagerecht wischen, Karte lange drücken = verschieben · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe „Angaben“ antippen = Status, Frist usw.</p>
   <div class="reihe" id="reihe"></div>
 
   <div class="erkl">
@@ -227,27 +249,30 @@ function telefon(start, titel, unter) {
 
 function app(bs, start) {
   const aufgaben = daten();
-  const z = { sicht: start === 'detail' ? 'liste' : start, offen: new Set(['ueberfaellig','heute','woche','spaeter','ohne']), wolke: 0, frisch: null };
+  const z = { sicht: start === 'detail' ? 'liste' : start, offen: new Set(['ueberfaellig','heute','woche','spaeter','ohne']), wolke: 0, frisch: null, suche: false, filter: '', spalteZu: new Set(['erledigt']), angaben: false };
   const notizen = [
     { zeit: '09:12', t: 'Telefonat mit Markus: Rohschnitt Freitag fertig #vorgestellt', notiz: true },
-    { zeit: '08:40', t: 'Workshop-Feedback auswerten', unter: 'Aufgabe abgeschlossen' },
+    { zeit: '08:40', t: 'Workshop-Feedback auswerten' },
   ];
   bs.innerHTML = `<div class="statusleiste"><span>9:41</span><span class="insel"></span><span>${ICON('wifi')}</span></div><div class="haupt" style="flex:1;min-height:0;display:flex;flex-direction:column"></div>
     <nav class="reiter"><button data-sicht="liste">${ICON('list')}Liste</button><button data-sicht="board">${ICON('square-kanban')}Board</button><button data-sicht="logbuch">${ICON('notebook-pen')}Logbuch</button></nav>
     <div class="detail"></div><div class="blatt-hg"></div><div class="blatt"></div><div class="toast"></div>`;
   const haupt = bs.querySelector('.haupt'), detail = bs.querySelector('.detail');
   const toast = t => { const e = bs.querySelector('.toast'); e.textContent = t; e.classList.add('zeigen'); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove('zeigen'), 1800); };
-  const wolke = () => [`${ICON('cloud-check')}abgeglichen`, `${ICON('cloud-upload')}2 warten`, `${ICON('cloud-off')}offline`][z.wolke];
-  const kopf = t => `<div class="kopf"><span class="logo"></span><span class="titel">${t}</span><span class="wolke ${['','wartet','offline'][z.wolke]}" data-wolke>${wolke()}</span></div>`;
+  // nur die Wolke: Haken = abgeglichen, Pfeil = Änderungen warten, durchgestrichen = offline
+  const wolke = () => [ICON('cloud-check'), ICON('cloud-upload'), ICON('cloud-off')][z.wolke];
+  const kopf = t => `<div class="kopf"><span class="logo"></span><span class="titel">${t}</span><span class="wolke ${['','wartet','offline'][z.wolke]}" data-wolke title="${['abgeglichen','2 Änderungen warten','offline'][z.wolke]}">${wolke()}</span></div>`;
+  const suche = () => `<div class="suche ${z.suche ? 'offen' : ''}"><div class="feld2">${ICON('search')}<input data-suche placeholder="Suchen … Titel, #tag, @person" value="${z.filter}"></div><button data-suche-zu>Abbrechen</button></div>`;
+  const passt = a => !z.filter || [a.titel, ...a.tags.map(t => '#' + t), a.person ? '@' + a.person : ''].join(' ').toLowerCase().includes(z.filter.toLowerCase());
   const frist = a => { if (!a.frist || a.done) return ''; const k = abschnittVon({ ...a, wv: null }); return `<span class="frist ${k === 'ohne' ? '' : k}">${ICON('diamond')}${fristText(a.frist)}</span>`; };
   const chips = a => [...a.tags.map(t => `<span class="chip">#${t}</span>`), a.person ? `<span class="chip person">@${a.person}</span>` : '', a.ort ? `<span class="chip ort">${ICON('map-pin')}${a.ort}</span>` : ''].join('');
   const sdot = a => { const s = SPALTEN.find(x => x.id === a.status); return s ? `<span class="chip"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</span>` : ''; };
 
   function liste() {
-    let h = kopf('Aufgaben') + `<div class="erfassen">${ICON('plus')}<input placeholder="Neue Aufgabe … #tag @person !fr" enterkeyhint="done"></div>
-      <div class="filter"><span class="an">Alle</span><span>#kunde</span><span>#büro</span><span>#privat</span><span>@Ralf</span></div><div class="inhalt">`;
+    let h = kopf('Aufgaben') + suche() + `<div class="erfassen">${ICON('plus')}<input placeholder="Neue Aufgabe … #tag @person !fr" enterkeyhint="done"></div>
+      <div class="inhalt" data-ziehbar>`;
     for (const [k, name] of ABSCHNITTE) {
-      const as = aufgaben.filter(a => abschnittVon(a) === k);
+      const as = aufgaben.filter(a => abschnittVon(a) === k && passt(a));
       if (!as.length) continue;
       const offen = z.offen.has(k);
       h += `<div class="abschnitt ${k} ${offen ? 'offen' : ''}" data-abschnitt="${k}">${ICON('chevron-right')}${name} <span class="n">${as.length}</span></div>`;
@@ -261,45 +286,66 @@ function app(bs, start) {
   function board() {
     const sp = SPALTEN.map(s => ({ ...s, karten: aufgaben.filter(a => a.status === s.id && !a.done) }));
     return kopf('Board') + `<div class="kats">${KATS.map(([k, v]) => `<button data-kat="${k}" style="border-bottom-color:var(${v})"><b>${sp.filter(s => s.kat === k).reduce((n, s) => n + s.karten.length, 0)}</b> ${k}</button>`).join('')}</div>
-      <div class="spalten">${sp.map(s => `<div class="spalte" data-spalte="${s.id}"><div class="spalte-h"><span class="sdot" style="background:${s.farbe}"></span>${s.name} <span class="n">${s.karten.length}</span><span class="kat">${s.kat}</span></div>
+      <div class="spalten">${sp.map(s => z.spalteZu.has(s.id)
+        ? `<div class="spalte zu" data-spalte="${s.id}"><div class="spalte-h" data-spalte-zu="${s.id}"><span class="chev">${ICON('chevron-right')}</span><span class="sdot" style="background:${s.farbe}"></span><span class="n">${s.karten.length}</span><span class="nm">${s.name}</span></div></div>`
+        : `<div class="spalte" data-spalte="${s.id}"><div class="spalte-h" data-spalte-zu="${s.id}"><span class="chev">${ICON('chevron-right')}</span><span class="sdot" style="background:${s.farbe}"></span><span class="nm">${s.name}</span> <span class="n">${s.karten.length}</span><span class="kat">${s.kat}</span></div>
         <div class="karten">${s.karten.map(a => `<div class="karte" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON('circle')}</button><div class="mitte"><div class="t">${a.titel}${frist(a)}</div>${chips(a) ? `<div class="meta">${chips(a)}</div>` : ''}</div></div>`).join('') || '<div style="color:var(--mute);font-size:13px;padding:8px 4px">leer</div>'}</div></div>`).join('')}</div>
       <div class="punkte">${sp.map((s, i) => `<i class="${i === 0 ? 'an' : ''}"></i>`).join('')}</div>`;
   }
 
   function logbuch() {
     const tage = [
-      ['Heute', notizen.map(n => `<div class="eintrag"><span class="zeit">${n.zeit}</span><span class="sym ${n.notiz ? 'notiz' : ''}">${ICON(n.notiz ? 'sticky-note' : 'circle-check')}</span><div><div class="t">${n.t}</div>${n.unter ? `<div class="eu">${n.unter}</div>` : ''}</div></div>`)],
+      ['Heute', notizen.map(n => `<div class="eintrag"><span class="zeit">${n.zeit}</span><span class="sym ${n.notiz ? 'istnotiz' : ''}">${ICON(n.notiz ? 'sticky-note' : 'circle-check')}</span><div><div class="t">${n.t}</div>${n.unter ? `<div class="eu">${n.unter}</div>` : ''}</div></div>`)],
       ['Gestern', [`<div class="eintrag"><span class="zeit">17:05</span><span class="sym">${ICON('square-check')}</span><div><div class="t">Referenzen sammeln</div><div class="eu">Punkt in „Angebot Möbeltischlerei Hüttner“</div></div></div>`,
         `<div class="eintrag"><span class="zeit">11:20</span><span class="sym">${ICON('circle-check')}</span><div><div class="t">Reisekosten Oktober einreichen</div></div></div>`]],
-      ['Mo 16.11.', [`<div class="eintrag"><span class="zeit"></span><span class="sym notiz">${ICON('sticky-note')}</span><div><div class="t">Idee: Rundblick fürs Handy als PWA #rundblick</div></div></div>`]],
+      ['Mo 16.11.', [`<div class="eintrag"><span class="zeit"></span><span class="sym istnotiz">${ICON('sticky-note')}</span><div><div class="t">Idee: Rundblick fürs Handy als PWA #rundblick</div></div></div>`]],
     ];
-    return kopf('Logbuch') + `<div class="notizfeld">${ICON('notebook-pen')}<input placeholder="Notiz … #tag" enterkeyhint="done"></div><div class="inhalt">` +
+    return kopf('Logbuch') + suche() + `<div class="notizfeld">${ICON('notebook-pen')}<input placeholder="Notiz … #tag" enterkeyhint="done"></div><div class="inhalt" data-ziehbar>` +
       tage.map(([t, es]) => `<div class="tag-h ${t === 'Heute' ? 'heute' : ''}">${t}</div><div class="gruppe">${es.join('')}</div>`).join('') + '</div>';
   }
 
+  // eingeklappte Angaben: knappe Zusammenfassung des Gesetzten
+  const zusammenfassung = a => {
+    const s = SPALTEN.find(x => x.id === a.status);
+    const teile = [s ? `<span class="chip"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</span>` : '', a.frist ? frist(a) : '', a.wv ? `<span class="chip">${ICON('calendar-clock')}${fristText(a.wv)}</span>` : '', chips(a)].join('');
+    return teile || 'Status, Frist, Wiedervorlage, Verantwortlich, Ort, Tags';
+  };
   function detailZeigen(id) {
     const a = aufgaben.find(x => x.id === id);
     const notiz = a.notiz ? a.notiz.split('\n').map((l, i) => { const m = l.match(/^\[( |x)\] (.*)/); return m ? `<div class="cb ${m[1] === 'x' ? 'an' : ''}" data-cb="${i}">${ICON(m[1] === 'x' ? 'square-check' : 'square')}<span>${m[2]}</span></div>` : `<div>${l}</div>`; }).join('') : '<span style="color:var(--mute)">Notiz …</span>';
     detail.innerHTML = `<div class="kopf"><button class="knopf" data-zurueck>${ICON('chevron-left')}</button><span style="flex:1"></span><button class="knopf" data-arch="${a.id}">${ICON('archive')}</button><button class="knopf muell2" data-muell2="${a.id}">${ICON('trash-2')}</button></div>
       <div class="koerper">
         <div style="display:flex;gap:10px;align-items:flex-start"><button class="kreis" data-kreis="${a.id}" style="margin-top:2px">${ICON(a.done ? 'circle-check' : 'circle')}</button><textarea class="titel-feld" rows="2">${a.titel}</textarea></div>
+        <div class="notiz gross">${notiz}</div>
+        <div class="feld"><div class="bilder">${a.id === 'a3' ? '<div class="bild"><b>1</b></div>' : ''}<div class="neu">${ICON('image-plus')}</div></div></div>
+        <div class="angaben-zeile ${z.angaben ? 'offen' : ''}" data-angaben>${zusammenfassung(a)}<span class="chev">${ICON('chevron-right')}</span></div>
+        ${z.angaben ? `<div class="angaben">
         <div class="feld"><label>Status</label><div class="status-chips"><button class="${!a.status ? 'an' : ''}" data-status="">ohne</button>${SPALTEN.map(s => `<button class="${a.status === s.id ? 'an' : ''}" data-status="${s.id}"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</button>`).join('')}</div></div>
         <div class="zwei"><div class="feld"><label>Frist</label><div class="wert ${a.frist ? '' : 'leer'}">${ICON('diamond')}${a.frist ? fristText(a.frist) : '–'}</div></div><div class="feld"><label>Wiedervorlage</label><div class="wert ${a.wv ? '' : 'leer'}">${ICON('calendar-clock')}${a.wv ? fristText(a.wv) : '–'}</div></div></div>
         <div class="zwei"><div class="feld"><label>Verantwortlich</label><div class="wert ${a.person ? '' : 'leer'}">${a.person ? `<span class="chip person">@${a.person}</span>` : '–'}</div></div><div class="feld"><label>Ort</label><div class="wert ${a.ort ? '' : 'leer'}">${a.ort ? `<span class="chip ort">${ICON('map-pin')}${a.ort}</span>` : '–'}</div></div></div>
         <div class="feld"><label>Tags</label><div class="wert ${a.tags.length ? '' : 'leer'}">${a.tags.map(t => `<span class="chip">#${t}</span>`).join('') || '–'}</div></div>
-        <div class="feld"><label>Notiz</label><div class="notiz">${notiz}</div></div>
-        <div class="feld"><label>Bilder</label><div class="bilder">${a.id === 'a3' ? '<div class="bild"><b>1</b></div>' : ''}<div class="neu">${ICON('image-plus')}</div></div></div>
+        </div>` : ''}
       </div>`;
     detail.dataset.id = id;
     detail.classList.add('offen');
     lucide.createIcons({ root: detail });
   }
 
+  // Liste/Logbuch oben herunterziehen → Suchfeld erscheint darüber
+  function ziehenAnbinden() {
+    const inh = haupt.querySelector('[data-ziehbar]'); if (!inh || z.suche) return;
+    let y0 = null;
+    inh.addEventListener('pointerdown', e => { if (inh.scrollTop <= 0) y0 = e.clientY; });
+    inh.addEventListener('pointermove', e => { if (y0 !== null && e.clientY - y0 > 55) { y0 = null; z.suche = true; zeichnen(); haupt.querySelector('[data-suche]')?.focus(); } });
+    inh.addEventListener('pointerup', () => { y0 = null; });
+    inh.addEventListener('wheel', e => { if (inh.scrollTop <= 0 && e.deltaY < -40) { z.suche = true; zeichnen(); haupt.querySelector('[data-suche]')?.focus(); } }, { passive: true });
+  }
   function zeichnen() {
     haupt.innerHTML = z.sicht === 'liste' ? liste() : z.sicht === 'board' ? board() : logbuch();
     bs.querySelectorAll('.reiter button').forEach(b => b.classList.toggle('an', b.dataset.sicht === z.sicht));
     lucide.createIcons({ root: bs });
     wischenAnbinden();
+    ziehenAnbinden();
     const sp = haupt.querySelector('.spalten');
     if (sp) sp.onscroll = () => { const i = Math.round(sp.scrollLeft / (sp.clientWidth * .86 + 10)); haupt.querySelectorAll('.punkte i').forEach((p, j) => p.classList.toggle('an', j === i)); };
   }
@@ -347,6 +393,9 @@ function app(bs, start) {
       if (fragenId !== id) { fragenId = id; m.classList.add('fragen'); m.textContent = '?'; clearTimeout(fragenT); fragenT = setTimeout(() => { fragenId = null; zeichnen(); if (detail.classList.contains('offen')) detailZeigen(detail.dataset.id); }, 5000); return; }
       fragenId = null; aufgaben.splice(aufgaben.findIndex(x => x.id === id), 1); detail.classList.remove('offen'); toast('Gelöscht'); zeichnen(); return;
     }
+    if (q('[data-angaben]')) { z.angaben = !z.angaben; detailZeigen(detail.dataset.id); return; }
+    if (q('[data-spalte-zu]') || q('.spalte.zu')) { const id = (q('[data-spalte-zu]') || q('.spalte.zu')).dataset.spalteZu ?? q('.spalte.zu').dataset.spalte; z.spalteZu.has(id) ? z.spalteZu.delete(id) : z.spalteZu.add(id); zeichnen(); return; }
+    if (q('[data-suche-zu]')) { z.suche = false; z.filter = ''; zeichnen(); return; }
     if (q('[data-zurueck]')) { detail.classList.remove('offen'); zeichnen(); return; }
     if (q('[data-status]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); a.status = q('[data-status]').dataset.status || null; detailZeigen(a.id); return; }
     if (q('[data-cb]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); const l = a.notiz.split('\n'); const i = +q('[data-cb]').dataset.cb; l[i] = l[i].startsWith('[x]') ? l[i].replace('[x]', '[ ]') : l[i].replace('[ ]', '[x]'); a.notiz = l.join('\n'); detailZeigen(a.id); return; }
@@ -355,6 +404,12 @@ function app(bs, start) {
     if (q('[data-kat]')) { const k = q('[data-kat]').dataset.kat; const i = SPALTEN.findIndex(s => s.kat === k); const sp = haupt.querySelector('.spalten'); sp.scrollTo({ left: i * (sp.clientWidth * .86 + 10), behavior: 'smooth' }); return; }
     const zl = q('.zeile'); if (zl) { if (zl.dataset.gewischt) { zl.dataset.gewischt = ''; return; } if (zl.dataset.wisch) { zl.style.transform = ''; zl.dataset.wisch = ''; return; } detailZeigen(zl.dataset.id); return; }
     const k = q('.karte'); if (k) { detailZeigen(k.dataset.id); return; }
+  });
+  bs.addEventListener('input', e => {
+    if (!e.target.matches('[data-suche]')) return;
+    z.filter = e.target.value;
+    const pos = e.target.selectionStart; zeichnen();
+    const i = bs.querySelector('[data-suche]'); i.focus(); i.setSelectionRange(pos, pos);
   });
   bs.addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
@@ -373,8 +428,8 @@ function app(bs, start) {
   if (start === 'detail') detailZeigen('a3');
 }
 
-telefon('liste', 'Liste', 'Abschnitte wie am Desktop · Wischen nach links = Archiv / Mülleimer (zweistufig) · oben Schnellerfassung und Tag-Filter');
-telefon('detail', 'Aufgabe', 'Vollbild statt Schublade · Status als Chips · Notiz mit abhakbarer Checkliste · Bilder · „‹“ zurück');
+telefon('liste', 'Liste', 'Abschnitte wie am Desktop · Wischen nach links = Archiv / Mülleimer (zweistufig) · oben Schnellerfassung · herunterziehen = Suche');
+telefon('detail', 'Aufgabe', 'Vollbild statt Schublade · Status als Chips · Notiz zuerst (mit abhakbarer Checkliste) · Bilder · Angaben eingeklappt · „‹“ zurück');
 telefon('board', 'Board', 'Eine Spalte pro Breite, waagerecht wischen · Kategorien oben als Sprungmarken · Karte lange drücken = verschieben');
 telefon('logbuch', 'Logbuch', 'Notiz-Eingabe oben · Tage, neuester oben · runder Haken = Aufgabe, eckiger = Punkt, Notiz-Symbol');
 </script>
