@@ -105,6 +105,10 @@
   .spalte-h .n { color: var(--mute); font-weight: 500; }
   .karten { flex: 1; overflow-y: auto; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 8px; scrollbar-width: none; }
   .karte { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; display: flex; gap: 8px; cursor: pointer; user-select: none; }
+  /* Ziehen nach langem Drücken */
+  .geist { position: absolute; z-index: 20; pointer-events: none; background: #fff; border-radius: 12px; box-shadow: 0 14px 30px rgba(0,0,0,.2); transform: rotate(1.5deg) scale(1.03); opacity: .96; overflow: hidden; }
+  .platzhalter { opacity: .25; }
+  .karten .leer { color: var(--mute); font-size: 13px; padding: 8px 4px; }
   .karte.gedrueckt { transform: scale(.97); box-shadow: 0 8px 20px rgba(0,0,0,.12); transition: transform .15s; }
   .karte .t { font-size: 15px; line-height: 1.3; }
   .punkte { display: flex; justify-content: center; gap: 5px; padding: 0 0 6px; flex: none; }
@@ -207,7 +211,7 @@
 <body>
 <div class="seite">
   <h1>Rundblick Phone App – Entwurf</h1>
-  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig) · auf dem Board waagerecht wischen, Karte lange drücken = verschieben · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
+  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig) · lange drücken und ziehen = umsortieren (in der Liste innerhalb des Abschnitts, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
   <div class="reihe" id="reihe"></div>
 
   <div class="erkl">
@@ -310,7 +314,7 @@ function app(bs, start) {
       <div class="spalten">${sp.map(s => z.spalteZu.has(s.id)
         ? `<div class="spalte zu" data-spalte="${s.id}"><div class="spalte-h" data-spalte-zu="${s.id}"><span class="chev">${ICON('chevron-right')}</span><span class="sdot" style="background:${s.farbe}"></span><span class="n">${s.karten.length}</span><span class="nm">${s.name}</span></div></div>`
         : `<div class="spalte" data-spalte="${s.id}"><div class="spalte-h" data-spalte-zu="${s.id}"><span class="chev">${ICON('chevron-right')}</span><span class="sdot" style="background:${s.farbe}"></span><span class="nm">${s.name}</span> <span class="n">${s.karten.length}</span><span class="kat">${s.kat}</span></div>
-        <div class="karten">${s.karten.map(a => `<div class="karte" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON('circle')}</button><div class="mitte"><div class="t">${a.titel}</div>${meta(a, false)}</div></div>`).join('') || '<div style="color:var(--mute);font-size:13px;padding:8px 4px">leer</div>'}</div></div>`).join('')}</div>
+        <div class="karten">${s.karten.map(a => `<div class="karte" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON('circle')}</button><div class="mitte"><div class="t">${a.titel}</div>${meta(a, false)}</div></div>`).join('') || '<div class="leer">leer</div>'}</div></div>`).join('')}</div>
       <div class="punkte">${sp.map((s, i) => `<i class="${i === 0 ? 'an' : ''}"></i>`).join('')}</div>`;
   }
 
@@ -383,19 +387,93 @@ function app(bs, start) {
     haupt.querySelectorAll('.zeile').forEach(zl => {
       let x0 = null, dx = 0;
       zl.addEventListener('pointerdown', e => { x0 = e.clientX; dx = 0; zl.style.transition = 'none'; });
-      zl.addEventListener('pointermove', e => { if (x0 === null) return; dx = Math.min(0, e.clientX - x0); if (dx < -6) zl.style.transform = `translateX(${Math.max(-144, dx)}px)`; });
+      zl.addEventListener('pointermove', e => { if (x0 === null || zug) return; dx = Math.min(0, e.clientX - x0); if (dx < -6) zl.style.transform = `translateX(${Math.max(-144, dx)}px)`; });
       const ende = () => { if (x0 === null) return; zl.style.transition = ''; const auf = dx < -60; zl.style.transform = auf ? 'translateX(-144px)' : ''; zl.dataset.wisch = auf ? '1' : ''; if (Math.abs(dx) > 6) zl.dataset.gewischt = '1'; x0 = null; };
       zl.addEventListener('pointerup', ende); zl.addEventListener('pointerleave', ende);
     });
   }
 
-  // langes Drücken auf eine Karte → Auswahlblatt „Verschieben nach“
-  let druck = null;
+  // langes Drücken → Zeile/Karte anheben und ziehen: in der Liste innerhalb des Abschnitts umsortieren,
+  // auf dem Board umsortieren und über Spalten ziehen (am Rand rollt das Board weiter).
+  // Auf dem Board: lange drücken und ohne Bewegung loslassen → Auswahlblatt „Verschieben nach“.
+  let druck = null, zug = null;
   bs.addEventListener('pointerdown', e => {
-    const k = e.target.closest('.karte'); if (!k || e.target.closest('.kreis')) return;
-    druck = setTimeout(() => { druck = 'lang'; k.classList.add('gedrueckt'); blatt(k.dataset.id); }, 450);
+    const el = e.target.closest('.karte, .zeile'); if (!el || e.target.closest('.kreis, .aktionen') || el.dataset.wisch === '1') return;
+    const x0 = e.clientX, y0 = e.clientY;
+    druck = setTimeout(() => { druck = 'lang'; zugStart(el, x0, y0); }, 420);
+    const ab = ev => { if (druck !== 'lang' && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 8) { clearTimeout(druck); druck = null; } };
+    bs.addEventListener('pointermove', ab);
+    bs.addEventListener('pointerup', () => bs.removeEventListener('pointermove', ab), { once: true });
   });
-  bs.addEventListener('pointerup', () => { if (druck && druck !== 'lang') clearTimeout(druck); setTimeout(() => { bs.querySelectorAll('.gedrueckt').forEach(x => x.classList.remove('gedrueckt')); }, 200); });
+  bs.addEventListener('pointermove', e => {
+    if (!zug) return; e.preventDefault();
+    zug.x = e.clientX; zug.y = e.clientY;
+    if (Math.hypot(zug.x - zug.x0, zug.y - zug.y0) > 10) zug.bewegt = true;
+    const br = bs.getBoundingClientRect();
+    zug.geist.style.left = (zug.x - br.left - zug.dx) + 'px'; zug.geist.style.top = (zug.y - br.top - zug.dy) + 'px';
+  });
+  bs.addEventListener('pointerup', () => { if (druck && druck !== 'lang') clearTimeout(druck); if (zug) zugEnde(); });
+  function zugStart(el, x, y) {
+    const huelle = el.classList.contains('zeile') ? el.closest('.zeile-huelle') : el;
+    el.style.transform = '';
+    const r = huelle.getBoundingClientRect(), br = bs.getBoundingClientRect();
+    const geist = huelle.cloneNode(true); geist.classList.add('geist');
+    geist.style.cssText = `left:${r.left - br.left}px;top:${r.top - br.top}px;width:${r.width}px`;
+    bs.appendChild(geist); huelle.classList.add('platzhalter');
+    const sp = haupt.querySelector('.spalten'); if (sp) sp.style.scrollSnapType = 'none';
+    zug = { el, huelle, geist, brett: !!sp, x, y, x0: x, y0: y, dx: x - r.left, dy: y - r.top, bewegt: false };
+    zug.uhr = setInterval(randRollen, 16);
+  }
+  function randRollen() {
+    const { x, y } = zug;
+    if (zug.brett) {
+      const sp = haupt.querySelector('.spalten'), r = sp.getBoundingClientRect();
+      if (x < r.left + 34) sp.scrollLeft -= 9; else if (x > r.right - 34) sp.scrollLeft += 9;
+      const k = zug.huelle.closest('.karten'); if (k) { const kr = k.getBoundingClientRect(); if (y < kr.top + 30) k.scrollTop -= 6; else if (y > kr.bottom - 30) k.scrollTop += 6; }
+    } else {
+      const inh = haupt.querySelector('.inhalt'), r = inh.getBoundingClientRect();
+      if (y < r.top + 34) inh.scrollTop -= 6; else if (y > r.bottom - 34) inh.scrollTop += 6;
+    }
+    if (zug.bewegt) zugPlatzieren();
+  }
+  // Platzhalter vor/hinter das Element unter dem Finger setzen (nur wenn sich die Lage ändert → kein Flackern)
+  const einreihen = (huelle, ziel, y) => {
+    const m = ziel.getBoundingClientRect(), vor = y < m.top + m.height / 2;
+    if (vor && huelle.nextSibling !== ziel) ziel.parentNode.insertBefore(huelle, ziel);
+    if (!vor && ziel.nextSibling !== huelle) ziel.parentNode.insertBefore(huelle, ziel.nextSibling);
+  };
+  function zugPlatzieren() {
+    const { x, y, huelle, geist } = zug;
+    geist.style.display = 'none'; const unter = document.elementFromPoint(x, y); geist.style.display = '';
+    if (!unter) return;
+    if (zug.brett) {
+      const spalte = unter.closest('.spalte:not(.zu)'); if (!spalte) return;
+      const karten = spalte.querySelector('.karten'), ziel = unter.closest('.karte');
+      if (ziel && ziel !== huelle) return einreihen(huelle, ziel, y);
+      if (!ziel && huelle.parentNode !== karten) { const letzte = [...karten.querySelectorAll('.karte')].pop(); if (letzte && y < letzte.getBoundingClientRect().top) karten.insertBefore(huelle, karten.firstChild); else karten.appendChild(huelle); }
+      karten.querySelector('.leer')?.remove();
+    } else {
+      const ziel = unter.closest('.zeile-huelle');
+      if (ziel && ziel !== huelle && ziel.parentNode === huelle.parentNode) einreihen(huelle, ziel, y);
+    }
+  }
+  function zugEnde() {
+    const { huelle, geist, el, bewegt, brett } = zug; clearInterval(zug.uhr); zug = null;
+    geist.remove(); huelle.classList.remove('platzhalter');
+    const id = el.dataset.id;
+    if (!bewegt) { if (brett) blatt(id); const sp = haupt.querySelector('.spalten'); if (sp) sp.style.scrollSnapType = ''; return; }
+    const a = aufgaben.find(x => x.id === id);
+    if (brett) { const neu = huelle.closest('.spalte').dataset.spalte; if (a.status !== neu) { a.status = neu; toast(`Nach „${SPALTEN.find(s => s.id === neu).name}“ verschoben`); } }
+    // neue Reihenfolge der Gruppe/Spalte auf die bisherigen Plätze im Bestand verteilen
+    const ids = [...huelle.parentNode.querySelectorAll(brett ? '.karte' : '.zeile')].map(x => x.dataset.id);
+    const plaetze = ids.map(i => aufgaben.findIndex(x => x.id === i)).sort((p, q) => p - q);
+    const objekte = ids.map(i => aufgaben.find(x => x.id === i));
+    plaetze.forEach((p, k) => { aufgaben[p] = objekte[k]; });
+    const sp = haupt.querySelector('.spalten'), links = sp?.scrollLeft, inh = haupt.querySelector('.inhalt'), oben = inh?.scrollTop;
+    zeichnen();
+    const sp2 = haupt.querySelector('.spalten'); if (sp2) sp2.scrollLeft = links;
+    const inh2 = haupt.querySelector('.inhalt'); if (inh2 && oben != null) inh2.scrollTop = oben;
+  }
   function blatt(id) {
     const a = aufgaben.find(x => x.id === id);
     bs.querySelector('.blatt').innerHTML = `<div class="bt">„${a.titel}“ verschieben nach</div>${SPALTEN.map(s => `<button data-nach="${s.id}"><span class="sdot" style="background:${s.farbe}"></span>${s.name}${a.status === s.id ? ' <span style="color:var(--mute);font-size:13px">(jetzt)</span>' : ''}</button>`).join('')}<button data-nach="nach-oben">${ICON('arrow-up-to-line')}Ganz nach oben in der Spalte</button>`;
@@ -460,9 +538,9 @@ function app(bs, start) {
   if (start === 'detail') detailZeigen('a3');
 }
 
-telefon('liste', 'Liste', 'Abschnitte wie am Desktop · Wischen nach links = Archiv / Mülleimer (zweistufig) · oben Schnellerfassung · herunterziehen = Suche');
+telefon('liste', 'Liste', 'Abschnitte wie am Desktop · Wischen nach links = Archiv / Mülleimer (zweistufig) · lange drücken und ziehen = im Abschnitt umsortieren · oben Schnellerfassung · herunterziehen = Suche');
 telefon('detail', 'Aufgabe', 'Vollbild statt Schublade · Status als Chips · Notiz zuerst (mit abhakbarer Checkliste) · Bilder · Kurzinfo unter der Notiz öffnet die Angaben als Schublade · „‹“ zurück');
-telefon('board', 'Board', 'Eine Spalte pro Breite, waagerecht wischen · Kategorien oben als Sprungmarken · Karte lange drücken = verschieben');
+telefon('board', 'Board', 'Eine Spalte pro Breite, waagerecht wischen · Kategorien oben als Sprungmarken · Karte lange drücken und ziehen = umsortieren, auch über Spalten (am Rand rollt das Board weiter) · lange drücken und loslassen = Auswahlblatt');
 telefon('logbuch', 'Logbuch', 'Notiz-Eingabe oben · Tage, neuester oben · runder Haken = Aufgabe, eckiger = Punkt, Notiz-Symbol');
 </script>
 </body>
