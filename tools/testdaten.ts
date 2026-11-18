@@ -16,9 +16,10 @@ import { JsonlEventStore } from '../src/providers/eventstore/jsonl';
 import { ulidGenerator } from '../src/providers/ids/ulid';
 import { kalenderCache } from '../src/providers/kalender/cache';
 import { beispielKalender } from '../src/providers/kalender/fake';
-import { systemUhr } from '../src/providers/uhr/system';
+import { datumLokal, systemUhr } from '../src/providers/uhr/system';
+import type { Uhr } from '../src/providers/uhr/interface';
 
-type Kontext = { body: Body; heute: string; d: (n: number) => string; neu: (x: AufgabeEingabe) => Promise<string> };
+type Kontext = { body: Body; heute: string; d: (n: number) => string; neu: (x: AufgabeEingabe) => Promise<string>; zeitreise: (tage: number, uhrzeit: string) => void; zurueck: () => void };
 
 // ---------------- Stufe 1: nur Aufgaben in der Liste (ohne Status, ohne Buchungen) ----------------
 async function stufe1({ neu, heute, d, body }: Kontext): Promise<void> {
@@ -116,7 +117,53 @@ async function stufe2({ neu, d, heute, body }: Kontext): Promise<void> {
   await neu({ titel: 'Ohne Status – zum Testen: auf eine Board-Spalte ziehen' });
 }
 
+// ---------------- Stufe „logbuch“: Notizen und Abgehaktes über mehrere Tage ----------------
+async function stufeLogbuch(k: Kontext): Promise<void> {
+  const { body, neu, d, zeitreise, zurueck } = k;
+  await stufe2(k);
+  const ab = async (titel: string, tage: number, uhrzeit: string, x: Partial<AufgabeEingabe> = {}) => {
+    zurueck(); const id = await neu({ titel, ...x });
+    zeitreise(tage, uhrzeit); await body.aufgabeAbschliessen({ aufgabeId: id }); zurueck(); return id;
+  };
+  const notiz = async (text: string, tage: number, uhrzeit: string, datum?: string) => {
+    zeitreise(tage, uhrzeit); const r = await body.notizErfassen({ text, ...(datum ? { datum } : {}) }); zurueck(); return r.ok ? r.ids!.notizId! : '';
+  };
+
+  // Heute
+  await notiz('Morgenseiten: Fokus heute ist das Logbuch testen #journal', 0, '07:45');
+  await ab('Logbuch: Aufgabe heute abgeschlossen', 0, '09:10', { tags: ['test'] });
+  // Checklisten-Punkte einzeln abhaken (jeder Punkt erscheint mit eigener Uhrzeit)
+  const cl = await neu({ titel: 'Logbuch: Aufgabe mit Checkliste (bleibt offen)', beschreibung: '- [ ] Punkt A\n- [ ] Punkt B\n- [ ] Punkt C' });
+  zeitreise(0, '10:20'); await body.aufgabeAendern({ aufgabeId: cl, aenderungen: { beschreibung: '- [x] Punkt A\n- [ ] Punkt B\n- [ ] Punkt C' } });
+  zeitreise(0, '11:05'); await body.aufgabeAendern({ aufgabeId: cl, aenderungen: { beschreibung: '- [x] Punkt A\n- [x] Punkt B\n- [ ] Punkt C' } });
+  zurueck();
+
+  // Gestern
+  await notiz('Gespräch mit Markus\nIdee: Bewerbungsfilm als Serie anbieten.\n- Preise klären\n- Beispiel drehen #vorgestellt #idee', -1, '14:30');
+  await ab('Logbuch: gestern abgeschlossen', -1, '16:00');
+  await notiz('Nachgetragen: Abends noch die Folien skizziert (ohne Uhrzeit, steht am Ende des Tages)', 0, '08:00', d(-1));
+
+  // Vor 3 und 10 Tagen, vor 40 Tagen (zum Scrollen)
+  await ab('Logbuch: vor 3 Tagen abgeschlossen', -3, '11:00', { tags: ['kunde'] });
+  await notiz('Workshop-Feedback gesammelt #workshop', -3, '17:30');
+  for (let i = 4; i <= 40; i += 4) await notiz(`Ältere Notiz vor ${i} Tagen #archivtest`, -i, '12:00');
+
+  // Darf NICHT im Logbuch stehen
+  const w = await ab('Logbuch: abgeschlossen und wieder geöffnet – NICHT im Logbuch', -2, '10:00');
+  await body.aufgabeWiedereroeffnen({ aufgabeId: w });
+  await body.aufgabeVerwerfen({ aufgabeId: await ab('Logbuch: abgeschlossen, dann verworfen – NICHT im Logbuch', -2, '11:00') });
+  const n = await notiz('Notiz, die gelöscht wurde – NICHT im Logbuch', -2, '12:00');
+  await body.notizVerwerfen({ notizId: n });
+
+  // Archiviert bleibt im Logbuch (mit Archiv-Symbol)
+  await body.aufgabeArchivieren({ aufgabeId: await ab('Logbuch: abgeschlossen und archiviert (bleibt, mit Archiv-Symbol)', -1, '09:00') });
+
+  // Zum Ausprobieren: diese Notiz in eine Aufgabe umwandeln (Schublade → Symbol „Aufgabe daraus machen“)
+  await notiz('Zum Testen: mich in eine Aufgabe umwandeln\nDer Rest wird zur Notiz der Aufgabe. #test', 0, '12:15');
+}
+
 const STUFEN: Record<string, { name: string; f: (k: Kontext) => Promise<void> }> = {
+  logbuch: { name: 'Logbuch (Stufe 2 + Notizen und Abgehaktes)', f: stufeLogbuch },
   '1': { name: 'Aufgaben in der Liste', f: stufe1 },
   '2': { name: 'Status und Board', f: stufe2 },
 };
@@ -133,9 +180,16 @@ async function main(): Promise<void> {
   const ev = join(datenordner, 'events');
   if (existsSync(ev)) for (const f of readdirSync(ev).filter(x => x.endsWith('.jsonl'))) rmSync(join(ev, f));
 
-  const store = new JsonlEventStore(datenordner, geraet, ulidGenerator.neu, () => systemUhr.jetzt());
+  // Verstellbare Uhr für Events in der Vergangenheit (Logbuch); sonst Systemzeit
+  let gestellt: Date | null = null;
+  const uhr: Uhr = {
+    jetzt: () => gestellt ? new Date(gestellt) : systemUhr.jetzt(),
+    heute: () => (gestellt ? datumLokal(gestellt) : systemUhr.heute()),
+    minuteDesTages: () => (gestellt ? gestellt.getHours() * 60 + gestellt.getMinutes() : systemUhr.minuteDesTages()),
+  };
+  const store = new JsonlEventStore(datenordner, geraet, ulidGenerator.neu, () => uhr.jetzt());
   const body = new RundblickBody({
-    domain: new Domain(store), uhr: systemUhr, ids: ulidGenerator, einstellungen: speicherEinstellungen(),
+    domain: new Domain(store), uhr, ids: ulidGenerator, einstellungen: speicherEinstellungen(),
     kalender: beispielKalender(), cache: kalenderCache(), anhaenge: dateiAnhaenge(datenordner), info: { datenordner, geraet },
   });
   body.einrichten();
@@ -145,13 +199,16 @@ async function main(): Promise<void> {
     if (!r.ok) throw new Error(`${x.titel}: ${r.fehler.join(' ')}`);
     return r.ids!.aufgabeId!;
   };
-  await STUFEN[stufe]!.f({ body, heute, d: n => plusTage(heute, n), neu });
+  const zeitreise = (tage: number, uhrzeit: string) => { const [h, m] = uhrzeit.split(':').map(Number); const t = new Date(); t.setDate(t.getDate() + tage); t.setHours(h!, m!, 0, 0); gestellt = t; };
+  await STUFEN[stufe]!.f({ body, heute, d: n => plusTage(heute, n), neu, zeitreise, zurueck: () => { gestellt = null; } });
   const l = await body.liste({});
   console.log(`Stufe ${stufe} (${STUFEN[stufe]!.name}) → ${datenordner}/events/${geraet}.jsonl`);
   console.log(`  ${store.lesen().events.length} Events · ${l.offen} offen · ${l.zurueckgestellt.length} zurückgestellt · ${l.abgeschlossen.length} abgeschlossen`);
   for (const gr of l.gruppen) console.log(`  ${gr.name.padEnd(13)} ${gr.aufgaben.length}`);
   const b = await body.board();
   for (const k of b.kategorien) console.log(`  Board ${k.name.padEnd(15)} ${k.spalten.map(x => `${x.name} ${x.karten.length}`).join(' · ')}`);
+  const lb = await body.logbuch({ tage: 60 });
+  console.log(`  Logbuch: ${lb.tage.filter(t => t.eintraege.length).length} Tage, ${lb.tage.reduce((n, t) => n + t.eintraege.length, 0)} Einträge`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

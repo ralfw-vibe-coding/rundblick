@@ -8,7 +8,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - Vor jedem Commit: `npm run check` (Typecheck, Schichtregeln mit dependency-cruiser, Tests mit **≥ 90 % Abdeckung** für `src/body`, `src/domain`, `src/providers` – sonst bricht der Check ab).
 - App bauen und starten: `npm run app` → `dist/mac-arm64/Rundblick.app`, signiert mit **„HyperRec Code Signing“** (Schlüsselbund). Läuft die App, vorher `osascript -e 'quit app "Rundblick"'`, danach `open dist/mac-arm64/Rundblick.app`.
 - Sichtprüfung ohne die Daten des Nutzers anzufassen: `RB_PROFIL=/tmp/rb-prof RB_DATEN=/tmp/rb-s1 RB_KALENDER=beispiel RB_SCREENSHOT=/tmp/x.png RB_JS='(async()=>{…; return ergebnis})()' npx electron .` (vorher `npx electron-vite build`). Das Ergebnis von `RB_JS` erscheint als `RB_JS → …` auf der Konsole. Achtung: In diesem Modus hat das Fenster keinen System-Fokus – `focus()`/`blur()` lösen **keine** focusin/focusout-Ereignisse aus; im Test selbst `dispatchEvent(new FocusEvent('focusin'|'focusout', {bubbles:true}))` senden.
-- Testdaten in Stufen: `npm run testdaten -- <stufe>`. **Löscht alle Events im Datenordner!** Nur auf Anweisung des Nutzers gegen die echten Daten laufen lassen; für eigene Prüfungen `RB_DATEN=/tmp/…` setzen.
+- Testdaten in Stufen: `npm run testdaten -- <stufe>` (Stufen: `1`, `2`, `logbuch`). **Löscht alle Events im Datenordner!** Nur auf Anweisung des Nutzers gegen die echten Daten laufen lassen; für eigene Prüfungen `RB_DATEN=/tmp/…` setzen.
 - Echte Daten: `~/Dropbox/Apps/Rundblick/events/<gerät>.jsonl` (+ `anhaenge/`). Profil/Layouts: `~/Library/Application Support/Rundblick/geraet.json`.
 
 ## Architektur (Kurzfassung)
@@ -23,7 +23,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 **Allgemein**
 - **Nur Lucide-Icons** (`src/client/ui/icons.ts`, Objekt `I`). Keine Unicode-Symbole als Icons, keine eigenen SVGs. `<select>`-Optionen können kein SVG → Icon daneben.
 - **Zerstörende Aktionen zweistufig, keine Bestätigungsdialoge:** Symbol (Mülleimer, bei Bildern „×“) → 1. Klick verwandelt es in ein rotes „?“ → 2. Klick führt aus. Klick woanders oder 5 s ohne Klick → zurück. Umsetzung: `data-zweistufig="<aktion>"` + Handler `ZWEISTUFIG` in `interaktion.ts`.
-- Oberfläche = frei teilbares Raster mit Arbeitsbereichen; Überblick ist King. Sichten je Zelle: **Aufgabenliste · Kanban-Board · Kalender · Timeline**. Der Kalender hat die Zeitraum-Auswahl **1 Tag · 3 Tage · Woche · Monat · 3 Monate** (früher getrennt in Tages-/Mehrtageskalender – alte Layouts werden beim Laden umgestellt).
+- Oberfläche = frei teilbares Raster mit Arbeitsbereichen; Überblick ist King. Sichten je Zelle: **Aufgabenliste · Kanban-Board · Kalender · Timeline · Logbuch**. Der Kalender hat die Zeitraum-Auswahl **1 Tag · 3 Tage · Woche · Monat · 3 Monate** (früher getrennt in Tages-/Mehrtageskalender – alte Layouts werden beim Laden umgestellt).
 - Kopfzeile: Arbeitsbereiche · „+“ neuer Arbeitsbereich · „−“ aktuellen löschen (zweistufig) · Kalender aktualisieren · Einstellungen. Ein „Arbeitsbereiche zurücksetzen“ gibt es bewusst nicht.
 - **Uhrzeiten nie mit nativem `<input type="time">`**, sondern mit `uhrzeitFeld()` (`uhrzeitfeld.ts`): Textfeld + Liste nur in Viertelstunden (00/15/30/45), an aktueller Zeit bzw. Beginn der Tageszeit; Stunden außerhalb der Tageszeit blasser; Tippen „930“/„9:30“/„9“ – getippte Minuten bleiben **exakt** (10:33 bleibt 10:33), nur die Liste bietet Viertelstunden; ↑/↓ springt zur vorigen/nächsten Viertelstunde, ↵ übernimmt, Esc verwirft; leer erlaubt.
 - Scrollbalken überall schmal (6 px) und dezent (hellgrau, ohne Spur) – global in `stil.css`.
@@ -54,6 +54,13 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - **Fristen-Marke** (Raute + Anzahl im Tageskopf von Tag/3 Tage/Woche/Monat): Klick öffnet eine knappe Liste „Fällig <Tag>“ (Raute in Listenfarbe + Titel); Klick auf eine Zeile → Schublade, Ziehen → in den Kalender einplanen (Liste schließt danach). Esc/Klick daneben schließt.
 - **Externe Kalender** werden aktualisiert: beim Start, beim Fokussieren des Fensters, bei Änderungsmeldung von macOS (EventKit) und **alle 5 Minuten** (`src/main/index.ts`); manuell über den Knopf mit Lucide `CalendarSync` links neben dem Zahnrad – pulsiert während des Ladens, Tooltip zeigt „zuletzt HH:MM Uhr“.
 - **Seitenleiste der Tagesansicht:** nur „Überfällig“ und „Fällig <Tag>“ (plus „Taucht wieder auf“), als ziehbare Zeilen wie in der Aufgabenliste (Abschließen-Kreis, Raute in Listenfarben, gebuchte Zeit, Mülleimer; ohne Statuspunkt) – in den Tag ziehen = Termin. Keine Reservierungen, Termine oder Auslastung (stehen im Raster). Unten Hinweis: Doppelklick ins Raster/Reservierungsband = Buchung ohne Aufgabe (in Monat/3 Monate: in die freie Fläche eines Tages).
+
+**Logbuch**
+- Eigene Sicht: was an einem Tag **explizit abgehakt** wurde – abgeschlossene Aufgaben (Zeitpunkt = Event `AufgabeAbgeschlossen`) und abgehakte Checklisten-Punkte in Aufgaben-Notizen (Zeitpunkt des `BeschreibungGeaendert`, in dem der Punkt abgehakt wurde) – plus **Notizen**. Wieder geöffnet/aufgehakt/verworfen → raus; archiviert bleibt (mit Archiv-Symbol).
+- **Endlos:** neuester Tag oben, „Heute“ steht immer da; ältere Tage werden beim Scrollen in Portionen nachgeladen. Innerhalb eines Tages chronologisch mit Uhrzeit. Filter (Text, #tag) und Sprung zu einem Datum („Heute“ führt zurück).
+- **Notiz** = abgespeckte, quasi erledigte Aufgabe: **nur Text** (erste Zeile = Titel, Markdown), Tags, Bilder und der Tag im Logbuch (änderbar, nachgetragene Notizen stehen ohne Uhrzeit am Ende ihres Tages). Kein Status, keine Frist/Wiedervorlage/Verantwortlich/Ort, keine Buchungen. Eigene Events `Notiz*`, kein Sonderfall von Aufgabe.
+- Eingabe oben im Logbuch: ↵ speichert, ⇧↵ neue Zeile, `#tag` wird übernommen. Klick → Notiz-Schublade (Kopf: Notiz-Symbol · Titel · „Aufgabe daraus machen“ (Lucide `ListPlus`) · Mülleimer zweistufig · ×; darunter Tag im Logbuch, Erfasst, Tags, Notiz, Bilder). Doppelklick → direkt bearbeiten.
+- **Aus Notiz wird Aufgabe** (Event `AufgabeAusNotizErstellt`): erste Zeile = Titel, Rest = Notiz der Aufgabe, Tags und Bilder wandern mit; die Notiz verschwindet aus dem Logbuch. Umgekehrt nicht.
 
 **Schublade (Aufgabe)**
 - Kopf: Abschließen-Kreis links vom Titel · Archiv · Mülleimer · ×. „×“ und Esc schließen.

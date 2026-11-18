@@ -41,6 +41,7 @@ Umgebungsvariablen: `RB_DATEN` (anderer Datenordner), `RB_KALENDER=beispiel`, `R
 - **Neue Aufgabe:** `N` oder oben eintippen, `↵`. Syntax: `#tag @person /ort !frist ^wiedervorlage =status >datum [hh:mm] [dauer]`; beginnt die Zeile mit `>`, entsteht nur eine Buchung.
 - **Planen per Ziehen:** Aufgabe aufs Reservierungsband → Reservierung, ins Raster → Termin, auf eine Board-Spalte → Status. Freie Buchung auf Liste/Board → wird zur Aufgabe.
 - **Freie Buchung:** Doppelklick ins Reservierungsband oder Zeitraster.
+- **Logbuch:** Sicht „Logbuch“ im Zellkopf wählen. Zeigt pro Tag, was abgehakt wurde (Aufgaben, Checklisten-Punkte), und deine Notizen. Oben eine Notiz tippen, ↵ speichert, `#tag` wird übernommen. Aus einer Notiz lässt sich in der Schublade eine Aufgabe machen.
 - **Details:** Klick auf Aufgabe oder Buchung öffnet die Schublade; alle Felder sind direkt editierbar.
 
 ## Architektur

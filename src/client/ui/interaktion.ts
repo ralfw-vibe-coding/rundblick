@@ -2,7 +2,7 @@
 import { dauerText, plusTage, relativ, uhrzeit } from '../../basis/datum';
 import type { CommandStatus } from '../../body/interface';
 import { body } from './body';
-import { aufgabeOeffnen, buchungOeffnen, schliessen } from './detail';
+import { aufgabeOeffnen, buchungOeffnen, notizOeffnen, schliessen } from './detail';
 import { ICON } from './bausteine';
 import { I } from './icons';
 import { esc, pruefe, toast } from './dom';
@@ -18,6 +18,8 @@ const ZWEISTUFIG: Record<string, (id: string) => Promise<void>> = {
   verwerfen: async id => { pruefe(await body.aufgabeVerwerfen({ aufgabeId: id }), 'Aufgabe verworfen'); },
   stornieren: async id => { pruefe(await body.buchungStornieren({ buchungId: id }), 'Buchung gelöscht'); },
   anhangEntfernen: async id => { const [aufgabeId, anhangId] = id.split('/'); pruefe(await body.anhangEntfernen({ aufgabeId: aufgabeId!, anhangId: anhangId! })); },
+  notizVerwerfen: async id => { pruefe(await body.notizVerwerfen({ notizId: id }), 'Notiz gelöscht'); },
+  notizAnhangEntfernen: async id => { const [notizId, anhangId] = id.split('/'); pruefe(await body.notizAnhangEntfernen({ notizId: notizId!, anhangId: anhangId! })); },
 };
 /** weitere zweistufige Aktionen (z. B. Arbeitsbereich löschen im Raster) */
 export function zweistufigRegistrieren(act: string, f: (id: string) => Promise<void>): void { ZWEISTUFIG[act] = f; }
@@ -65,6 +67,8 @@ export function interaktionAnbinden(): void {
       if (act.dataset.act === 'wiederoeffnen') pruefe(await body.aufgabeWiedereroeffnen({ aufgabeId: id }));
       return;
     }
+    const n = t.closest<HTMLElement>('[data-notiz-id]');
+    if (n) { void notizOeffnen(n.dataset.notizId!); return; }
     const b = t.closest<HTMLElement>('[data-booking]');
     if (b) { void buchungOeffnen(b.dataset.booking!); return; }
     const a = t.closest<HTMLElement>('[data-task]');

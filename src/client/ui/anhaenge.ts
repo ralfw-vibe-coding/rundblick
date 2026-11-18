@@ -7,10 +7,10 @@ import { I } from './icons';
 
 const urls = new Map<string, string>();
 
-export function anhaengeHtml(liste: AnhangInfo[], aufgabeId: string, gesperrt: boolean): string {
+export function anhaengeHtml(liste: AnhangInfo[], aufgabeId: string, gesperrt: boolean, art: 'aufgabe' | 'notiz' = 'aufgabe'): string {
   const bilder = liste.map(a => `<div class="anh-bild" data-anhang="${esc(a.id)}" title="${esc(a.name)}">
       <img alt="${esc(a.name)}"${urls.has(a.id) ? ` src="${urls.get(a.id)}"` : ''}><span class="anh-nr">${a.nr}</span>
-      ${gesperrt ? '' : `<button class="muell anh-x" data-zweistufig="anhangEntfernen" data-id="${esc(aufgabeId)}/${esc(a.id)}" title="Bild löschen">${I.x}</button>`}
+      ${gesperrt ? '' : `<button class="muell anh-x" data-zweistufig="${art === 'notiz' ? 'notizAnhangEntfernen' : 'anhangEntfernen'}" data-id="${esc(aufgabeId)}/${esc(a.id)}" title="Bild löschen">${I.x}</button>`}
     </div>`).join('');
   return `<div class="anhaenge">${bilder}${gesperrt ? '' : `<div class="anh-hinweis">${I.bildHinzu}<span>Bild hierher ziehen<br>oder ⌘V</span></div>`}</div>`;
 }
@@ -46,11 +46,12 @@ const alsBase64 = (f: File) => new Promise<string>((ok, nein) => {
   r.readAsDataURL(f);
 });
 
-export async function bilderHinzufuegen(aufgabeId: string, dateien: File[]): Promise<void> {
+export async function bilderHinzufuegen(aufgabeId: string, dateien: File[], art: 'aufgabe' | 'notiz' = 'aufgabe'): Promise<void> {
   const bilder = dateien.filter(f => f.type.startsWith('image/'));
   if (!bilder.length) { if (dateien.length) toast('Nur Bilder können angehängt werden.', true); return; }
   for (const f of bilder) {
     const name = f.name && f.name !== 'image.png' ? f.name : `Bild ${new Date().toLocaleString('de-DE')}`;
-    pruefe(await body.anhangHinzufuegen({ aufgabeId, name, typ: f.type, daten: await alsBase64(f) }));
+    const daten = await alsBase64(f);
+    pruefe(art === 'notiz' ? await body.notizAnhangHinzufuegen({ notizId: aufgabeId, name, typ: f.type, daten }) : await body.anhangHinzufuegen({ aufgabeId, name, typ: f.type, daten }));
   }
 }

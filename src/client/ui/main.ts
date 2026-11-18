@@ -50,7 +50,7 @@ addEventListener('drop', e => { if (mitDateien(e)) e.preventDefault(); });
 
 addEventListener('rb-frisch', () => raster.aktualisieren(['aufgaben', 'board']));
 addEventListener('rb-auswahl', () => raster.aktualisieren(['aufgaben', 'board']));
-zweistufigAnbinden((act, id) => { if (act === 'verwerfen' || act === 'stornieren') schubladeSchliessenWenn(id); });
+zweistufigAnbinden((act, id) => { if (act === 'verwerfen' || act === 'stornieren' || act === 'notizVerwerfen') schubladeSchliessenWenn(id); });
 
 document.addEventListener('keydown', e => {
   const imFeld = /INPUT|TEXTAREA|SELECT/.test((e.target as HTMLElement)?.tagName ?? '');

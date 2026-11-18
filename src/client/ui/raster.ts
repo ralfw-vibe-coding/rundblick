@@ -8,9 +8,10 @@ import { zweistufigRegistrieren } from './interaktion';
 import { BoardSicht, type BoardZustand } from './sichten/board';
 import { KalenderSicht, type KalZustand } from './sichten/kalender';
 import { ListenSicht, type ListeZustand } from './sichten/liste';
+import { LogbuchSicht, type LogbuchZustand } from './sichten/logbuch';
 import type { Dichte, Sicht } from './sichten/sicht';
 
-export type SichtArt = 'liste' | 'board' | 'kalender' | 'timeline';
+export type SichtArt = 'liste' | 'board' | 'kalender' | 'timeline' | 'logbuch';
 type Zelle = { t: 'zelle'; id: string; sicht: SichtArt | null; zustand: unknown };
 type Split = { t: 'split'; richtung: 'row' | 'col'; anteile: number[]; kinder: Knoten[] };
 type Knoten = Zelle | Split;
@@ -21,6 +22,7 @@ export const SICHTEN: Record<SichtArt, { name: string; icon: string }> = {
   board: { name: 'Kanban-Board', icon: I.board },
   kalender: { name: 'Kalender', icon: I.mehrtage },
   timeline: { name: 'Timeline', icon: I.timeline },
+  logbuch: { name: 'Logbuch', icon: I.logbuch },
 };
 
 const uid = () => 'z' + Math.random().toString(36).slice(2, 8);
@@ -50,6 +52,7 @@ function sichtErzeugen(z: Zelle): Sicht | null {
     case 'board': return new BoardSicht((z.zustand as BoardZustand) ?? {});
     case 'kalender': return new KalenderSicht({ ansicht: 'woche', anker: null, pph: 10, ...(z.zustand as Partial<KalZustand>) }, ['tag', 'tage3', 'woche', 'monat', 'monate3']);
     case 'timeline': return new KalenderSicht({ ansicht: 'timeline', anker: null, pph: 16, ...(z.zustand as Partial<KalZustand>) }, ['timeline']);
+    case 'logbuch': return new LogbuchSicht((z.zustand as LogbuchZustand) ?? {});
     default: return null;
   }
 }

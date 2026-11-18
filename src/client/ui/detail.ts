@@ -14,7 +14,7 @@ import { notizFeld } from './notiz';
 import { anhaengeHtml, bilderHinzufuegen, grossansicht, vorschauenLaden } from './anhaenge';
 
 let schublade: HTMLDivElement | null = null;
-let aktuell: { art: 'aufgabe' | 'buchung'; id: string } | null = null;
+let aktuell: { art: 'aufgabe' | 'buchung' | 'notiz'; id: string } | null = null;
 
 function el(): HTMLDivElement {
   if (schublade) return schublade;
@@ -22,7 +22,8 @@ function el(): HTMLDivElement {
   schublade.className = 'drawer';
   document.body.appendChild(schublade);
   // Bilder per Drag & Drop oder aus der Zwischenablage an die geöffnete Aufgabe hängen
-  const ziel = () => (aktuell?.art === 'aufgabe' && offen() && schublade!.querySelector('.anh-hinweis') ? aktuell.id : null);
+  const ziel = () => ((aktuell?.art === 'aufgabe' || aktuell?.art === 'notiz') && offen() && schublade!.querySelector('.anh-hinweis') ? aktuell.id : null);
+  const art = () => (aktuell?.art === 'notiz' ? 'notiz' : 'aufgabe');
   const mitDateien = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes('Files');
   schublade.addEventListener('dragover', e => { if (mitDateien(e) && ziel()) { e.preventDefault(); schublade!.classList.add('bild-drop'); } });
   schublade.addEventListener('dragleave', e => { if (!schublade!.contains(e.relatedTarget as Node)) schublade!.classList.remove('bild-drop'); });
@@ -31,14 +32,14 @@ function el(): HTMLDivElement {
     const id = ziel();
     if (!mitDateien(e) || !id) return;
     e.preventDefault(); e.stopPropagation();
-    void bilderHinzufuegen(id, [...e.dataTransfer!.files]);
+    void bilderHinzufuegen(id, [...e.dataTransfer!.files], art());
   });
   document.addEventListener('paste', e => {
     const id = ziel();
     const dateien = [...(e.clipboardData?.files ?? [])].filter(f => f.type.startsWith('image/'));
     if (!id || !dateien.length) return;
     e.preventDefault();
-    void bilderHinzufuegen(id, dateien);
+    void bilderHinzufuegen(id, dateien, art());
   });
   return schublade;
 }
@@ -58,9 +59,12 @@ export async function auffrischen(): Promise<void> {
   // Wird gerade getippt, nur die Teile ohne Eingabefelder auffrischen (Bilder, Buchungen) – der Cursor bleibt, wo er ist
   if (schublade!.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement!.tagName)) {
     if (aktuell.art === 'aufgabe') await teileAuffrischen(aktuell.id);
+    if (aktuell.art === 'notiz') await notizTeileAuffrischen(aktuell.id);
     return;
   }
-  if (aktuell.art === 'aufgabe') await aufgabeOeffnen(aktuell.id); else await buchungOeffnen(aktuell.id);
+  if (aktuell.art === 'aufgabe') await aufgabeOeffnen(aktuell.id);
+  else if (aktuell.art === 'notiz') await notizOeffnen(aktuell.id);
+  else await buchungOeffnen(aktuell.id);
 }
 
 const feld = (label: string, inhalt: string, extra = '') => `<div class="fld" ${extra}><label>${label}</label>${inhalt}</div>`;
@@ -208,3 +212,67 @@ export async function buchungOeffnen(id: string): Promise<void> {
   auswahlMelden();
 }
 
+
+// ---------- Notiz (Logbuch) ----------
+// Kopf: [Notiz-Symbol] Titel (= erste Zeile) … [→ Aufgabe] [Mülleimer] [×]
+// Darunter: Datum · Tags · Notiz (Markdown, füllt den Rest) · Bilder
+/** Die in der Schublade geöffnete Notiz – das Logbuch hebt sie hervor */
+export function ausgewaehlteNotiz(): string | null { return aktuell?.art === 'notiz' && offen() ? aktuell.id : null; }
+
+export async function notizOeffnen(id: string, fokus = false): Promise<void> {
+  const n = await body.notiz({ notizId: id });
+  if (!n) { schliessen(); return; }
+  aktuell = { art: 'notiz', id };
+  const s = el();
+  const titel = n.text.split('\n').map(z => z.trim()).find(Boolean)?.replace(/^#+\s*/, '') ?? '';
+  s.innerHTML = `
+    <div class="dh">
+      <span class="notiz-symbol" title="Notiz im Logbuch">${I.notiz}</span>
+      <div class="titel-anzeige" title="Titel = erste Zeile der Notiz">${esc(titel)}</div>
+      ${knopf('zurAufgabe', I.zurAufgabe, 'Aufgabe daraus machen – Text, Tags und Bilder wandern mit')}
+      ${muellKnopf('notizVerwerfen', 'Notiz löschen', id)}
+      ${knopf('zu', ICON.zu, 'Schließen (Esc)')}
+    </div>
+    <div class="db notizschublade">
+      <div class="fld-grid">
+        ${feld('Tag im Logbuch', `<input type="date" data-f="datum" value="${n.datum}">`)}
+        ${feld('Erfasst', `<div class="muted" style="padding-top:6px">${n.erfasst ? new Date(n.erfasst).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : '–'}</div>`)}
+      </div>
+      ${feld('Tags', '<div data-chips="tag"></div>')}
+      ${feld('Notiz', '<div data-notiz></div>', 'style="flex:1;display:flex;flex-direction:column;min-height:180px"')}
+      ${anhaengeHtml(n.anhangliste, id, false, 'notiz')}
+    </div>`;
+  chipFeld(s.querySelector('[data-chips="tag"]')!, { art: 'tag', werte: n.tags, mehrfach: true, gesperrt: false, platzhalter: 'Tag …  ↵', aendern: async w => { pruefe(await body.notizAendern({ notizId: id, tags: w })); } });
+  notizFeld(s.querySelector('[data-notiz]')!, { text: n.text, gesperrt: false, fokus, speichern: async t => { if (pruefe(await body.notizAendern({ notizId: id, text: t })) && aktuell?.id === id) titelSetzen(t); } });
+  vorschauenLaden(s);
+  s.onchange = async ev => {
+    const t = ev.target as HTMLInputElement;
+    if (t.dataset.f === 'datum' && t.value) pruefe(await body.notizAendern({ notizId: id, datum: t.value }));
+  };
+  s.onclick = async ev => {
+    const t = ev.target as HTMLElement;
+    const bild = t.closest<HTMLElement>('.anh-bild[data-anhang]');
+    if (bild && !t.closest('.anh-x')) { grossansicht(bild.dataset.anhang!); return; }
+    const d = t.closest<HTMLElement>('[data-d]')?.dataset.d;
+    if (d === 'zu') schliessen();
+    if (d === 'zurAufgabe') {
+      const r = await body.aufgabeAusNotiz({ notizId: id });
+      if (pruefe(r, 'Aufgabe aus der Notiz erstellt') && r.ok) { markieren(r.ids!.aufgabeId!); void aufgabeOeffnen(r.ids!.aufgabeId!); }
+    }
+  };
+  s.classList.add('open');
+  auswahlMelden();
+  dispatchEvent(new CustomEvent('rb-auswahl'));
+}
+
+function titelSetzen(text: string): void {
+  const t = schublade?.querySelector('.titel-anzeige');
+  if (t) t.textContent = text.split('\n').map(z => z.trim()).find(Boolean)?.replace(/^#+\s*/, '') ?? '';
+}
+
+async function notizTeileAuffrischen(id: string): Promise<void> {
+  const n = await body.notiz({ notizId: id });
+  if (!n || aktuell?.id !== id || !schublade) return;
+  const anh = schublade.querySelector('.anhaenge');
+  if (anh) { anh.outerHTML = anhaengeHtml(n.anhangliste, id, false, 'notiz'); vorschauenLaden(schublade); }
+}
