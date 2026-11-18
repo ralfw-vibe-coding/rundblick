@@ -268,17 +268,49 @@ export class Raster {
       + (this.bereiche.length > 1 ? `<button class="add" data-zweistufig="arbeitsbereichLoeschen" data-id="aktiv" title="Diesen Arbeitsbereich löschen">${I.bereichLoeschen}</button>` : '');
   }
   private tabKlick(e: Event): void {
+    if ((e.target as HTMLElement).closest('.ws-name')) return;
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-ws]'); if (!b) return;
     const w = b.dataset.ws!;
-    if (w === 'neu') { this.bereiche.push({ name: `Bereich ${this.bereiche.length + 1}`, wurzel: Z(null) }); this.aktiv = this.bereiche.length - 1; }
+    const neu = w === 'neu';
+    if (neu) { this.bereiche.push({ name: `Bereich ${this.bereiche.length + 1}`, wurzel: Z(null) }); this.aktiv = this.bereiche.length - 1; }
+    else if (Number(w) === this.aktiv) return;
     else this.aktiv = Number(w);
     this.maxId = null; this.aufbauen();
+    // neuer Arbeitsbereich: gleich benennen
+    if (neu) this.umbenennen(this.aktiv);
   }
   private tabUmbenennen(e: Event): void {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-ws]');
     const i = Number(b?.dataset.ws); if (!b || isNaN(i)) return;
-    const n = prompt('Name des Arbeitsbereichs', this.bereiche[i]!.name);
-    if (n) { this.bereiche[i]!.name = n; this.tabsZeichnen(); this.speichern(); }
+    this.umbenennen(i);
+  }
+
+  /** Reiter wird zum Eingabefeld (kein Dialog): ↵ oder Klick daneben übernimmt, Esc verwirft, leer = alter Name */
+  private umbenennen(i: number): void {
+    const knopf = this.tabs.querySelector<HTMLElement>(`[data-ws="${i}"]`);
+    if (!knopf) return;
+    const alt = this.bereiche[i]!.name;
+    const inp = document.createElement('input');
+    inp.className = 'ws-name';
+    inp.value = alt;
+    inp.size = Math.max(6, alt.length + 1);
+    knopf.replaceWith(inp);
+    inp.focus(); inp.select();
+    let fertig = false;
+    const ende = (uebernehmen: boolean) => {
+      if (fertig) return;
+      fertig = true;
+      const n = inp.value.trim();
+      if (uebernehmen && n && n !== alt) { this.bereiche[i]!.name = n; this.speichern(); }
+      this.tabsZeichnen();
+    };
+    inp.addEventListener('input', () => { inp.size = Math.max(6, inp.value.length + 1); });
+    inp.addEventListener('keydown', ev => {
+      ev.stopPropagation();
+      if (ev.key === 'Enter') ende(true);
+      if (ev.key === 'Escape') ende(false);
+    });
+    inp.addEventListener('blur', () => ende(true));
   }
 
   private speichern(): void {
