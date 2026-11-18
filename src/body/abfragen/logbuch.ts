@@ -1,6 +1,6 @@
 // Pure Funktion: das Logbuch – was an welchem Tag abgehakt wurde, dazu die Notizen.
 // Abgeschlossene Aufgaben und abgehakte Checklisten-Punkte stehen am Tag (lokale Zeit) ihres Abhakens;
-// Notizen an ihrem Datum. Verworfene Aufgaben fehlen; archivierte bleiben (das Logbuch ist Geschichte).
+// Notizen an ihrem Datum. Tage und Einträge innerhalb eines Tages: umgekehrt chronologisch (neuester oben). Verworfene Aufgaben fehlen; archivierte bleiben (das Logbuch ist Geschichte).
 import { fmt, uhrzeit } from '../../basis/datum';
 import type { AufgabeZ, NotizZ } from '../../domain/interface';
 import type { Datum } from '../../schema/werte';
@@ -39,10 +39,10 @@ export function logbuch(x: { aufgaben: AufgabeZ[]; notizen: NotizZ[]; heute: Dat
   for (const n of x.notizen) {
     const { titel, vorschau } = notizTitel(n.text);
     const l = n.erfasst ? lokal(n.erfasst) : null;
-    // nachgetragene Notizen (Datum ≠ Tag des Erfassens) stehen ohne Uhrzeit am Ende ihres Tages
+    // nachgetragene Notizen (Datum ≠ Tag des Erfassens) stehen ohne Uhrzeit unten in ihrem Tag
     const amTag = l && l.datum === n.datum;
     alle.push({
-      datum: n.datum, schluessel: amTag ? n.erfasst : `${n.datum}T99${n.erfasst}`,
+      datum: n.datum, schluessel: amTag ? n.erfasst : `!${n.erfasst}`,
       text: [n.text, ...n.tags.map(t => '#' + t)].join(' '),
       e: { art: 'notiz', notizId: n.id, titel, vorschau, tags: n.tags, bilder: n.anhaenge.length, uhrzeit: amTag ? l!.uhrzeit : null },
     });
@@ -61,7 +61,7 @@ export function logbuch(x: { aufgaben: AufgabeZ[]; notizen: NotizZ[]; heute: Dat
   const anzahl = Math.max(1, x.tage ?? 14);
   return {
     heute: x.heute,
-    tage: daten.slice(0, anzahl).map(datum => ({ datum, eintraege: tage.get(datum)!.sort((a, b) => a.schluessel.localeCompare(b.schluessel)).map(s => s.e) })),
+    tage: daten.slice(0, anzahl).map(datum => ({ datum, eintraege: tage.get(datum)!.sort((a, b) => b.schluessel.localeCompare(a.schluessel)).map(s => s.e) })),
     weiter: daten[anzahl] ?? null,
   };
 }

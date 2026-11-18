@@ -116,11 +116,11 @@ describe('Logbuch', () => {
     await body.aufgabeAbschliessen({ aufgabeId: a });
     const l = await body.logbuch({});
     expect(l.tage.map(t => [t.datum, t.eintraege.map(kurz)])).toEqual([
-      ['2026-11-18', ['N 08:30 Morgenseiten', 'A 11:05 Angebot']],
+      ['2026-11-18', ['A 11:05 Angebot', 'N 08:30 Morgenseiten']],
       ['2026-11-17', ['P 10:00 Preis (Angebot)']],
     ]);
     expect(l.weiter).toBeNull();
-    expect(l.tage[0]!.eintraege[0]).toMatchObject({ vorschau: 'Ein paar Gedanken', bilder: 0 });
+    expect(l.tage[0]!.eintraege[1]).toMatchObject({ vorschau: 'Ein paar Gedanken', bilder: 0 });
   });
 
   it('wieder geöffnet / wieder aufgehakt / verworfen → aus dem Logbuch; archiviert bleibt', async () => {
@@ -139,7 +139,7 @@ describe('Logbuch', () => {
     expect(t.eintraege).toEqual([expect.objectContaining({ art: 'aufgabe', titel: 'B', archiviert: true })]);
   });
 
-  it('heute steht immer da; nachgetragene Notizen stehen ohne Uhrzeit am Ende ihres Tages', async () => {
+  it('heute steht immer da; neuester Eintrag oben; nachgetragene Notizen stehen ohne Uhrzeit unten in ihrem Tag', async () => {
     expect((await body.logbuch({})).tage).toEqual([{ datum: '2026-11-18', eintraege: [] }]);
     stellen('2026-11-18T07:00:00');
     await body.notizErfassen({ text: 'Gestern vergessen', datum: '2026-11-17' });
@@ -148,6 +148,10 @@ describe('Logbuch', () => {
     await body.aufgabeAbschliessen({ aufgabeId: x });
     stellen('2026-11-18T09:00:00');
     const gestern = (await body.logbuch({})).tage[1]!;
+    stellen('2026-11-17T09:30:00');
+    await body.notizErfassen({ text: 'Später am Tag' });
+    stellen('2026-11-18T09:00:00');
+    expect((await body.logbuch({})).tage[1]!.eintraege.map(kurz)).toEqual(['N 09:30 Später am Tag', 'A 08:00 X', 'N --:-- Gestern vergessen']);
     expect(gestern.eintraege.map(kurz)).toEqual(['A 08:00 X', 'N --:-- Gestern vergessen']);
   });
 

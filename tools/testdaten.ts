@@ -141,7 +141,7 @@ async function stufeLogbuch(k: Kontext): Promise<void> {
   // Gestern
   await notiz('Gespräch mit Markus\nIdee: Bewerbungsfilm als Serie anbieten.\n- Preise klären\n- Beispiel drehen #vorgestellt #idee', -1, '14:30');
   await ab('Logbuch: gestern abgeschlossen', -1, '16:00');
-  await notiz('Nachgetragen: Abends noch die Folien skizziert (ohne Uhrzeit, steht am Ende des Tages)', 0, '08:00', d(-1));
+  await notiz('Nachgetragen: Abends noch die Folien skizziert (ohne Uhrzeit, steht unten im Tag)', 0, '08:00', d(-1));
 
   // Vor 3 und 10 Tagen, vor 40 Tagen (zum Scrollen)
   await ab('Logbuch: vor 3 Tagen abgeschlossen', -3, '11:00', { tags: ['kunde'] });
