@@ -949,3 +949,7 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 /* Timeline: Beschriftungen lassen sich ziehen (z. B. in einen Kalender einer anderen Zelle) */
 .tl2-label[draggable="true"] { cursor: grab; }
 .tl2-label[draggable="true"]:active { cursor: grabbing; }
+/* Woche/Tag: Kopf, Reservierungsband und Raster reservieren denselben Platz für den Scrollbalken –
+   sonst ist das Raster schmaler und die Tagesrahmen (heute/markiert) springen zwischen Kopf und Raster */
+.wk-scroll { scrollbar-gutter: stable; }
+.wk-h, .wk-res { overflow-y: hidden; scrollbar-gutter: stable; }
