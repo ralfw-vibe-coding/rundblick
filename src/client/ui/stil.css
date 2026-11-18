@@ -1007,7 +1007,12 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .einst .sp-zeile .muell.fragen { color: #fff; background: var(--over); }
 /* Aktualisierung */
 #einstBtn { position: relative; }
-#einstBtn.hat-update::after { content: ''; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--own); box-shadow: 0 0 0 2px #fff; }
+/* Update-Knopf rechts neben dem Zahnrad: hervorgehoben, wenn ein neuer Build bereitliegt */
+#updBtn svg.lu { transition: color .15s; }
+#updBtn.hat-update { background: var(--own); border-color: var(--own); color: #fff; box-shadow: 0 0 0 3px var(--own-soft); }
+#updBtn.hat-update:hover { filter: brightness(1.08); }
+#updBtn.dreht svg.lu { animation: rb-pulsen .9s ease-in-out infinite; color: var(--own); }
+#updBtn.hat-update.dreht svg.lu { color: #fff; }
 .akt-ordner { font-size: 12px; word-break: break-all; margin-bottom: 6px; }
 .akt-knoepfe { display: flex; gap: 6px; flex-wrap: wrap; }
 .akt-knoepfe .btn { display: inline-flex; align-items: center; gap: 5px; }

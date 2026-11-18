@@ -1,7 +1,7 @@
 // Einstieg der Oberfläche: Raster, Schnellerfassung, Einstellungen und Tastatur verdrahten.
 import { body } from './body';
 import { auffrischen, offen as schubladeOffen, schliessen as schubladeSchliessen, schliessenWenn as schubladeSchliessenWenn } from './detail';
-import { $, pruefe, tippt } from './dom';
+import { $, pruefe, tippt, toast } from './dom';
 import { einstellungenOffen, einstellungenSchliessen, einstellungenUmschalten, einstellungenZeichnen } from './einstellungen';
 import { interaktionAnbinden, zweistufigAnbinden } from './interaktion';
 import { I } from './icons';
@@ -68,12 +68,38 @@ document.addEventListener('keydown', e => {
 
 void raster.laden();
 
-// Punkt am Zahnrad, sobald ein neuer Build im Update-Ordner liegt
+// Update-Knopf rechts neben dem Zahnrad: hervorgehoben, wenn ein neuer Build bereitliegt.
+// Klick: kein Ordner → Ordner wählen; neuer Build da → aktualisieren; sonst jetzt prüfen (und ggf. gleich aktualisieren).
+const updBtn = $('#updBtn');
+updBtn.innerHTML = I.appUpdate;
 async function updateMarke(): Promise<void> {
   const a = await body.aktualisierung();
-  const knopf = $('#einstBtn');
-  const neu = a.stand.stand === 'verfuegbar';
-  knopf.classList.toggle('hat-update', neu);
-  knopf.title = a.stand.stand === 'verfuegbar' ? `Build ${a.stand.angebot.build} ist da – Einstellungen › Aktualisierung` : 'Einstellungen';
+  const s = a.stand;
+  updBtn.hidden = s.stand === 'nichtVerfuegbar';
+  updBtn.classList.toggle('hat-update', s.stand === 'verfuegbar');
+  updBtn.classList.toggle('dreht', s.stand === 'installiert');
+  const ich = a.laufend ? `Build ${a.laufend.build}` : '';
+  updBtn.title = s.stand === 'verfuegbar' ? `Build ${s.angebot.build} ist da – klicken zum Aktualisieren (läuft: ${ich})`
+    : s.stand === 'installiert' ? `Aktualisiere auf Build ${s.angebot.build} …`
+    : s.stand === 'aus' ? `Kein Update-Ordner gewählt – klicken zum Wählen (läuft: ${ich})`
+    : s.stand === 'fehler' ? `Update: ${s.meldung}`
+    : `Nach Updates suchen (läuft: ${ich}${s.stand === 'aktuell' && s.geprueft ? `, geprüft ${new Date(s.geprueft).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr` : ''})`;
 }
+updBtn.onclick = async () => {
+  if (updBtn.classList.contains('dreht')) return;
+  updBtn.classList.add('dreht');
+  try {
+    let a = await body.aktualisierung();
+    if (a.stand.stand === 'aus') { pruefe(await body.aktualisierungOrdnerWaehlen()); a = await body.aktualisierung(); if (a.stand.stand === 'aus') return; }
+    if (a.stand.stand !== 'verfuegbar') {
+      if (!pruefe(await body.aktualisierungPruefen())) return;
+      a = await body.aktualisierung();
+    }
+    if (a.stand.stand === 'verfuegbar') { toast(`Aktualisiere auf Build ${a.stand.angebot.build} … Rundblick startet gleich neu.`); pruefe(await body.aktualisierungInstallieren()); }
+    else if (a.stand.stand === 'aktuell') toast(`Rundblick ist aktuell (Build ${a.laufend?.build ?? '?'})`);
+  } finally {
+    updBtn.classList.remove('dreht');
+    void updateMarke();
+  }
+};
 void updateMarke();

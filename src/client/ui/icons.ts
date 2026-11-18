@@ -1,7 +1,7 @@
 // Alle Symbole der Oberfläche kommen aus Lucide (https://lucide.dev) – als SVG-Strings für die HTML-Vorlagen.
 import {
   Archive, ArchiveRestore, ArrowDown, ArrowUp, Calendar, CalendarClock, CalendarSync, CalendarRange, ChartGantt, Check, ChevronLeft,
-  ChevronRight, ChevronDown, Circle, Link2, Unlink2, CircleCheck, Clock, Columns2, Diamond, ChevronsDownUp, ChevronsUpDown, Download, FolderOpen, Grid2x2Plus, Grid2x2X, Hourglass, List, MapPin, Maximize2, Minimize2, Minus,
+  ChevronRight, ChevronDown, Circle, Link2, Unlink2, CircleCheck, Clock, Columns2, Diamond, ChevronsDownUp, ChevronsUpDown, CircleArrowDown, Download, FolderOpen, Grid2x2Plus, Grid2x2X, Hourglass, List, MapPin, Maximize2, Minimize2, Minus,
   NotebookPen, StickyNote, SquareCheck, ListPlus, Paperclip, Pencil, Plus, ImagePlus, RefreshCw, RotateCcw, Rows2, Settings, SquareKanban, Trash2, TriangleAlert, X,
 } from 'lucide';
 
@@ -17,7 +17,7 @@ const k = (n: unknown) => svg(n as Knoten);
 export const I = {
   muell: k(Trash2), warnung: k(TriangleAlert), archiv: k(Archive), ausArchiv: k(ArchiveRestore), x: k(X),
   nebeneinander: k(Columns2), untereinander: k(Rows2), maximieren: k(Maximize2), minimieren: k(Minimize2),
-  bearbeiten: k(Pencil), einstellungen: k(Settings), plus: k(Plus), minus: k(Minus), bereichNeu: k(Grid2x2Plus), aktualisierung: k(Download), ordner: k(FolderOpen), bereichLoeschen: k(Grid2x2X), zuruecksetzen: k(RotateCcw),
+  bearbeiten: k(Pencil), einstellungen: k(Settings), plus: k(Plus), minus: k(Minus), bereichNeu: k(Grid2x2Plus), aktualisierung: k(Download), appUpdate: k(CircleArrowDown), ordner: k(FolderOpen), bereichLoeschen: k(Grid2x2X), zuruecksetzen: k(RotateCcw),
   wiedervorlage: k(CalendarClock), frist: k(Diamond), ort: k(MapPin),
   liste: k(List), board: k(SquareKanban), tag: k(Calendar), mehrtage: k(CalendarRange), timeline: k(ChartGantt),
   links: k(ChevronLeft), rechts: k(ChevronRight), haken: k(Check), aktualisieren: k(RefreshCw), kalenderSync: k(CalendarSync), ausklappen: k(ChevronsUpDown), einklappen: k(ChevronsDownUp),
