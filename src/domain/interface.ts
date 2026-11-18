@@ -3,11 +3,12 @@
 import type { Datum, Id, KategorieId, Minuten, Uhrzeit, Wochentag } from '../schema/werte';
 import type { AufgabeAenderungen, AufgabeFelder } from './commands/aufgaben';
 import type { Ergebnis } from './commands/basis';
-import type { BuchungAenderungen } from './commands/buchungen';
+import type { BuchungAenderungen, VerknuepfungEingabe } from './commands/buchungen';
 import type { NotizAenderungen } from './commands/notizen';
 import type { AnhangZ, AufgabeZ, BuchungZ, NotizZ, PlanungZ, SpalteZ } from './zustand';
 
 export type { NotizAenderungen, NotizZ };
+export type { VerknuepfungEingabe };
 export type { AufgabeAenderungen, AufgabeFelder, BuchungAenderungen, Ergebnis, AnhangZ, AufgabeZ, BuchungZ, PlanungZ, SpalteZ };
 
 export interface DomainInterface {
@@ -27,6 +28,9 @@ export interface DomainInterface {
   buchungEintragen(c: { buchungId: Id; titel: string; beschreibung?: string; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten; belegt?: boolean }): Ergebnis;
   buchungAendern(c: { buchungId: Id; aenderungen: BuchungAenderungen }): Ergebnis;
   buchungStornieren(c: { buchungId: Id }): Ergebnis;
+  buchungVerknuepfen(c: VerknuepfungEingabe): Ergebnis;
+  buchungAbgleichen(c: { buchungId: Id; stand: string }): Ergebnis;
+  verknuepfungLoesen(c: { buchungId: Id; grund: 'manuell' | 'externGeloescht' }): Ergebnis;
   aufgabeAusBuchung(c: { buchungId: Id; aufgabeId: Id; status?: Id | null }): Ergebnis;
   standardspaltenEinrichten(): Ergebnis;
   spalteAnlegen(c: { statusId: Id; name: string; kategorie: KategorieId }): Ergebnis;

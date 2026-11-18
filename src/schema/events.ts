@@ -44,6 +44,10 @@ export type DomainEvent =
   | E<'BuchungVerschoben', { buchungId: Id; datum: Datum; start: Uhrzeit | null }>
   | E<'BuchungsdauerGeaendert', { buchungId: Id; dauer: Minuten }>
   | E<'BuchungStorniert', { buchungId: Id }>
+  // ---- Spiegelung in Google/iCloud (nur Termine): Verknüpfung über die UID beim Anbieter, „stand“ = Fingerabdruck beim letzten Abgleich
+  | E<'BuchungVerknuepft', { buchungId: Id; kalenderId: string; kalender: string; konto: string; farbe: string; externeUid: string; stand: string }>
+  | E<'BuchungAbgeglichen', { buchungId: Id; stand: string }>
+  | E<'VerknuepfungGeloest', { buchungId: Id; grund: 'manuell' | 'externGeloescht' }>
   | E<'AufgabeAusBuchungErstellt', { aufgabeId: Id; buchungId: Id; titel: string; beschreibung: string; status: Id | null }>
   // ---- Notizen (Logbuch): nur Text, Tags, Bilder und ein Tag; quasi schon erledigt
   | E<'NotizErfasst', { notizId: Id; text: string; tags: string[]; datum: Datum }>

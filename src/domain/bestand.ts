@@ -18,6 +18,9 @@ export function leererBestand(): Bestand {
   return { aufgaben: new Map(), buchungen: new Map(), spalten: new Map(), planung: PLANUNG_STANDARD, kategorien: kategorienStandard(), notizen: new Map() };
 }
 
+/** Events, die den gespiegelten Inhalt einer Buchung ändern (Titel, Notiz, Zeit, Dauer) */
+const INHALT = new Set(['BuchungAngelegt', 'BuchungUmbenannt', 'BuchungsbeschreibungGeaendert', 'BuchungVerschoben', 'BuchungsdauerGeaendert']);
+
 export function anwenden(b: Bestand, e: ZeitEvent): void {
   const d = e.daten as Record<string, unknown>;
   if (typeof d.aufgabeId === 'string') {
@@ -37,6 +40,7 @@ export function anwenden(b: Bestand, e: ZeitEvent): void {
   }
   if (typeof d.buchungId === 'string') {
     const neu = buchungEntwickeln(b.buchungen.get(d.buchungId) ?? null, e);
+    if (neu && INHALT.has(e.typ)) neu.zuletzt = e.zeit ?? neu.zuletzt;
     if (neu) b.buchungen.set(d.buchungId, neu);
   }
   spaltenEntwickeln(b.spalten, e);

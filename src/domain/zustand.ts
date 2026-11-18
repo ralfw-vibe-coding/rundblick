@@ -33,10 +33,20 @@ export type ZeitEvent = DomainEvent & { zeit?: string };
 
 export type AnhangZ = { id: Id; name: string; typ: string; groesse: number };
 
+export type VerknuepfungZ = { kalenderId: string; kalender: string; konto: string; farbe: string; externeUid: string; stand: string };
+
 export type BuchungZ = {
   id: Id; aufgabeId: Id | null; titel: string; beschreibung: string;
   datum: Datum; dauer: Minuten; start: Uhrzeit | null; belegt: boolean; storniert: boolean;
+  /** gespiegelt in Google/iCloud */
+  verknuepfung: VerknuepfungZ | null;
+  /** Hinweis an der Buchung, z. B. „extern gelöscht – Verknüpfung gelöst“ */
+  hinweis: string | null;
+  /** Zeitpunkt der letzten inhaltlichen Änderung (für „jüngere Änderung gewinnt“) */
+  zuletzt: string;
 };
+
+export const HINWEIS_EXTERN_GELOESCHT = 'Der gespiegelte Eintrag wurde im externen Kalender gelöscht – die Verknüpfung ist gelöst.';
 
 export type SpalteZ = { id: Id; name: string; kategorie: KategorieId; rang: number; entfernt: boolean };
 
@@ -109,7 +119,7 @@ export function notizEntwickeln(z: NotizZ | null, e: ZeitEvent): NotizZ | null {
 }
 
 export function buchungEntwickeln(z: BuchungZ | null, e: DomainEvent): BuchungZ | null {
-  if (e.typ === 'BuchungAngelegt') return { ...e.daten, id: e.daten.buchungId, storniert: false };
+  if (e.typ === 'BuchungAngelegt') return { ...e.daten, id: e.daten.buchungId, storniert: false, verknuepfung: null, hinweis: null, zuletzt: '' };
   if (!z) return z;
   switch (e.typ) {
     case 'BuchungUmbenannt': return { ...z, titel: e.daten.titel };
@@ -119,6 +129,9 @@ export function buchungEntwickeln(z: BuchungZ | null, e: DomainEvent): BuchungZ 
     case 'BuchungsdauerGeaendert': return { ...z, dauer: e.daten.dauer };
     case 'BuchungStorniert': return { ...z, storniert: true };
     case 'AufgabeAusBuchungErstellt': return { ...z, aufgabeId: e.daten.aufgabeId };
+    case 'BuchungVerknuepft': { const { buchungId: _b, ...v } = e.daten; return { ...z, verknuepfung: v, hinweis: null }; }
+    case 'BuchungAbgeglichen': return z.verknuepfung ? { ...z, verknuepfung: { ...z.verknuepfung, stand: e.daten.stand } } : z;
+    case 'VerknuepfungGeloest': return { ...z, verknuepfung: null, hinweis: e.daten.grund === 'externGeloescht' ? HINWEIS_EXTERN_GELOESCHT : null };
     default: return z;
   }
 }

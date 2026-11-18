@@ -39,6 +39,9 @@ export class Domain implements DomainInterface {
   buchungEintragen: DomainInterface['buchungEintragen'] = c => B.buchungEintragen(this.es, c);
   buchungAendern: DomainInterface['buchungAendern'] = c => B.buchungAendern(this.es, c);
   buchungStornieren: DomainInterface['buchungStornieren'] = c => B.buchungStornieren(this.es, c);
+  buchungVerknuepfen: DomainInterface['buchungVerknuepfen'] = c => B.buchungVerknuepfen(this.es, c);
+  buchungAbgleichen: DomainInterface['buchungAbgleichen'] = c => B.buchungAbgleichen(this.es, c);
+  verknuepfungLoesen: DomainInterface['verknuepfungLoesen'] = c => B.verknuepfungLoesen(this.es, c);
   aufgabeAusBuchung: DomainInterface['aufgabeAusBuchung'] = c => B.aufgabeAusBuchung(this.es, c);
   standardspaltenEinrichten: DomainInterface['standardspaltenEinrichten'] = () => S.standardspaltenEinrichten(this.es);
   spalteAnlegen: DomainInterface['spalteAnlegen'] = c => S.spalteAnlegen(this.es, c);

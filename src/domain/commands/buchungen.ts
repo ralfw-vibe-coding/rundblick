@@ -58,6 +58,7 @@ export function buchungAendern(es: EventStore, c: { buchungId: Id; aenderungen: 
     if (x.titel !== undefined && !nichtLeer(x.titel)) return nein('Titel fehlt.');
     const p = pruefeBuchung({ datum: x.datum ?? z.datum, start: x.start === undefined ? z.start : x.start, dauer: x.dauer ?? z.dauer });
     if (p.length) return nein(...p);
+    if (z.verknuepfung && x.start === null) return nein('Gespiegelte Termine brauchen eine Uhrzeit – erst die Verknüpfung lösen.');
     const t = z.aufgabeId ? [tag.buchung(z.id), tag.aufgabe(z.aufgabeId)] : [tag.buchung(z.id)];
     const id = z.id, ev: NeuesEvent[] = [];
     if (x.titel !== undefined && x.titel.trim() !== z.titel) ev.push({ typ: 'BuchungUmbenannt', tags: t, daten: { buchungId: id, titel: x.titel.trim() } });
@@ -92,5 +93,39 @@ export function aufgabeAusBuchung(es: EventStore, c: { buchungId: Id; aufgabeId:
       typ: 'AufgabeAusBuchungErstellt', tags: [tag.aufgabe(c.aufgabeId), tag.buchung(z.id)],
       daten: { aufgabeId: c.aufgabeId, buchungId: z.id, titel: z.titel, beschreibung: z.beschreibung, status: c.status ?? null },
     }];
+  });
+}
+
+// ---------------- Spiegelung in Google/iCloud (nur Termine) ----------------
+const tags = (z: { id: Id; aufgabeId: Id | null }) => (z.aufgabeId ? [tag.buchung(z.id), tag.aufgabe(z.aufgabeId)] : [tag.buchung(z.id)]);
+
+export type VerknuepfungEingabe = { buchungId: Id; kalenderId: string; kalender: string; konto: string; farbe: string; externeUid: string; stand: string };
+
+export function buchungVerknuepfen(es: EventStore, c: VerknuepfungEingabe): Ergebnis {
+  return ctx(es, [tag.buchung(c.buchungId)], b => {
+    const z = b.buchungen.get(c.buchungId);
+    if (!z || z.storniert) return nein('Buchung unbekannt.');
+    if (!z.start) return nein('Nur Termine (mit Uhrzeit) lassen sich spiegeln.');
+    if (z.verknuepfung) return nein('Die Buchung ist schon gespiegelt.');
+    if (!nichtLeer(c.externeUid)) return nein('Externe Kennung fehlt.');
+    return [{ typ: 'BuchungVerknuepft', tags: tags(z), daten: { ...c } }];
+  });
+}
+
+export function buchungAbgleichen(es: EventStore, c: { buchungId: Id; stand: string }): Ergebnis {
+  return ctx(es, [tag.buchung(c.buchungId)], b => {
+    const z = b.buchungen.get(c.buchungId);
+    if (!z || z.storniert || !z.verknuepfung) return nein('Buchung ist nicht gespiegelt.');
+    if (z.verknuepfung.stand === c.stand) return [];
+    return [{ typ: 'BuchungAbgeglichen', tags: tags(z), daten: { buchungId: z.id, stand: c.stand } }];
+  });
+}
+
+export function verknuepfungLoesen(es: EventStore, c: { buchungId: Id; grund: 'manuell' | 'externGeloescht' }): Ergebnis {
+  return ctx(es, [tag.buchung(c.buchungId)], b => {
+    const z = b.buchungen.get(c.buchungId);
+    if (!z || z.storniert) return nein('Buchung unbekannt.');
+    if (!z.verknuepfung) return [];
+    return [{ typ: 'VerknuepfungGeloest', tags: tags(z), daten: { buchungId: z.id, grund: c.grund } }];
   });
 }
