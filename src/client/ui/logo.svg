@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-320 -320 640 640">
+  <!-- Rundblick-Logo (wie das App-Icon, ohne Kachel): Ring in drei Farben, Haken in der Mitte -->
+  <circle r="270" fill="none" stroke="#4f46e5" stroke-width="92" stroke-dasharray="565 1696" transform="rotate(-90)"/>
+  <circle r="270" fill="none" stroke="#d97706" stroke-width="92" stroke-dasharray="0 565 565 1696" transform="rotate(-90)"/>
+  <circle r="270" fill="none" stroke="#2f7cf6" stroke-width="92" stroke-dasharray="0 1130 566 1696" transform="rotate(-90)"/>
+  <circle r="150" fill="#fff"/>
+  <path d="M-62 4 L-14 52 L72 -50" fill="none" stroke="#1d1d1f" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
