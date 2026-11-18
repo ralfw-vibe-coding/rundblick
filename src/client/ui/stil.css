@@ -877,3 +877,13 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .kwahl-eintrag .kw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kwahl .sdot { width: 10px; height: 10px; flex: none; }
 .einst .kal-gruppe { font-size: 11px; color: var(--mute); padding-top: 8px; }
+/* Markierter Tag: Rahmen wie „heute“, aber in der Akzentfarbe; bleibt beim Wechsel der Ansicht im Blick */
+:root { --markiert: #4f46e5; }
+.wk .markiert { box-shadow: inset 2px 0 0 var(--markiert), inset -2px 0 0 var(--markiert) !important; }
+.wk .dh.markiert { box-shadow: inset 2px 0 0 var(--markiert), inset -2px 0 0 var(--markiert), inset 0 2px 0 var(--markiert) !important; border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--markiert) 6%, transparent); }
+.wk .dcol.markiert { box-shadow: inset 2px 0 0 var(--markiert), inset -2px 0 0 var(--markiert), inset 0 -2px 0 var(--markiert) !important; }
+.wk .dh[data-markier] { cursor: pointer; }
+.mc.markiert { outline: 2px solid var(--markiert) !important; outline-offset: -2px; border-radius: 3px; position: relative; z-index: 2; background: color-mix(in srgb, var(--markiert) 5%, transparent); }
+.tl-markiert { position: absolute; top: 0; bottom: 0; box-shadow: inset 2px 0 0 var(--markiert), inset -2px 0 0 var(--markiert); background: color-mix(in srgb, var(--markiert) 5%, transparent); pointer-events: none; }
+.tl-head .r span[data-markier] { cursor: pointer; }
+.tl-head .r span.mk { color: var(--markiert); font-weight: 700; }

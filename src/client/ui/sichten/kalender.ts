@@ -11,7 +11,10 @@ import { I } from '../icons';
 import type { Dichte, Sicht } from './sicht';
 
 export type KalAnsicht = 'tag' | 'tage3' | 'woche' | 'monat' | 'monate3' | 'timeline';
-export type KalZustand = { ansicht: KalAnsicht; anker: string | null; pph: number; ganzerTag?: boolean };
+export type KalZustand = { ansicht: KalAnsicht; anker: string | null; pph: number; ganzerTag?: boolean; /** markierter Tag – bleibt beim Wechsel der Ansicht im Blick */ markiert?: string | null };
+
+/** markierter Tag der gerade gezeichneten Sicht (für die Zeichenfunktionen) */
+let MARKIERT: string | null = null;
 
 // Sichtbares Zeitfenster: eingestellte Tageszeit (KERN), erweitert um Termine davor/danach oder ganzer Tag.
 // Die Werte gelten jeweils für das gerade gezeichnete Raster; am Raster stehen sie als data-h0/data-h1,
@@ -64,6 +67,7 @@ export class KalenderSicht implements Sicht {
   }
 
   async render(el: HTMLElement, dichte: Dichte): Promise<void> {
+    MARKIERT = this.z.markiert ?? null;
     this.el = el; this.dichte = dichte;
     if (!this.heute) this.heute = (await body.heute()).datum;
     const anker = this.z.anker ?? this.heute;
@@ -102,6 +106,11 @@ export class KalenderSicht implements Sicht {
       </div>
       <div class="cal-b">${inhalt}</div></div>`;
     this.binden(el, anker);
+    if (this.fokussieren) {
+      // markierten Tag in den Blick holen (nach Wechsel der Ansicht oder beim Markieren)
+      this.fokussieren = false;
+      el.querySelector<HTMLElement>('.markiert')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
     monatEinpassen(el);
     if (!el.dataset.einpassen) {
       // ändert sich die Zellgröße (Trenner, Fenster), neu einpassen
@@ -110,8 +119,19 @@ export class KalenderSicht implements Sicht {
     }
   }
 
+  private fokussieren = false;
+
   private binden(el: HTMLElement, anker: string): void {
     el.onclick = e => {
+      // Tag markieren: Klick auf Tageskopf, Monatszelle oder Tag in der Timeline; nochmal → weg
+      const tg = e.target as HTMLElement, markier = tg.closest<HTMLElement>('[data-markier]');
+      if (markier && !tg.closest('[data-booking], [data-extern], [data-task], [data-fristen], .me.mehr, button')) {
+        const d = markier.dataset.markier!;
+        this.z.markiert = this.z.markiert === d ? null : d;
+        this.fokussieren = !!this.z.markiert;
+        void this.neu();
+        return;
+      }
       const mehr = (e.target as HTMLElement).closest<HTMLElement>('.me.mehr');
       if (mehr) {
         // „+n weitere“: schon ein Klick öffnet den Tag
@@ -123,7 +143,12 @@ export class KalenderSicht implements Sicht {
       const t = e.target as HTMLElement;
       const v = t.closest<HTMLElement>('[data-cal-view]'), n = t.closest<HTMLElement>('[data-cal-nav]');
       if (t.closest('[data-cal-ganz]')) { this.z.ganzerTag = !this.z.ganzerTag; void this.neu(); return; }
-      if (v) { this.z.ansicht = v.dataset.calView as KalAnsicht; this.scrollX = null; void this.neu(); }
+      if (v) {
+        this.z.ansicht = v.dataset.calView as KalAnsicht; this.scrollX = null;
+        // ein markierter Tag bestimmt den Ausschnitt der neuen Ansicht und wird in den Blick geholt
+        if (this.z.markiert) { this.z.anker = this.z.markiert; this.fokussieren = true; }
+        void this.neu();
+      }
       if (n) {
         const k = Number(n.dataset.calNav);
         if (k === 0) { this.z.anker = null; this.scrollX = null; }
@@ -152,7 +177,7 @@ export class KalenderSicht implements Sicht {
     if (this.z.ansicht === 'timeline') {
       const sc = el.querySelector<HTMLElement>('.tl-scroll')!;
       const start = plusTage(montag(anker), -7), dayW = SPAN * this.z.pph;
-      sc.scrollLeft = this.scrollX ?? Math.max(0, (differenz(start, this.heute) - 1) * dayW);
+      sc.scrollLeft = this.scrollX ?? Math.max(0, (differenz(start, this.z.markiert ?? this.heute) - 1) * dayW);
       sc.onscroll = () => { this.scrollX = sc.scrollLeft; };
       const zoom = (pph: number, cx: number) => {
         pph = Math.max(2, Math.min(48, Math.round(pph)));
@@ -246,8 +271,8 @@ function fristMarke(t: Tag): string {
 function woche(z: Zeitraum, tage: Tag[], dichte: Dichte): string {
   const n = tage.length;
   // heute ab 3 Tagen mit dünnem Rahmen um die ganze Spalte (Kopf + Band + Raster)
-  const heuteRahmen = (t: Tag) => (n > 1 && t.datum === z.heute ? ' heute-rahmen' : '');
-  const kopf = tage.map(t => `<div class="dh ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}${heuteRahmen(t)}" data-day="${t.datum}"><span class="wd">${n === 1 ? WT_LANG[wochentag(t.datum)] : WT[wochentag(t.datum)]}</span><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>`).join('');
+  const heuteRahmen = (t: Tag) => (n > 1 && t.datum === z.heute ? ' heute-rahmen' : '') + (n > 1 && t.datum === MARKIERT ? ' markiert' : '');
+  const kopf = tage.map(t => `<div class="dh ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}${heuteRahmen(t)}" data-day="${t.datum}" data-markier="${t.datum}" title="Klick: Tag markieren"><span class="wd">${n === 1 ? WT_LANG[wochentag(t.datum)] : WT[wochentag(t.datum)]}</span><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>`).join('');
   const band = tage.map(t => `<div class="rb${heuteRahmen(t)}" data-drop-res="${t.datum}">${ganztags(t)}${t.reservierungen.map(resHtml).join('')}${kapazitaetsBalken(t.auslastung)}</div>`).join('');
   let stunden = '';
   // auch erste und letzte Stunde beschriften: oben unter, unten über die Randlinie gesetzt
@@ -305,7 +330,7 @@ function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte): 
     // alle Einträge – wie viele in die Zelle passen, misst monatEinpassen() nach dem Zeichnen
     const liste = eintraege.join('');
     const anders = monat(t.datum) !== m;
-    return `<div class="mc ${anders ? 'other' : ''} ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-res="${t.datum}" data-day="${t.datum}" title="Doppelklick: Buchung ohne Aufgabe eintragen">
+    return `<div class="mc ${anders ? 'other' : ''} ${t.datum === z.heute ? 'today' : ''} ${t.datum === MARKIERT ? 'markiert' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-res="${t.datum}" data-day="${t.datum}" data-markier="${t.datum}" title="Klick: Tag markieren · Doppelklick: Buchung ohne Aufgabe eintragen">
       <div class="mh" title="Doppelklick: Tag öffnen"><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>
       <div class="mb"><div class="mpunkte" title="Termine im Tagesverlauf (${H0}–${H1} Uhr)">${punkte}</div><div class="mliste">${liste}</div></div>${kapazitaetsBalken(t.auslastung)}</div>`;
   }).join('');
@@ -349,7 +374,8 @@ function timeline(z: Zeitraum, pph: number): string {
     if (wd === 0) oben += `<span style="left:${links}px">KW ${kw(t.datum)} · ${kurz(t.datum)}</span>`;
     if (wd > 4) hg += `<div class="we" style="left:${links}px;width:${dayW}px"></div>`;
     hg += `<div class="dl" style="left:${links}px"></div>`;
-    if (dayW >= 34) tage += `<span class="${t.datum === z.heute ? 'today' : ''}" style="left:${links}px;width:${dayW}px">${dayW >= 80 ? WT[wd] + ' ' : ''}${tagImMonat(t.datum)}${dayW >= 80 ? '.' + (monat(t.datum) + 1) + '.' : ''}</span>`;
+    if (t.datum === MARKIERT) hg += `<div class="tl-markiert markiert" style="left:${links}px;width:${dayW}px"></div>`;
+    if (dayW >= 34) tage += `<span class="${t.datum === z.heute ? 'today' : ''} ${t.datum === MARKIERT ? 'mk' : ''}" data-markier="${t.datum}" title="Klick: Tag markieren" style="left:${links}px;width:${dayW}px">${dayW >= 80 ? WT[wd] + ' ' : ''}${tagImMonat(t.datum)}${dayW >= 80 ? '.' + (monat(t.datum) + 1) + '.' : ''}</span>`;
     if (pph >= 22) for (let h = H0 + 1; h < H1; h += pph >= 40 ? 1 : 2) std += `<span style="left:${links + (h - H0) * pph}px">${h}</span>`;
     for (const b of t.termine) bahn.termine += `<div class="tl-it own ${b.aufgabeId ? '' : 'frei'}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="left:${x(i, b.s)}px;width:${Math.max(6, (b.dauer / 60) * pph - 2)}px;top:6px" title="${esc(`${b.titel} · ${b.start}`)}">${herkunft(b)}${esc(b.titel)}</div>`;
     let off = H0 * 60;
