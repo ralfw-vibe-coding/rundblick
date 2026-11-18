@@ -221,8 +221,10 @@ function fristMarke(t: Tag): string {
 
 function woche(z: Zeitraum, tage: Tag[], dichte: Dichte): string {
   const n = tage.length;
-  const kopf = tage.map(t => `<div class="dh ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-day="${t.datum}"><span class="wd">${n === 1 ? WT_LANG[wochentag(t.datum)] : WT[wochentag(t.datum)]}</span><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>`).join('');
-  const band = tage.map(t => `<div class="rb" data-drop-res="${t.datum}">${ganztags(t)}${t.reservierungen.map(resHtml).join('')}${kapazitaetsBalken(t.auslastung)}</div>`).join('');
+  // heute ab 3 Tagen mit dünnem Rahmen um die ganze Spalte (Kopf + Band + Raster)
+  const heuteRahmen = (t: Tag) => (n > 1 && t.datum === z.heute ? ' heute-rahmen' : '');
+  const kopf = tage.map(t => `<div class="dh ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}${heuteRahmen(t)}" data-day="${t.datum}"><span class="wd">${n === 1 ? WT_LANG[wochentag(t.datum)] : WT[wochentag(t.datum)]}</span><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>`).join('');
+  const band = tage.map(t => `<div class="rb${heuteRahmen(t)}" data-drop-res="${t.datum}">${ganztags(t)}${t.reservierungen.map(resHtml).join('')}${kapazitaetsBalken(t.auslastung)}</div>`).join('');
   let stunden = '';
   // auch erste und letzte Stunde beschriften: oben unter, unten über die Randlinie gesetzt
   for (let h = H0; h <= H1; h++) stunden += `<span class="${h === H0 ? 'erst' : h === H1 ? 'letzt' : ''}" style="top:${((h - H0) / SPAN) * 100}%">${h}</span>`;
@@ -231,7 +233,7 @@ function woche(z: Zeitraum, tage: Tag[], dichte: Dichte): string {
     // Stunden außerhalb der eingestellten Tageszeit dezent schraffiert
     const davor = KERN.von > H0 ? `<div class="ausserhalb" style="top:0;height:${pct(KERN.von * 60)}%"></div>` : '';
     const danach = KERN.bis < H1 ? `<div class="ausserhalb" style="top:${pct(KERN.bis * 60)}%;bottom:0"></div>` : '';
-    return `<div class="dcol ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-day="${t.datum}">${davor}${danach}${ereignisse(t).map(e => evHtml(e, dichte)).join('')}${jetzt}</div>`;
+    return `<div class="dcol ${wochentag(t.datum) > 4 ? 'we' : ''}${heuteRahmen(t)}" data-drop-day="${t.datum}">${davor}${danach}${ereignisse(t).map(e => evHtml(e, dichte)).join('')}${jetzt}</div>`;
   }).join('');
   return `<div class="wk ${dichte}" style="--n:${n};--stunden:${SPAN}" data-h0="${H0}" data-h1="${H1}">
     <div class="wk-row wk-h"><div></div>${kopf}</div>

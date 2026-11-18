@@ -787,3 +787,8 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .fristen-pop .fp-zeile:hover { background: var(--bg); }
 .fristen-pop .fp-zeile .tt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fristen-pop .fp-zeile .due svg.lu { fill: currentColor; width: 11px; height: 11px; margin: 0; }
+/* Heute ab 3 Tagen und im Monat mit dünnem Rahmen in der Heute-Farbe (Spalte = Kopf + Band + Raster) */
+.wk .heute-rahmen { box-shadow: inset 1.5px 0 0 var(--today), inset -1.5px 0 0 var(--today); }
+.wk .dh.heute-rahmen { box-shadow: inset 1.5px 0 0 var(--today), inset -1.5px 0 0 var(--today), inset 0 1.5px 0 var(--today); border-radius: 4px 4px 0 0; }
+.wk .dcol.heute-rahmen { box-shadow: inset 1.5px 0 0 var(--today), inset -1.5px 0 0 var(--today), inset 0 -1.5px 0 var(--today); }
+.mc.today { box-shadow: inset 0 0 0 1.5px var(--today); border-radius: 3px; }
