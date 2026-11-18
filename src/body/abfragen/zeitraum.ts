@@ -14,7 +14,7 @@ export function buchungDto(b: BuchungZ, aufgaben: Map<string, AufgabeZ>): Buchun
     id: b.id, aufgabeId: b.aufgabeId, titel: b.titel, beschreibung: b.beschreibung, aufgabentitel: a ? a.titel : null,
     datum: b.datum, start: b.start, dauer: b.dauer, belegt: b.belegt, abgeschlossen: !!a?.abgeschlossen,
     herkunft: a ? (a.status ? 'board' : 'liste') : null,
-    spiegel: b.verknuepfung ? { kalender: b.verknuepfung.kalender, konto: b.verknuepfung.konto, farbe: b.verknuepfung.farbe } : null,
+    spiegel: b.verknuepfung ? { kalender: b.verknuepfung.kalender, konto: b.verknuepfung.konto, farbe: b.verknuepfung.farbe, ursprung: b.verknuepfung.ursprung } : null,
     hinweis: b.hinweis,
   };
 }

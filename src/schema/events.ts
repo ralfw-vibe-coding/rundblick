@@ -45,7 +45,9 @@ export type DomainEvent =
   | E<'BuchungsdauerGeaendert', { buchungId: Id; dauer: Minuten }>
   | E<'BuchungStorniert', { buchungId: Id }>
   // ---- Spiegelung in Google/iCloud (nur Termine): Verknüpfung über die UID beim Anbieter, „stand“ = Fingerabdruck beim letzten Abgleich
-  | E<'BuchungVerknuepft', { buchungId: Id; kalenderId: string; kalender: string; konto: string; farbe: string; externeUid: string; stand: string }>
+  // ursprung: 'rundblick' = von Rundblick angelegt (wird beim Löschen der Buchung mitgelöscht), 'extern' = war zuerst extern da (bleibt).
+  // Fehlt die Angabe (ältere Events), gilt 'rundblick'.
+  | E<'BuchungVerknuepft', { buchungId: Id; kalenderId: string; kalender: string; konto: string; farbe: string; externeUid: string; stand: string; ursprung?: 'rundblick' | 'extern' }>
   | E<'BuchungAbgeglichen', { buchungId: Id; stand: string }>
   | E<'VerknuepfungGeloest', { buchungId: Id; grund: 'manuell' | 'externGeloescht' }>
   | E<'AufgabeAusBuchungErstellt', { aufgabeId: Id; buchungId: Id; titel: string; beschreibung: string; status: Id | null }>

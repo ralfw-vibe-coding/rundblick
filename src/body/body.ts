@@ -150,8 +150,8 @@ export class RundblickBody implements Body {
   async buchungStornieren(c: { buchungId: string }) {
     const v = this.x.domain.buchung(c.buchungId)?.verknuepfung;
     const e = this.x.domain.buchungStornieren(c);
-    // gespiegelt: der externe Eintrag verschwindet mit
-    if (e.ok && v) await this.x.kalender.terminLoeschen(v.externeUid).catch(() => false);
+    // von Rundblick angelegt: der externe Eintrag verschwindet mit; war er zuerst extern da, bleibt er
+    if (e.ok && v && v.ursprung === 'rundblick') await this.x.kalender.terminLoeschen(v.externeUid).catch(() => false);
     return status(e);
   }
 
@@ -167,7 +167,7 @@ export class RundblickBody implements Body {
     try { extern = await this.x.kalender.terminAnlegen(k.id, ausBuchung(b)); }
     catch (e) { return { ok: false, fehler: [`Spiegeln fehlgeschlagen: ${(e as Error).message}`] }; }
     const r = this.x.domain.buchungVerknuepfen({
-      buchungId: b.id, kalenderId: k.id, kalender: k.name, konto: k.konto, farbe: k.farbe, externeUid: extern.uid ?? '', stand: fingerabdruck(ausBuchung(b)),
+      buchungId: b.id, kalenderId: k.id, kalender: k.name, konto: k.konto, farbe: k.farbe, externeUid: extern.uid ?? '', stand: fingerabdruck(ausBuchung(b)), ursprung: 'rundblick',
     });
     if (!r.ok) await this.x.kalender.terminLoeschen(extern.uid ?? '').catch(() => false);
     return status(r);
@@ -188,7 +188,7 @@ export class RundblickBody implements Body {
     // Inhalt der Buchung = Inhalt des externen Termins, damit der Abgleich nichts überschreibt
     this.x.domain.buchungAendern({ buchungId, aenderungen: { beschreibung: e.notiz ?? '' } });
     const v = this.x.domain.buchungVerknuepfen({
-      buchungId, kalenderId: e.kalenderId, kalender: k?.name ?? '', konto: k?.konto ?? '', farbe: k?.farbe ?? '#888888', externeUid: e.uid, stand: fingerabdruck(ausExtern(e)),
+      buchungId, kalenderId: e.kalenderId, kalender: k?.name ?? '', konto: k?.konto ?? '', farbe: k?.farbe ?? '#888888', externeUid: e.uid, stand: fingerabdruck(ausExtern(e)), ursprung: 'extern',
     });
     return v.ok ? r : v;
   }

@@ -860,3 +860,20 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .hinweis-zeile { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; color: #9a5b00; background: #fff7e8; border-radius: 6px; padding: 6px 8px; }
 .hinweis-zeile svg.lu { width: 14px; height: 14px; flex: none; margin-top: 1px; }
 [data-extern] { cursor: pointer; }
+/* Kalenderauswahl (Spiegeln): nach Quelle gruppiert, mit Kalenderfarbe */
+.kwahl { position: relative; flex: 1; min-width: 0; }
+.kwahl-knopf { width: 100%; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line2); background: var(--panel2); border-radius: 6px; padding: 4px 8px; font: inherit; text-align: left; cursor: pointer; }
+.kwahl-knopf:hover { border-color: var(--own); }
+.kwahl-knopf .kw-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kwahl-knopf .kw-konto { color: var(--mute); font-size: 11px; flex: none; }
+.kwahl-knopf svg.lu { width: 14px; height: 14px; color: var(--mute); flex: none; }
+.kwahl-liste { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; max-height: 320px; overflow: auto; background: #fff; border: 1px solid var(--line2); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 4px; }
+.kwahl.offen .kwahl-liste { display: block; }
+.kwahl-gruppe { font-size: 11px; color: var(--mute); padding: 6px 8px 2px; }
+.kwahl-gruppe:not(:first-child) { border-top: 1px solid var(--line); margin-top: 4px; }
+.kwahl-eintrag { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; padding: 4px 8px; border-radius: 5px; font: inherit; text-align: left; cursor: pointer; }
+.kwahl-eintrag:hover { background: var(--bg); }
+.kwahl-eintrag.an { background: var(--own-soft); }
+.kwahl-eintrag .kw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kwahl .sdot { width: 10px; height: 10px; flex: none; }
+.einst .kal-gruppe { font-size: 11px; color: var(--mute); padding-top: 8px; }

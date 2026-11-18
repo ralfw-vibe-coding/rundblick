@@ -1,4 +1,5 @@
 // Einstellungen: externe Kalender (sichtbar / belegt Kapazität), Standarddauer, Tageskapazität, Board-Spalten.
+import { kalenderGruppen } from './kalenderwahl';
 import { dauerText, WT } from '../../basis/datum';
 import type { EinstellungenDto } from '../../body/interface';
 import type { KategorieId, Wochentag } from '../../schema/werte';
@@ -84,9 +85,9 @@ export async function einstellungenZeichnen(): Promise<void> {
     <div class="zugriff" style="margin-top:8px"><span class="dot" style="background:${zugriff[0]}"></span>${zugriff[1]}<span class="spacer"></span>
       ${e.zugriff === 'erlaubt' ? `<button class="btn" data-sync="1">${I.aktualisieren} Aktualisieren</button>` : e.zugriff === 'nichtVerfuegbar' ? '' : '<button class="btn primary" data-zugriff="1">Zugriff anfragen</button>'}</div>
     ${e.kalender.length ? `<table><tr><th style="text-align:left">Kalender</th><th>sichtbar</th><th>belegt Kapazität</th></tr>
-      ${e.kalender.map(k => `<tr><td><span class="legend"><i style="background:${k.farbe}"></i></span>${esc(k.name)} <span class="muted">· ${esc(k.konto)}</span></td>
+      ${kalenderGruppen(e.kalender).map(g => `<tr><td colspan="3" class="kal-gruppe">${esc(g.konto)}</td></tr>${g.kalender.map(k => `<tr><td><span class="legend"><i style="background:${k.farbe}"></i></span>${esc(k.name)}</td>
         <td class="c"><input type="checkbox" data-kal="${esc(k.id)}" data-f="sichtbar" ${k.sichtbar ? 'checked' : ''}></td>
-        <td class="c"><input type="checkbox" data-kal="${esc(k.id)}" data-f="belegt" ${k.belegt ? 'checked' : ''}></td></tr>`).join('')}</table>` : '<div class="muted" style="font-size:12px">Keine Kalender.</div>'}
+        <td class="c"><input type="checkbox" data-kal="${esc(k.id)}" data-f="belegt" ${k.belegt ? 'checked' : ''}></td></tr>`).join('')}`).join('')}</table>` : '<div class="muted" style="font-size:12px">Keine Kalender.</div>'}
     ${e.letzteSynchronisation ? `<div class="info">zuletzt aktualisiert: ${new Date(e.letzteSynchronisation).toLocaleString('de-DE')}</div>` : ''}
     <h4>Standarddauer neuer Buchungen</h4>
     <div class="durq">${[15, 30, 45, 60, 90, 120].map(m => `<button data-std="${m}" class="${e.standarddauer === m ? 'on' : ''}">${dauerText(m).replace(' ', '')}</button>`).join('')}</div>

@@ -618,6 +618,7 @@
     <tr><td>Externe Termine → Rundblick</td><td>Ein externer Termin kann <b>von Hand</b> zu einer Aufgabe (bzw. verknüpften Buchung) gemacht werden. <b>Nie automatisch.</b></td></tr>
     <tr><td>Verknüpfen oder umwandeln?</td><td><b>Verknüpfen</b> – die Buchung bleibt in Rundblick (Aufgabe, Auslastung, Herkunfts-Symbol) und wird gespiegelt. Symbol an der Buchung: Lucide <code>link-2</code> in der Farbe des Zielkalenders.</td></tr>
     <tr><td>Extern gelöscht</td><td><b>Verknüpfung lösen, Buchung behalten</b>, Hinweis an der Buchung.</td></tr>
+    <tr><td>Buchung gelöscht</td><td>Der externe Eintrag wird <b>nur mitgelöscht, wenn Rundblick ihn angelegt hat</b>. War der Termin zuerst extern da (aus ihm wurde eine Aufgabe gemacht), bleibt er erhalten. Technisch: <code>ursprung: 'rundblick' | 'extern'</code> in <code>BuchungVerknuepft</code> (fehlt bei älteren Events → <code>'rundblick'</code>).</td></tr>
   </table>
   <h3>Umsetzung (Skizze)</h3>
   <ul>

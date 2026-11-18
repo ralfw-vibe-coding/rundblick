@@ -33,7 +33,7 @@ export type ZeitEvent = DomainEvent & { zeit?: string };
 
 export type AnhangZ = { id: Id; name: string; typ: string; groesse: number };
 
-export type VerknuepfungZ = { kalenderId: string; kalender: string; konto: string; farbe: string; externeUid: string; stand: string };
+export type VerknuepfungZ = { kalenderId: string; kalender: string; konto: string; farbe: string; externeUid: string; stand: string; ursprung: 'rundblick' | 'extern' };
 
 export type BuchungZ = {
   id: Id; aufgabeId: Id | null; titel: string; beschreibung: string;
@@ -129,7 +129,7 @@ export function buchungEntwickeln(z: BuchungZ | null, e: DomainEvent): BuchungZ 
     case 'BuchungsdauerGeaendert': return { ...z, dauer: e.daten.dauer };
     case 'BuchungStorniert': return { ...z, storniert: true };
     case 'AufgabeAusBuchungErstellt': return { ...z, aufgabeId: e.daten.aufgabeId };
-    case 'BuchungVerknuepft': { const { buchungId: _b, ...v } = e.daten; return { ...z, verknuepfung: v, hinweis: null }; }
+    case 'BuchungVerknuepft': { const { buchungId: _b, ...v } = e.daten; return { ...z, verknuepfung: { ...v, ursprung: v.ursprung ?? 'rundblick' }, hinweis: null }; }
     case 'BuchungAbgeglichen': return z.verknuepfung ? { ...z, verknuepfung: { ...z.verknuepfung, stand: e.daten.stand } } : z;
     case 'VerknuepfungGeloest': return { ...z, verknuepfung: null, hinweis: e.daten.grund === 'externGeloescht' ? HINWEIS_EXTERN_GELOESCHT : null };
     default: return z;

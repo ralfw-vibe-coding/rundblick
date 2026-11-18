@@ -8,6 +8,7 @@ import { buchungArt, ICON, kapazitaetsBalken, muellKnopf, statusPunkt } from './
 import { esc, pruefe } from './dom';
 import { uhrzeitFeld } from './uhrzeitfeld';
 import { markieren } from './frisch';
+import { kalenderWahlAnbinden, kalenderWahlHtml } from './kalenderwahl';
 import { I } from './icons';
 import { chipFeld } from './chipfeld';
 import { notizFeld } from './notiz';
@@ -181,11 +182,14 @@ export async function buchungOeffnen(id: string): Promise<void> {
       <div class="muted" style="font-size:12px">${buchungArt(b)} · ${b.start ? 'mit Uhrzeit' : 'ohne Uhrzeit – erscheint im Reservierungsband'}</div>
       ${b.hinweis ? `<div class="hinweis-zeile">${I.warnung}<span>${esc(b.hinweis)}</span></div>` : ''}
       ${feld('Google / iCloud', b.spiegel
-        ? `<div class="spiegel-zeile"><span class="lk" style="--kf:${b.spiegel.farbe}">${I.spiegel}</span><span>Gespiegelt in <b>${esc(b.spiegel.kalender)}</b>${b.spiegel.konto ? ` · ${esc(b.spiegel.konto)}` : ''}</span><button class="btn" data-d="loesen" title="Spiegelung beenden – Buchung und externer Eintrag bleiben">${I.spiegelLoesen} Verknüpfung lösen</button></div>`
+        ? `<div class="spiegel-zeile"><span class="lk" style="--kf:${b.spiegel.farbe}">${I.spiegel}</span><span>${b.spiegel.ursprung === 'extern' ? 'Übernommen aus' : 'Gespiegelt in'} <b>${esc(b.spiegel.kalender)}</b>${b.spiegel.konto ? ` · ${esc(b.spiegel.konto)}` : ''}</span><button class="btn" data-d="loesen" title="Spiegelung beenden – Buchung und externer Eintrag bleiben">${I.spiegelLoesen} Verknüpfung lösen</button></div>
+           <div class="muted" style="font-size:11px;margin-top:4px">${b.spiegel.ursprung === 'extern'
+             ? `Der Termin war zuerst in ${esc(b.spiegel.kalender)}: Beim Löschen der Buchung bleibt er dort erhalten.`
+             : `Beim Löschen der Buchung wird auch der Eintrag in ${esc(b.spiegel.kalender)} gelöscht.`}</div>`
         : !b.start
           ? '<div class="muted" style="font-size:12px">Nur Termine (mit Uhrzeit) lassen sich in Google/iCloud spiegeln.</div>'
           : ziele.length
-            ? `<div class="spiegel-zeile"><select data-spiegelziel>${ziele.map(k => `<option value="${esc(k.id)}">${esc(k.name)}${k.konto ? ` · ${esc(k.konto)}` : ''}</option>`).join('')}</select><button class="btn" data-d="spiegeln" title="Termin im gewählten Kalender anlegen und synchron halten">${I.spiegel} Spiegeln</button></div>`
+            ? `<div class="spiegel-zeile">${kalenderWahlHtml(ziele)}<button class="btn" data-d="spiegeln" title="Termin im gewählten Kalender anlegen und synchron halten">${I.spiegel} Spiegeln</button></div>`
             : '<div class="muted" style="font-size:12px">Kein beschreibbarer Kalender verfügbar (Kalenderzugriff in den Einstellungen prüfen).</div>')}
       ${b.aufgabeId
         ? feld('Gehört zu Aufgabe', `<a href="#" data-d="aufgabe" style="color:var(--own)">${esc(b.aufgabentitel)}</a>`)
@@ -194,6 +198,7 @@ export async function buchungOeffnen(id: string): Promise<void> {
       ${feld('Tagesauslastung', `<div>${dauerText(b.tag.belegt)} von ${dauerText(b.tag.kapazitaet)}${kapazitaetsBalken(b.tag, true)}</div>`)}
     </div>
     ${b.aufgabeId ? '' : '<div class="df"><button class="btn primary" data-d="aufgabeMachen">→ Aufgabe daraus machen</button></div>'}`;
+  kalenderWahlAnbinden(s);
   const aendern = async (x: Parameters<typeof body.buchungAendern>[0]) => { if (pruefe(await body.buchungAendern(x))) void buchungOeffnen(id); };
   notizFeld(s.querySelector('[data-notiz]')!, { text: b.beschreibung, gesperrt: false, fokus: false, speichern: async t => { pruefe(await body.buchungAendern({ buchungId: id, beschreibung: t })); } });
   s.onchange = async ev => {
@@ -212,7 +217,7 @@ export async function buchungOeffnen(id: string): Promise<void> {
     const d = t.closest<HTMLElement>('[data-d]')?.dataset.d;
     if (d === 'zu') schliessen();
     if (d === 'spiegeln') {
-      const ziel = s.querySelector<HTMLSelectElement>('[data-spiegelziel]')!.value;
+      const ziel = s.querySelector<HTMLElement>('[data-kwahl]')!.dataset.wert!;
       if (pruefe(await body.buchungSpiegeln({ buchungId: id, kalenderId: ziel }), 'Gespiegelt')) void buchungOeffnen(id);
     }
     if (d === 'loesen' && pruefe(await body.verknuepfungLoesen({ buchungId: id }), 'Verknüpfung gelöst')) void buchungOeffnen(id);

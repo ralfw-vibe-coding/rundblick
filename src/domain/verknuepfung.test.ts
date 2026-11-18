@@ -11,18 +11,23 @@ beforeEach(() => {
   d.buchungEintragen({ buchungId: 'b1', titel: 'Call', datum: '2026-11-19', start: '10:00', dauer: 60 });
   d.buchungEintragen({ buchungId: 'r1', titel: 'Reservierung', datum: '2026-11-19', dauer: 60 });
 });
-const link = (buchungId = 'b1') => d.buchungVerknuepfen({ buchungId, kalenderId: 'k1', kalender: 'Arbeit', konto: 'Google', farbe: '#2f7cf6', externeUid: 'uid-1', stand: 'fp1' });
+const link = (buchungId = 'b1') => d.buchungVerknuepfen({ buchungId, kalenderId: 'k1', kalender: 'Arbeit', konto: 'Google', farbe: '#2f7cf6', externeUid: 'uid-1', stand: 'fp1', ursprung: 'rundblick' });
 
 describe('Spiegelung', () => {
   it('verknüpft einen Termin und merkt Kalender, UID und Stand', () => {
     expect(link()).toEqual({ ok: true });
-    expect(d.buchung('b1')!.verknuepfung).toEqual({ kalenderId: 'k1', kalender: 'Arbeit', konto: 'Google', farbe: '#2f7cf6', externeUid: 'uid-1', stand: 'fp1' });
+    expect(d.buchung('b1')!.verknuepfung).toEqual({ kalenderId: 'k1', kalender: 'Arbeit', konto: 'Google', farbe: '#2f7cf6', externeUid: 'uid-1', stand: 'fp1', ursprung: 'rundblick' });
+  });
+
+  it('ältere Verknüpfungs-Events ohne Ursprung gelten als von Rundblick gespiegelt', () => {
+    es.anhaengen([{ typ: 'BuchungVerknuepft', tags: ['buchung:b1'], daten: { buchungId: 'b1', kalenderId: 'k', kalender: 'K', konto: 'G', farbe: '#000', externeUid: 'u', stand: 's' } }]);
+    expect(d.buchung('b1')!.verknuepfung!.ursprung).toBe('rundblick');
   });
 
   it('lehnt Reservierungen, doppelte Verknüpfung, fehlende UID und Unbekanntes ab', () => {
     expect(link('r1')).toMatchObject({ ok: false, fehler: ['Nur Termine (mit Uhrzeit) lassen sich spiegeln.'] });
     expect(link('gibtsnicht')).toMatchObject({ ok: false });
-    expect(d.buchungVerknuepfen({ buchungId: 'b1', kalenderId: 'k', kalender: '', konto: '', farbe: '', externeUid: ' ', stand: '' })).toMatchObject({ ok: false });
+    expect(d.buchungVerknuepfen({ buchungId: 'b1', kalenderId: 'k', kalender: '', konto: '', farbe: '', externeUid: ' ', stand: '', ursprung: 'rundblick' })).toMatchObject({ ok: false });
     link();
     expect(link()).toMatchObject({ ok: false, fehler: ['Die Buchung ist schon gespiegelt.'] });
   });

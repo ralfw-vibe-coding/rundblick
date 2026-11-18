@@ -20,7 +20,7 @@ const buchung = (x: Partial<BuchungZ> = {}): BuchungZ => ({
   verknuepfung: null, hinweis: null, zuletzt: '2026-11-18T10:00:00Z', ...x,
 });
 const STAND = fingerabdruck(ausBuchung(buchung()));
-const verknuepft = (x: Partial<BuchungZ> = {}) => buchung({ verknuepfung: { kalenderId: 'k', kalender: 'K', konto: 'G', farbe: '#000', externeUid: 'u', stand: STAND }, ...x });
+const verknuepft = (x: Partial<BuchungZ> = {}) => buchung({ verknuepfung: { kalenderId: 'k', kalender: 'K', konto: 'G', farbe: '#000', externeUid: 'u', stand: STAND, ursprung: 'rundblick' }, ...x });
 const extern = (x: Partial<ExternerTermin> = {}): ExternerTermin => ({ id: 'e', kalenderId: 'k', titel: 'Call', datum: '2026-11-19', start: '10:00', dauer: 60, ort: '', uid: 'u', notiz: '', geaendert: '2026-11-18T09:00:00Z', ...x });
 
 describe('Abgleich (pure)', () => {
@@ -72,7 +72,7 @@ describe('Spiegelung im Body', () => {
     expect(quelle.extern.alle()).toMatchObject([{ titel: 'Call', start: '10:00', dauer: 60, kalenderId: 'arbeit' }]);
     await body.synchronisieren();
     const t = await tag(body);
-    expect(t.termine.find(b => b.id === bid)!.spiegel).toEqual({ kalender: 'Arbeit', konto: 'Google', farbe: '#2f7cf6' });
+    expect(t.termine.find(b => b.id === bid)!.spiegel).toEqual({ kalender: 'Arbeit', konto: 'Google', farbe: '#2f7cf6', ursprung: 'rundblick' });
     expect(t.extern.some(e => e.titel === 'Call')).toBe(false);
   });
 
@@ -154,6 +154,21 @@ describe('Spiegelung im Body', () => {
     expect(await b.body.verknuepfungLoesen({ buchungId: b.bid })).toEqual({ ok: true });
     expect(b.domain.buchung(b.bid)).toMatchObject({ verknuepfung: null, hinweis: null });
     expect(b.quelle.extern.alle()).toHaveLength(1);
+  });
+
+  it('Löschen einer Buchung, deren Termin zuerst extern da war: externer Termin bleibt und erscheint wieder', async () => {
+    const { body, domain, quelle } = aufbau();
+    await body.synchronisieren();
+    const e = await quelle.terminAnlegen('arbeit', { titel: 'Kundentermin', notiz: '', datum: '2026-11-20', start: '14:00', dauer: 60 });
+    await body.synchronisieren();
+    const x = (await tag(body, '2026-11-20')).extern.find(t => t.titel === 'Kundentermin')!;
+    const a = id(await body.aufgabeAusExtern({ externId: x.id }), 'aufgabeId');
+    const b = domain.buchungenDerAufgabe(a)[0]!;
+    expect(b.verknuepfung!.ursprung).toBe('extern');
+    expect((await tag(body, '2026-11-20')).termine.find(t => t.id === b.id)!.spiegel!.ursprung).toBe('extern');
+    await body.buchungStornieren({ buchungId: b.id });
+    expect(await quelle.terminLesen(e.uid!)).not.toBeNull();
+    expect((await tag(body, '2026-11-20')).extern.some(t => t.titel === 'Kundentermin')).toBe(true);
   });
 
   it('externen Termin von Hand zur Aufgabe machen – verknüpft, Doppelgänger verschwindet', async () => {

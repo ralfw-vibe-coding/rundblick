@@ -43,7 +43,7 @@ export type BuchungDto = {
   id: Id; aufgabeId: Id | null; titel: string; beschreibung: string; aufgabentitel: string | null;
   datum: Datum; start: Uhrzeit | null; dauer: Minuten; belegt: boolean; abgeschlossen: boolean;
   /** gespiegelt in Google/iCloud (Zielkalender), sonst null */
-  spiegel: { kalender: string; konto: string; farbe: string } | null;
+  spiegel: { kalender: string; konto: string; farbe: string; ursprung: 'rundblick' | 'extern' } | null;
   /** Hinweis an der Buchung, z. B. nach externem Löschen */
   hinweis: string | null;
   /** wo die zugehörige Aufgabe steht: auf dem Board (hat Status) oder nur in der Aufgabenliste; null = freie Buchung */

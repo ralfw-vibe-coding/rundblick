@@ -99,7 +99,7 @@ export function aufgabeAusBuchung(es: EventStore, c: { buchungId: Id; aufgabeId:
 // ---------------- Spiegelung in Google/iCloud (nur Termine) ----------------
 const tags = (z: { id: Id; aufgabeId: Id | null }) => (z.aufgabeId ? [tag.buchung(z.id), tag.aufgabe(z.aufgabeId)] : [tag.buchung(z.id)]);
 
-export type VerknuepfungEingabe = { buchungId: Id; kalenderId: string; kalender: string; konto: string; farbe: string; externeUid: string; stand: string };
+export type VerknuepfungEingabe = { buchungId: Id; kalenderId: string; kalender: string; konto: string; farbe: string; externeUid: string; stand: string; ursprung: 'rundblick' | 'extern' };
 
 export function buchungVerknuepfen(es: EventStore, c: VerknuepfungEingabe): Ergebnis {
   return ctx(es, [tag.buchung(c.buchungId)], b => {
