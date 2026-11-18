@@ -979,3 +979,9 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .tl2 .tl-head .r .tl2-tag .cap-w { position: relative; }
 .tl2 .tl-head .r .tl2-tag .cap-w:has(.cap-warn) { padding-right: 14px; }
 .tl2 .tl-head .r .tl2-tag span.cap-warn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+/* Monat / 3 Monate: der Balken sitzt am Zellboden und die Zelle schneidet ab – deshalb hat die Balkenzeile
+   in jeder Zelle dieselbe Höhe, in die das Warndreieck passt (Balken bleibt überall auf gleicher Höhe) */
+.mc > .cap-w { height: 12px; margin: 0 4px 2px; }
+.mc > .cap-w .cap-warn svg.lu { width: 11px; height: 11px; }
+.mo.compact .mc > .cap-w { height: 11px; }
+.mo.compact .mc > .cap-w .cap-warn svg.lu { width: 10px; height: 10px; }
