@@ -295,3 +295,35 @@ describe('Herkunft einer Buchung', () => {
     expect((await body.aufgabe({ aufgabeId: mitStatus }))!.buchungsliste[0]!.herkunft).toBe('liste');
   });
 });
+
+describe('Selbst-Aktualisierung über den Body', () => {
+  it('ohne Aktualisierer: nicht verfügbar, Commands ohne Wirkung', async () => {
+    const { body } = aufbau();
+    expect(await body.aktualisierung()).toEqual({ laufend: null, stand: { stand: 'nichtVerfuegbar' } });
+    for (const f of [body.aktualisierungOrdnerWaehlen, body.aktualisierungOrdnerEntfernen, body.aktualisierungPruefen, body.aktualisierungInstallieren]) expect(await f.call(body)).toEqual({ ok: true });
+  });
+
+  it('reicht Stand und Fehler durch und meldet Änderungen als Bereich „aktualisierung“', async () => {
+    let melden: ((s: import('../providers/aktualisierung/interface').AktualisierungsStand) => void) | null = null;
+    let stand: import('../providers/aktualisierung/interface').AktualisierungsStand = { stand: 'aus' };
+    const akt = {
+      laufend: () => ({ version: '0.1.0', build: 140, commit: 'abc' }), stand: () => stand,
+      ordnerWaehlen: async () => (stand = { stand: 'verfuegbar', ordner: '/o', geprueft: 'x', angebot: { version: '0.1.0', build: 150, datei: '/o/a.zip' } }),
+      ordnerEntfernen: () => (stand = { stand: 'aus' }), pruefen: async () => stand,
+      installieren: async () => (stand = { stand: 'fehler', ordner: '/o', meldung: 'Signatur der neuen App ungültig' }),
+      beiAenderung: (cb: (s: import('../providers/aktualisierung/interface').AktualisierungsStand) => void) => { melden = cb; return () => {}; },
+    };
+    const es = new SpeicherEventStore('t', zaehlerIds('e').neu, () => uhr.jetzt());
+    const body = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: beispielKalender(), cache: kalenderCache(), anhaenge: speicherAnhaenge(), info: { datenordner: '', geraet: '' }, aktualisierer: akt });
+    const gemeldet: Bereich[][] = [];
+    body.beiAenderung(b => gemeldet.push(b));
+    expect((await body.aktualisierung()).laufend).toEqual({ version: '0.1.0', build: 140, commit: 'abc' });
+    expect(await body.aktualisierungOrdnerWaehlen()).toEqual({ ok: true });
+    expect((await body.aktualisierung()).stand).toMatchObject({ stand: 'verfuegbar', angebot: { build: 150 } });
+    expect(await body.aktualisierungPruefen()).toEqual({ ok: true });
+    expect(await body.aktualisierungInstallieren()).toEqual({ ok: false, fehler: ['Signatur der neuen App ungültig'] });
+    expect(await body.aktualisierungOrdnerEntfernen()).toEqual({ ok: true });
+    melden!(stand);
+    expect(gemeldet).toContainEqual(['aktualisierung']);
+  });
+});

@@ -16,10 +16,11 @@
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint:deps && npm run test:cov",
     "postinstall": "node node_modules/electron/install.js && node tools/electron-kalenderrecht.mjs",
-    "app": "npm run build:helfer && electron-vite build && electron-builder --mac --dir && sh tools/signieren.sh dist/mac-arm64/Rundblick.app",
+    "app": "node tools/paket.mjs",
     "demo": "electron-vite build && RB_DATEN=/tmp/rundblick-demo RB_DEMO=1 RB_KALENDER=beispiel electron .",
     "test:cov": "vitest run --coverage",
-    "testdaten": "rolldown tools/testdaten.ts --platform node --format esm --file out/testdaten.mjs --log-level warn && node out/testdaten.mjs"
+    "testdaten": "rolldown tools/testdaten.ts --platform node --format esm --file out/testdaten.mjs --log-level warn && node out/testdaten.mjs",
+    "installieren": "node tools/installieren.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

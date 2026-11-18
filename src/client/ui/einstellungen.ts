@@ -1,7 +1,7 @@
-// Einstellungen in drei Reitern: Standards (Dauer, Tageszeit, Kapazität, Daten) · Board-Spalten · Externe Kalender.
+// Einstellungen in Reitern: Standards (Dauer, Tageszeit, Kapazität, Daten) · Board-Spalten · Externe Kalender · Aktualisierung (nur in der installierten App).
 import { kalenderGruppen } from './kalenderwahl';
 import { dauerText, WT } from '../../basis/datum';
-import type { EinstellungenDto } from '../../body/interface';
+import type { Aktualisierung, EinstellungenDto } from '../../body/interface';
 import type { KategorieId, Wochentag } from '../../schema/werte';
 import { body } from './body';
 import { esc, pruefe } from './dom';
@@ -11,11 +11,12 @@ import { muellKnopf } from './bausteine';
 
 let panel: HTMLDivElement | null = null;
 
-type Reiter = 'standards' | 'board' | 'kalender';
+type Reiter = 'standards' | 'board' | 'kalender' | 'aktualisierung';
 const REITER: { id: Reiter; name: string; icon: string }[] = [
   { id: 'standards', name: 'Standards', icon: I.einstellungen },
   { id: 'board', name: 'Board-Spalten', icon: I.board },
   { id: 'kalender', name: 'Externe Kalender', icon: I.kalenderSync },
+  { id: 'aktualisierung', name: 'Aktualisierung', icon: I.aktualisierung },
 ];
 /** zuletzt gewählter Reiter (pro Gerät im Browser-Speicher) */
 let reiter: Reiter = (localStorage.getItem('rb-einstellungen-reiter') as Reiter) ?? 'standards';
@@ -48,6 +49,12 @@ export async function einstellungenUmschalten(): Promise<void> {
     const t = (e.target as HTMLElement).closest<HTMLElement>('button');
     if (!t) return;
     const d = t.dataset;
+    if (d.akt) {
+      const f = { waehlen: body.aktualisierungOrdnerWaehlen, pruefen: body.aktualisierungPruefen, entfernen: body.aktualisierungOrdnerEntfernen, installieren: body.aktualisierungInstallieren }[d.akt];
+      if (f) pruefe(await f.call(body));
+      void einstellungenZeichnen();
+      return;
+    }
     if (d.reiter) { reiter = d.reiter as Reiter; localStorage.setItem('rb-einstellungen-reiter', reiter); void einstellungenZeichnen(); return; }
     if (d.std) pruefe(await body.standarddauerFestlegen({ minuten: Number(d.std) }));
     if (d.zugriff) pruefe(await body.kalenderZugriffAnfragen());
@@ -96,7 +103,10 @@ export async function einstellungenZeichnen(): Promise<void> {
   const e: EinstellungenDto = await body.einstellungen();
   const zugriff = { erlaubt: ['#16a34a', 'Zugriff erlaubt'], verweigert: ['#d92d20', 'Zugriff verweigert – Systemeinstellungen › Datenschutz › Kalender'], unbestimmt: ['#d97706', 'Noch nicht freigegeben'], nichtVerfuegbar: ['#9ca3af', 'Kalender-Helfer fehlt (npm run build:helfer)'] }[e.zugriff];
   const aktiv = panel.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset : null;
-  const kopf = `<div class="einst-kopf"><div class="seg einst-reiter">${REITER.map(r => `<button data-reiter="${r.id}" class="${r.id === reiter ? 'on' : ''}">${r.icon}${r.name}</button>`).join('')}</div>
+  const akt = await body.aktualisierung();
+  const reiterListe = REITER.filter(r => r.id !== 'aktualisierung' || akt.stand.stand !== 'nichtVerfuegbar');
+  if (!reiterListe.some(r => r.id === reiter)) reiter = 'standards';
+  const kopf = `<div class="einst-kopf"><div class="seg einst-reiter">${reiterListe.map(r => `<button data-reiter="${r.id}" class="${r.id === reiter ? 'on' : ''}">${r.icon}${r.name}</button>`).join('')}</div>
     <span class="spacer"></span><button class="btn einst-zu" data-zu="1" title="Schließen (Esc)">${I.x}</button></div>`;
 
   const standards = `
@@ -126,9 +136,32 @@ export async function einstellungenZeichnen(): Promise<void> {
         <td class="c"><input type="checkbox" data-kal="${esc(k.id)}" data-f="belegt" ${k.belegt ? 'checked' : ''}></td></tr>`).join('')}`).join('')}</table>` : '<div class="muted" style="font-size:12px">Keine Kalender.</div>'}
     ${e.letzteSynchronisation ? `<div class="info" style="margin-top:8px">zuletzt aktualisiert: ${new Date(e.letzteSynchronisation).toLocaleString('de-DE')}</div>` : ''}`;
 
-  panel.innerHTML = `${kopf}<div class="einst-inhalt">${{ standards, board, kalender }[reiter]}</div>`;
+  const aktualisierung = aktualisierungInhalt(akt);
+  panel.innerHTML = `${kopf}<div class="einst-inhalt">${{ standards, board, kalender, aktualisierung }[reiter]}</div>`;
   if (aktiv?.wt) panel.querySelector<HTMLInputElement>(`[data-wt="${aktiv.wt}"]`)?.focus();
 }
 
 const stunden = (von: number, bis: number, gewaehlt: number) =>
   Array.from({ length: bis - von + 1 }, (_, i) => von + i).map(h => `<option value="${h}" ${h === gewaehlt ? 'selected' : ''}>${String(h).padStart(2, '0')}</option>`).join('');
+
+function aktualisierungInhalt(a: Aktualisierung): string {
+  const l = a.laufend, s = a.stand;
+  if (!l || s.stand === 'nichtVerfuegbar') return '<div class="muted">Entwicklungsversion – keine automatische Aktualisierung.</div>';
+  const uhr = (iso: string) => (iso ? new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : '');
+  const ordner = 'ordner' in s ? s.ordner : '';
+  const status =
+    s.stand === 'aus' ? '<div class="muted">Wähle einen Ordner, in dem neue Versionen als ZIP liegen – z. B. einen geteilten Dropbox-Ordner oder <code>dist/</code> des Repos. Rundblick sieht beim Start und alle 30 Minuten nach.</div>'
+    : s.stand === 'aktuell' ? `<div class="akt-status ok">${I.haken}Auf dem neuesten Stand${s.geprueft ? ` · geprüft ${uhr(s.geprueft)}` : ''}</div>`
+    : s.stand === 'verfuegbar' ? `<div class="akt-status neu">${I.aktualisierung}<span>Build ${s.angebot.build} ist da${s.angebot.commit ? ` <span class="muted">(${esc(s.angebot.commit)})</span>` : ''}</span><span class="spacer"></span><button class="btn primary" data-akt="installieren">Jetzt aktualisieren</button></div>
+        <div class="muted" style="font-size:11px">Rundblick beendet sich, tauscht sich aus und startet neu.</div>`
+    : s.stand === 'installiert' ? `<div class="akt-status neu">${I.aktualisierung}Aktualisiere auf Build ${s.angebot.build} … Rundblick startet gleich neu.</div>`
+    : `<div class="akt-status fehler">${I.warnung}${esc(s.meldung)}</div>`;
+  return `
+    <h4>Diese App</h4>
+    <div>Rundblick ${esc(l.version)} · Build ${l.build}${l.commit ? ` <span class="muted">(${esc(l.commit)})</span>` : ''}</div>
+    <h4>Update-Ordner</h4>
+    <div class="akt-ordner">${ordner ? esc(ordner) : '<span class="muted">noch keiner gewählt</span>'}</div>
+    <div class="akt-knoepfe"><button class="btn" data-akt="waehlen">${I.ordner} Ordner wählen …</button>${ordner ? `<button class="btn" data-akt="pruefen">${I.aktualisieren} Jetzt prüfen</button><button class="btn" data-akt="entfernen">Ordner entfernen</button>` : ''}</div>
+    <h4>Stand</h4>
+    ${status}`;
+}

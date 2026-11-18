@@ -1,11 +1,16 @@
 // Body interface: das Einzige, was ein Client kennt.
 // Commands ändern Zustand und liefern nur einen CommandStatus (plus IDs neu angelegter Objekte).
 // Queries ändern nichts und liefern Daten (DTOs). Über beiAenderung erfahren Clients, was sich geändert hat.
+import type { AktualisierungsStand } from '../providers/aktualisierung/interface';
 import type { KalenderZugriff } from '../schema/extern';
 import type { Datum, Id, KategorieId, Minuten, Uhrzeit, Wochentag } from '../schema/werte';
 
 export type CommandStatus = { ok: true; ids?: Record<string, Id> } | { ok: false; fehler: string[] };
-export type Bereich = 'aufgaben' | 'board' | 'kalender' | 'einstellungen';
+export type Bereich = 'aufgaben' | 'board' | 'kalender' | 'einstellungen' | 'aktualisierung';
+
+/** Selbst-Aktualisierung aus einem Ordner: laufender Build und Stand */
+export type Aktualisierung = { laufend: { version: string; build: number; commit?: string } | null; stand: AktualisierungsStand };
+export type { AktualisierungsStand };
 
 // ---------- DTOs ----------
 /** entspricht den Abschnitten der Liste: überfällig · heute · diese Woche (bis Sonntag) · später */
@@ -194,12 +199,20 @@ export interface Body {
   anhang(q: { anhangId: Id }): Promise<{ name: string; typ: string; url: string } | null>;
 
   // ---- Benachrichtigung
+  // ---- Selbst-Aktualisierung (Gerät)
+  aktualisierung(): Promise<Aktualisierung>;
+  aktualisierungOrdnerWaehlen(): Promise<CommandStatus>;
+  aktualisierungOrdnerEntfernen(): Promise<CommandStatus>;
+  aktualisierungPruefen(): Promise<CommandStatus>;
+  aktualisierungInstallieren(): Promise<CommandStatus>;
+
   beiAenderung(cb: (bereiche: Bereich[]) => void): () => void;
 }
 
 /** Namen aller Methoden außer der Benachrichtigung – für die IPC-Brücke */
 export type BodyMethode = Exclude<keyof Body, 'beiAenderung'>;
 export const BODY_METHODEN: readonly BodyMethode[] = [
+  'aktualisierung', 'aktualisierungOrdnerWaehlen', 'aktualisierungOrdnerEntfernen', 'aktualisierungPruefen', 'aktualisierungInstallieren',
   'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen', 'aufgabeVerschieben',
   'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung', 'buchungSpiegeln', 'verknuepfungLoesen', 'aufgabeAusExtern',
   'spalteAnlegen', 'spalteUmbenennen', 'kategorieUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen', 'tageszeitFestlegen',

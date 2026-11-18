@@ -3,6 +3,7 @@
 import { abgleich, ausBuchung, ausExtern, fingerabdruck } from './spiegel/abgleich';
 import { plusTage } from '../basis/datum';
 import type { DomainInterface, Ergebnis } from '../domain/interface';
+import type { Aktualisierer, AktualisierungsStand } from '../providers/aktualisierung/interface';
 import type { Anhangspeicher } from '../providers/anhaenge/interface';
 import type { Einstellungen } from '../providers/einstellungen/interface';
 import type { IdGenerator } from '../providers/ids/interface';
@@ -25,6 +26,14 @@ export type BodyAbhaengigkeiten = {
   cache: KalenderCache;
   anhaenge: Anhangspeicher;
   info: { datenordner: string; geraet: string };
+  /** Selbst-Aktualisierung; fehlt sie (Tests, Entwicklung), ist sie „nicht verfügbar“ */
+  aktualisierer?: Aktualisierer;
+};
+
+const NICHT_VERFUEGBAR: AktualisierungsStand = { stand: 'nichtVerfuegbar' };
+const OHNE_AKTUALISIERUNG: Aktualisierer = {
+  laufend: () => null, stand: () => NICHT_VERFUEGBAR, ordnerWaehlen: async () => NICHT_VERFUEGBAR, ordnerEntfernen: () => NICHT_VERFUEGBAR,
+  pruefen: async () => NICHT_VERFUEGBAR, installieren: async () => NICHT_VERFUEGBAR, beiAenderung: () => () => {},
 };
 
 const status = (e: Ergebnis, ids?: Record<string, string>): CommandStatus => (e.ok ? (ids ? { ok: true, ids } : { ok: true }) : e);
@@ -40,7 +49,21 @@ export class RundblickBody implements Body {
   constructor(private readonly x: BodyAbhaengigkeiten) {
     x.domain.beiAenderung(() => this.melde(['aufgaben', 'board', 'kalender']));
     x.kalender.beiAenderung(() => { void this.synchronisieren(); });
+    this.aktualisierer.beiAenderung(() => this.melde(['aktualisierung']));
   }
+
+  private get aktualisierer(): Aktualisierer { return this.x.aktualisierer ?? OHNE_AKTUALISIERUNG; }
+
+  // ---------------- Selbst-Aktualisierung ----------------
+  async aktualisierung() {
+    const l = this.aktualisierer.laufend();
+    return { laufend: l ? { version: l.version, build: l.build, ...(l.commit ? { commit: l.commit } : {}) } : null, stand: this.aktualisierer.stand() };
+  }
+  async aktualisierungOrdnerWaehlen() { return this.standAlsStatus(await this.aktualisierer.ordnerWaehlen()); }
+  async aktualisierungOrdnerEntfernen() { return this.standAlsStatus(this.aktualisierer.ordnerEntfernen()); }
+  async aktualisierungPruefen() { return this.standAlsStatus(await this.aktualisierer.pruefen()); }
+  async aktualisierungInstallieren() { return this.standAlsStatus(await this.aktualisierer.installieren()); }
+  private standAlsStatus(s: AktualisierungsStand): CommandStatus { return s.stand === 'fehler' ? { ok: false, fehler: [s.meldung] } : { ok: true }; }
 
   /** Beim Start: Standardspalten anlegen (nur beim allerersten Mal) */
   einrichten(): void { this.x.domain.standardspaltenEinrichten(); }

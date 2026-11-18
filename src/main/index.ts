@@ -20,6 +20,7 @@ import { eventKitKalender } from '../providers/kalender/eventkit';
 import { beispielKalender } from '../providers/kalender/fake';
 import type { Kalenderquelle } from '../providers/kalender/interface';
 import { systemUhr } from '../providers/uhr/system';
+import { aktualisiererErzeugen } from './aktualisierung';
 import { demoDatenAnlegen } from './demo';
 
 app.setName('Rundblick');
@@ -66,7 +67,8 @@ async function starte(): Promise<void> {
 
   // ---- Domain & Body
   const domain = new Domain(store);
-  const body = new RundblickBody({ domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender, cache, anhaenge: dateiAnhaenge(datenordner), info: { datenordner, geraet } });
+  const aktualisierer = aktualisiererErzeugen();
+  const body = new RundblickBody({ domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender, cache, anhaenge: dateiAnhaenge(datenordner), info: { datenordner, geraet }, aktualisierer });
   body.einrichten();
   if (process.env.RB_DEMO === '1' && store.lesen().events.length <= 7) await demoDatenAnlegen(body, systemUhr.heute());
 
@@ -94,6 +96,9 @@ async function starte(): Promise<void> {
   // Externe Kalender (EventKit): beim Start, beim Fokussieren des Fensters, bei Änderungsmeldung von macOS
   // und zusätzlich alle 5 Minuten
   const sync = setInterval(() => { void body.synchronisieren(); }, 5 * 60_000);
+  // Selbst-Aktualisierung: beim Start und alle 30 Minuten im Update-Ordner nachsehen
+  void body.aktualisierungPruefen();
+  const updateTakt = setInterval(() => { void body.aktualisierungPruefen(); }, 30 * 60_000);
   void body.synchronisieren();
 
   // Entwicklungshilfe: RB_SCREENSHOT=pfad.png [RB_JS=…] → Fenster abfotografieren und beenden
@@ -108,7 +113,7 @@ async function starte(): Promise<void> {
   }
 
   app.on('before-quit', () => {
-    clearInterval(takt); clearInterval(sync); beobachtungStoppen(); abbinden(); web?.stoppen();
+    clearInterval(takt); clearInterval(sync); clearInterval(updateTakt); beobachtungStoppen(); abbinden(); web?.stoppen();
     if ('beenden' in kalender) (kalender as { beenden(): void }).beenden();
   });
 }

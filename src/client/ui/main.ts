@@ -41,6 +41,7 @@ body.beiAenderung(bereiche => {
   raster.aktualisieren(bereiche);
   void auffrischen();
   if (bereiche.includes('einstellungen') || bereiche.includes('kalender')) { void einstellungenZeichnen(); void syncTitel(); }
+  if (bereiche.includes('aktualisierung')) { void einstellungenZeichnen(); void updateMarke(); }
 });
 
 // Dateien, die nicht auf einem Ziel landen, dürfen das Fenster nicht verlassen (Electron würde sie öffnen)
@@ -66,3 +67,13 @@ document.addEventListener('keydown', e => {
 });
 
 void raster.laden();
+
+// Punkt am Zahnrad, sobald ein neuer Build im Update-Ordner liegt
+async function updateMarke(): Promise<void> {
+  const a = await body.aktualisierung();
+  const knopf = $('#einstBtn');
+  const neu = a.stand.stand === 'verfuegbar';
+  knopf.classList.toggle('hat-update', neu);
+  knopf.title = a.stand.stand === 'verfuegbar' ? `Build ${a.stand.angebot.build} ist da – Einstellungen › Aktualisierung` : 'Einstellungen';
+}
+void updateMarke();
