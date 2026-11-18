@@ -19,6 +19,8 @@ type Eintrag = {
   symbol: string; farbe: string;
   titel: string; zeile: string; info: string[];
   oeffnen: Oeffnen | null;
+  /** zugehörige Aufgabe einer Buchung (für Ziehen auf Liste/Board und Hervorhebung) */
+  aufgabe?: string | null;
   /** nur Striche: Breite in px; bahn = gestaffelte Zeile (Symbole: -1) */
   breite?: number; bahn?: number;
 };
@@ -88,7 +90,7 @@ export function timelineZeichnen(z: Zeitraum, pph: number, h0: number, h1: numbe
         symbol: I.reservierung, farbe: r.aufgabeId ? 'var(--own)' : 'var(--free)', titel: r.titel,
         zeile: `${dauerText(r.dauer)} reserviert · ${r.titel}`,
         info: [`Reservierung ${dauerText(r.dauer)} (ohne Uhrzeit)`, herkunftText(r), ...(r.aufgabentitel && r.aufgabentitel !== r.titel ? [`Aufgabe: ${r.aufgabentitel}`] : []), ...(r.belegt ? [] : ['belegt keine Kapazität'])],
-        oeffnen: { art: 'buchung' as const, id: r.id },
+        oeffnen: { art: 'buchung' as const, id: r.id }, aufgabe: r.aufgabeId,
       })),
     ];
     punkte.forEach((p, k) => {
@@ -112,7 +114,7 @@ export function timelineZeichnen(z: Zeitraum, pph: number, h0: number, h1: numbe
             key: `t${i}-${k}`, datum: t.datum, x: x0, y: 0, symbol: herkunftSym(m.b), farbe: m.b.aufgabeId ? 'var(--own)' : 'var(--free)',
             titel: m.b.titel, zeile: `${zeit} · ${m.b.titel}`,
             info: [`Termin ${zeit} (${dauerText(m.b.dauer)})`, herkunftText(m.b), ...(m.b.aufgabentitel && m.b.aufgabentitel !== m.b.titel ? [`Aufgabe: ${m.b.aufgabentitel}`] : []), ...(m.b.belegt ? [] : ['belegt keine Kapazität'])],
-            oeffnen: { art: 'buchung', id: m.b.id },
+            oeffnen: { art: 'buchung', id: m.b.id }, aufgabe: m.b.aufgabeId,
           }
         : {
             key: `t${i}-${k}`, datum: t.datum, x: x0, y: 0, symbol: '', farbe: m.x!.farbe,
@@ -128,7 +130,7 @@ export function timelineZeichnen(z: Zeitraum, pph: number, h0: number, h1: numbe
   const hSym = 6 + symZeilen * (SYM + 2), hStrich = 10 + strichBahnen * STRICH_ABSTAND;
   const yStrich = (bahn: number) => hSym + 6 + bahn * STRICH_ABSTAND;
   for (const e of roh) {
-    const daten = e.oeffnen?.art === 'buchung' ? ` draggable="true" data-booking="${e.oeffnen.id}"` : e.oeffnen?.art === 'aufgabe' ? ` data-task="${e.oeffnen.id}"` : '';
+    const daten = zugDaten(e);
     const tip = esc([e.titel, ...e.info].join('\n'));
     if (e.bahn === undefined) {
       symbole += `<span class="tl2-sym ${e.zeile.startsWith('Frist') ? 'frist' : ''}" data-tl="${e.key}"${daten} title="${tip}" style="left:${e.x - SYM / 2}px;top:${e.y - SYM / 2}px;color:${e.farbe}">${e.key.startsWith('p') ? symbolFuer(e) : ''}</span>`;
@@ -155,7 +157,7 @@ export function timelineZeichnen(z: Zeitraum, pph: number, h0: number, h1: numbe
       zeilenEnde[zeile] = e.x + breite;
       const yLabel = oben + 12 + zeile * ZEILE + ZEILE / 2;
       return `<span class="tl2-leit" style="left:${e.x}px;top:${e.y}px;height:${yLabel - e.y}px;border-color:${e.farbe}"></span>`
-        + `<span class="tl2-label" data-tl="${e.key}" title="${esc(e.zeile)}" style="left:${e.x}px;max-width:${LABEL_MAX}px;top:${yLabel - 9}px;--lf:${e.farbe}">${e.symbol ? `<span class="sy">${e.symbol}</span>` : ''}<span class="tx">${esc(e.zeile)}</span></span>`;
+        + `<span class="tl2-label" data-tl="${e.key}"${zugDaten(e)} title="${esc(e.zeile)}" style="left:${e.x}px;max-width:${LABEL_MAX}px;top:${yLabel - 9}px;--lf:${e.farbe}">${e.symbol ? `<span class="sy">${e.symbol}</span>` : ''}<span class="tx">${esc(e.zeile)}</span></span>`;
     });
     hDetails = 12 + zeilenEnde.length * ZEILE + 8;
     details = teile.join('');
@@ -171,6 +173,14 @@ export function timelineZeichnen(z: Zeitraum, pph: number, h0: number, h1: numbe
       <div class="tl2-zone str" data-drop-tl="termin" style="top:${hSym}px;height:${hStrich}px">${treffer}${striche}</div>
       ${details}${jetzt}
     </div></div></div></div>`;
+}
+
+/** Attribute zum Ziehen (global in interaktion.ts): Buchung samt Aufgabe bzw. Aufgabe (Frist, Wiedervorlage).
+ *  Gilt für Symbol, Strich und Beschriftung gleichermaßen. Externe Termine lassen sich nicht ziehen. */
+function zugDaten(e: Eintrag): string {
+  if (e.oeffnen?.art === 'buchung') return ` draggable="true" data-booking="${e.oeffnen.id}"${e.aufgabe ? ` data-task="${e.aufgabe}"` : ''}`;
+  if (e.oeffnen?.art === 'aufgabe') return ` draggable="true" data-task="${e.oeffnen.id}"`;
+  return '';
 }
 
 function symbolFuer(e: Eintrag): string {

@@ -65,6 +65,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - **Beschriftungen dauerhaft für alle Tage** unter der Strichzeile: von jedem Eintrag eine Leitlinie nach unten zu einer Beschriftung mit Details (Klick darauf öffnet die Schublade). Jede Beschriftung beginnt an ihrem Eintrag und darf **in den nächsten Tag ragen**, wenn dort in derselben Zeile nichts steht; sonst rutscht sie eine Zeile tiefer (keine Überlappungen; Breite gemessen, höchstens 300 px, sonst „…“ mit vollem Text im Tooltip). Bei sehr kleinem Zoom (Tage < 90 px) nur für den markierten Tag. **Klick auf einen Tag** markiert ihn (Rahmen), nochmal klicken = weg; die Markierung holt den Tag nur waagerecht in den Blick.
 - **Jetzt-Linie** dünn (1 px) und **unter** den Beschriftungen.
 - Hineinziehen: in die Symbolzeile = Reservierung, in die Strichzeile = Termin.
+- **Herausziehen:** Symbol, Strich **und Beschriftung** lassen sich packen und woanders ablegen – z. B. im Kalender einer anderen Zelle (Termin verschieben bzw. aus Frist/Wiedervorlage einen Termin anlegen), auf Liste/Board wie sonst auch. Buchungen tragen dafür auch ihre Aufgabe (`data-task`); externe Termine lassen sich nicht ziehen.
 - **Zoom** (Regler oder ⌘ + Mausrad) zeichnet nur den Timeline-Inhalt neu, nicht die Werkzeugleiste – sonst ließe sich der Regler nicht ziehen.
 
 **Logbuch**
