@@ -122,9 +122,14 @@ export class KalenderSicht implements Sicht {
         void this.neu();
       }
     };
+    // Monat: Doppelklick auf die Tageszahl (oder „+n weitere“) öffnet den Tag; in die freie Fläche → Buchung ohne Aufgabe (interaktion.ts)
     el.ondblclick = e => {
-      const c = (e.target as HTMLElement).closest<HTMLElement>('.mc[data-day]');
-      if (c && this.ansichten.includes('tag')) { this.z.ansicht = 'tag'; this.z.anker = c.dataset.day!; void this.neu(); }
+      const t = e.target as HTMLElement;
+      const c = t.closest<HTMLElement>('.mc[data-day]');
+      if (!c || !t.closest('.mh, .me.mehr')) return;
+      this.z.ansicht = this.ansichten.includes('tag') ? 'tag' : 'tage3';
+      this.z.anker = c.dataset.day!;
+      void this.neu();
     };
     if (this.z.ansicht === 'woche' || this.z.ansicht === 'tag' || this.z.ansicht === 'tage3') {
       const sc = el.querySelector<HTMLElement>('.wk-scroll');
@@ -249,7 +254,7 @@ function tagSeite(t: Tag, l: Aufgabenliste, heute: string): string {
     + abschnitt('Taucht wieder auf', '', wv);
   return `<div class="day-side">
     ${inhalt || '<div class="muted" style="font-size:12px">Keine überfälligen oder fälligen Aufgaben.</div>'}
-    <div class="ds-hinweis">${I.plus}<span>Aufgabe hierher in den Kalender ziehen: Termin.<br>Doppelklick ins Raster oder Reservierungsband: Buchung ohne Aufgabe.</span></div>
+    <div class="ds-hinweis">${I.plus}<span>Aufgabe hierher in den Kalender ziehen: Termin.<br>Doppelklick ins Raster oder Reservierungsband (im Monat: in die freie Fläche eines Tages): Buchung ohne Aufgabe.</span></div>
   </div>`;
 }
 
@@ -272,8 +277,8 @@ function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte): 
     ];
     const liste = eintraege.slice(0, max).join('') + (eintraege.length > max ? `<div class="me mehr">+${eintraege.length - max} weitere</div>` : '');
     const anders = monat(t.datum) !== m;
-    return `<div class="mc ${anders ? 'other' : ''} ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-res="${t.datum}" data-day="${t.datum}" title="Doppelklick: Tagesansicht">
-      <div class="mh"><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>
+    return `<div class="mc ${anders ? 'other' : ''} ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-drop-res="${t.datum}" data-day="${t.datum}" title="Doppelklick: Buchung ohne Aufgabe eintragen">
+      <div class="mh" title="Doppelklick: Tag öffnen"><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>
       <div class="mb"><div class="mpunkte" title="Termine im Tagesverlauf (${H0}–${H1} Uhr)">${punkte}</div><div class="mliste">${liste}</div></div>${kapazitaetsBalken(t.auslastung)}</div>`;
   }).join('');
   return `<div class="mo ${dichte}"><div class="mo-h">${WT.map(w => `<div>${w}</div>`).join('')}</div><div class="mo-g">${zellen}</div></div>`;

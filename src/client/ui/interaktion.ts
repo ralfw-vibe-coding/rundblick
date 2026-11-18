@@ -7,6 +7,7 @@ import { ICON } from './bausteine';
 import { esc, pruefe, toast } from './dom';
 import { markieren } from './frisch';
 import { fensterVon } from './sichten/kalender';
+import { uhrzeitFeld, uhrzeitLesen } from './uhrzeitfeld';
 
 let heute = '';
 const heuteLaden = async () => { heute = (await body.heute()).datum; };
@@ -74,7 +75,9 @@ export function interaktionAnbinden(): void {
     const t = e.target as HTMLElement;
     if (t.closest('[data-booking], .ev')) return;
     const rb = t.closest<HTMLElement>('.rb[data-drop-res]'), dc = t.closest<HTMLElement>('.dcol[data-drop-day]');
-    if (rb) neueFreieBuchung(e.clientX, e.clientY, rb.dataset.dropRes!, null);
+    const mc = t.closest<HTMLElement>('.mc[data-day]');
+    if (mc && !t.closest('.mh, .me')) neueFreieBuchung(e.clientX, e.clientY, mc.dataset.day!, null, true);   // Monat: Uhrzeit wählbar
+    else if (rb) neueFreieBuchung(e.clientX, e.clientY, rb.dataset.dropRes!, null);
     else if (dc) {
       const r = dc.getBoundingClientRect(), f = fensterVon(dc);
       const min = Math.floor((f.h0 * 60 + ((e.clientY - r.top) / r.height) * f.min) / 30) * 30;
@@ -212,18 +215,23 @@ function markeWeg(): void { markeEl?.remove(); }
 
 let pop: HTMLDivElement | null = null;
 function popZu(): void { pop?.remove(); pop = null; }
-document.addEventListener('mousedown', e => { if (pop && !(e.target as HTMLElement).closest('.pop')) popZu(); });
+document.addEventListener('mousedown', e => { if (pop && !(e.target as HTMLElement).closest('.pop, .uhrzeit-liste')) popZu(); });
 
-function neueFreieBuchung(x: number, y: number, datum: string, start: string | null): void {
+function neueFreieBuchung(x: number, y: number, datum: string, start: string | null, mitUhrzeit = false): void {
   popZu();
   pop = document.createElement('div');
   pop.className = 'pop';
   pop.style.left = `${Math.min(x, innerWidth - 300)}px`;
   pop.style.top = `${Math.min(y, innerHeight - 110)}px`;
-  pop.innerHTML = `<div class="muted" style="font-size:11px;margin-bottom:4px">${start ? 'Termin' : 'Reservierung'} ${esc(relativ(datum, heute || datum))}${start ? ' ' + start : ''} · ohne Aufgabe</div>
-    <input placeholder="Titel … (Dauer z. B. 90m am Ende)" /><div class="muted" style="font-size:11px;margin-top:4px"><kbd>↵</kbd> eintragen · <kbd>Esc</kbd> abbrechen</div>`;
+  pop.innerHTML = mitUhrzeit
+    ? `<div class="muted" style="font-size:11px;margin-bottom:4px">${esc(relativ(datum, heute || datum))} · ohne Aufgabe · ohne Uhrzeit = Reservierung</div>
+      <div class="pop-zeile">${uhrzeitFeld('data-pop-zeit', null, 'Uhrzeit (leer = Reservierung)')}<input class="pop-titel" placeholder="Titel … (Dauer z. B. 90m am Ende)" /></div>
+      <div class="muted" style="font-size:11px;margin-top:4px"><kbd>↵</kbd> eintragen · <kbd>Esc</kbd> abbrechen</div>`
+    : `<div class="muted" style="font-size:11px;margin-bottom:4px">${start ? 'Termin' : 'Reservierung'} ${esc(relativ(datum, heute || datum))}${start ? ' ' + start : ''} · ohne Aufgabe</div>
+    <input class="pop-titel" placeholder="Titel … (Dauer z. B. 90m am Ende)" /><div class="muted" style="font-size:11px;margin-top:4px"><kbd>↵</kbd> eintragen · <kbd>Esc</kbd> abbrechen</div>`;
   document.body.appendChild(pop);
-  const inp = pop.querySelector('input')!;
+  const inp = pop.querySelector<HTMLInputElement>('input.pop-titel')!;
+  const zeitFeld = pop.querySelector<HTMLInputElement>('[data-pop-zeit]');
   inp.focus();
   inp.addEventListener('keydown', async e => {
     if (e.key === 'Escape') popZu();
@@ -231,8 +239,9 @@ function neueFreieBuchung(x: number, y: number, datum: string, start: string | n
     let titel = inp.value.trim(), dauer: number | undefined;
     const m = titel.match(/\s(\d+(?:[.,]\d+)?)(h|m|min)$/);
     if (m) { dauer = Math.round(Number(m[1]!.replace(',', '.')) * (m[2] === 'h' ? 60 : 1)); titel = titel.slice(0, m.index); }
+    const zeit = zeitFeld ? (uhrzeitLesen(zeitFeld.value) || null) : start;
     popZu();
-    pruefe(await body.buchungEintragen({ titel, datum, start, dauer }), `Eingetragen: ${titel}${dauer ? ' · ' + dauerText(dauer) : ''}`);
+    pruefe(await body.buchungEintragen({ titel, datum, start: zeit, dauer }), `Eingetragen: ${zeit ? zeit + ' ' : ''}${titel}${dauer ? ' · ' + dauerText(dauer) : ''}`);
   });
 }
 

@@ -775,3 +775,6 @@ input.uhrzeit { width: 72px !important; font-variant-numeric: tabular-nums; text
 .uhrzeit-liste button.ausser { color: var(--mute); }
 .uhrzeit-liste button:hover { background: var(--bg); }
 .uhrzeit-liste button.gewaehlt { background: var(--own); color: #fff; }
+.pop .pop-zeile { display: flex; gap: 6px; }
+.pop .pop-zeile input.uhrzeit { flex: none; width: 64px !important; }
+.pop .pop-zeile input.pop-titel { flex: 1; min-width: 0; }
