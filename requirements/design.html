@@ -79,6 +79,7 @@
   <a href="#offen">13 Entscheidungen &amp; Backlog</a>
   <a href="#plan">14 Schrittfolge</a>
   <a href="#stand">15 Umsetzungsstand</a>
+  <a href="#web">16 Web-App (später)</a>
   <br><a href="../entwuerfe/index.html">→ UI-Entwürfe</a>
 </nav>
 <main>
@@ -553,6 +554,7 @@
     <li><b>Vergangene Buchungen</b> als „wahrgenommen / nicht geschafft“ markieren, damit die Kalenderrückschau zum Werkzeug wird.</li>
     <li><b>Rundblick-Einträge nach Google Calendar oder iCloud übernehmen bzw. umwandeln</b> (Nutzerwunsch 17.11.2026). Bis dahin erscheinen sie im Kalender nur als eigene Rundblick-Einträge neben den externen Terminen. Verwandt: Veröffentlichen eigener Buchungen in einen Kalender „Rundblick“ und der Rückkanal (9).</li>
     <li>iPhone-App mit Zugriff auf denselben Dropbox-Ordner.</li>
+    <li><b>Web-App nach Weg B</b> (Entscheidung 18.11.2026, siehe <a href="#web">16</a>): Browser greift selbst auf die Dropbox zu, Body und Domain laufen im Browser.</li>
     <li>Direkte Anbindung von Google und CalDAV ohne macOS-Kalender.</li>
   </ul>
   <h3>Entschieden in Runde 3</h3>
@@ -590,6 +592,21 @@
     <tr><td>Abweichung: UI ohne Svelte – die Entwürfe wurden direkt nach TypeScript portiert (weniger Abhängigkeiten, gleiches Aussehen)</td><td>bewusst</td></tr>
     <tr><td>Globales Schnellerfassungsfenster, Tray, Benachrichtigungen, Veröffentlichen, REST API</td><td>offen (Schritte 8/9)</td></tr>
   </table>
+  <h2 id="web">16 Web-App (später, entschieden 18.11.2026)</h2>
+  <p><b>Entscheidung:</b> Eine Web-App greift <b>direkt aus dem Browser auf die Dropbox</b> zu (Weg B). Kein zentraler Server, keine Datendopplung. Die Electron-App bleibt die Hauptanwendung; Daten bleiben lokal bzw. in der Dropbox.</p>
+  <ul>
+    <li><b>Übernommen unverändert:</b> Domain, Body, Schema, Basis und die Oberfläche (<code>client/ui</code>). Der Body-Proxy ruft dann ein Body-Objekt im selben Fenster auf statt IPC/HTTP.</li>
+    <li><b>Neu:</b> eine Web-Composition-Root und Browser-Provider:
+      <ul>
+        <li>Event Store über die Dropbox-API: liest alle <code>events/*.jsonl</code>, schreibt eine eigene Gerätedatei (z. B. <code>web-ipad.jsonl</code>), Zwischenspeicher in IndexedDB für offline, Hochladen mit Revisionsprüfung (Dropbox kann nicht anhängen → Datei wird ersetzt). Änderungen anderer Geräte per Longpoll.</li>
+        <li>IDs (<code>crypto.getRandomValues</code>), Uhr, Einstellungen/Layouts (<code>localStorage</code>), Anhänge als Dateien in der Dropbox.</li>
+        <li><b>Kalenderquelle für Google und iCloud ohne EventKit</b> (Google Calendar API, CalDAV) – nötig, da EventKit im Browser fehlt.</li>
+      </ul></li>
+    <li><b>Zugang:</b> Dropbox-App „Rundblick“ mit Zugriff nur auf den App-Ordner (= <code>Apps/Rundblick</code>), OAuth mit PKCE im Browser.</li>
+    <li><b>Mehrere Geräte:</b> bereits gelöst durch eine Event-Datei pro Gerät und die Hybrid Logical Clock (8.4, 8.5).</li>
+    <li><b>Hosting:</b> statische Seite als installierbare Web-App (PWA).</li>
+    <li><b>Verworfen:</b> A (Mac als Server – nur bei laufendem Mac) und C (zentraler Server mit Datenbank – Datendopplung).</li>
+  </ul>
 </main>
 </div>
 </body>
