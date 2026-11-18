@@ -168,7 +168,8 @@ function buchungsliste(a: AufgabeDetails): string {
 export async function buchungOeffnen(id: string): Promise<void> {
   const [b, e] = await Promise.all([body.buchung({ buchungId: id }), body.einstellungen()]);
   if (!b) { schliessen(); return; }
-  const ziele = e.kalender.filter(k => k.schreibbar);
+  // nur beschreibbare Kalender, die in den Einstellungen sichtbar geschaltet sind
+  const ziele = e.kalender.filter(k => k.schreibbar && k.sichtbar);
   aktuell = { art: 'buchung', id };
   const s = el();
   s.innerHTML = `<div class="dh"><input class="titel-input" data-f="titel" value="${esc(b.titel)}">${muellKnopf('stornieren', 'Buchung löschen', id)}${knopf('zu', ICON.zu, 'Schließen (Esc)')}</div>
@@ -190,7 +191,7 @@ export async function buchungOeffnen(id: string): Promise<void> {
           ? '<div class="muted" style="font-size:12px">Nur Termine (mit Uhrzeit) lassen sich in Google/iCloud spiegeln.</div>'
           : ziele.length
             ? `<div class="spiegel-zeile">${kalenderWahlHtml(ziele)}<button class="btn" data-d="spiegeln" title="Termin im gewählten Kalender anlegen und synchron halten">${I.spiegel} Spiegeln</button></div>`
-            : '<div class="muted" style="font-size:12px">Kein beschreibbarer Kalender verfügbar (Kalenderzugriff in den Einstellungen prüfen).</div>')}
+            : '<div class="muted" style="font-size:12px">Kein sichtbarer, beschreibbarer Kalender – in den Einstellungen einen Kalender sichtbar schalten (bzw. Kalenderzugriff prüfen).</div>')}
       ${b.aufgabeId
         ? feld('Gehört zu Aufgabe', `<a href="#" data-d="aufgabe" style="color:var(--own)">${esc(b.aufgabentitel)}</a>`)
         : '<div class="muted" style="line-height:1.5;font-size:12px">Freie Buchung ohne Aufgabe. Wird mehr daraus: „→ Aufgabe daraus machen“ – Titel und Notiz wandern mit, die Buchung bleibt und gehört dann zur Aufgabe. Oder die Buchung auf Liste/Board ziehen.</div>'}
