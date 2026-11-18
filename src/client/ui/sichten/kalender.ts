@@ -217,7 +217,8 @@ function woche(z: Zeitraum, tage: Tag[], dichte: Dichte): string {
   const kopf = tage.map(t => `<div class="dh ${t.datum === z.heute ? 'today' : ''} ${wochentag(t.datum) > 4 ? 'we' : ''}" data-day="${t.datum}"><span class="wd">${n === 1 ? WT_LANG[wochentag(t.datum)] : WT[wochentag(t.datum)]}</span><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>`).join('');
   const band = tage.map(t => `<div class="rb" data-drop-res="${t.datum}">${ganztags(t)}${t.reservierungen.map(resHtml).join('')}${kapazitaetsBalken(t.auslastung)}</div>`).join('');
   let stunden = '';
-  for (let h = H0 + 1; h < H1; h++) stunden += `<span style="top:${((h - H0) / SPAN) * 100}%">${h}</span>`;
+  // auch erste und letzte Stunde beschriften: oben unter, unten über die Randlinie gesetzt
+  for (let h = H0; h <= H1; h++) stunden += `<span class="${h === H0 ? 'erst' : h === H1 ? 'letzt' : ''}" style="top:${((h - H0) / SPAN) * 100}%">${h}</span>`;
   const spalten = tage.map(t => {
     const jetzt = t.datum === z.heute && z.jetzt >= H0 * 60 && z.jetzt <= H1 * 60 ? `<div class="nowline" style="top:${pct(z.jetzt)}%"></div>` : '';
     // Stunden außerhalb der eingestellten Tageszeit dezent schraffiert

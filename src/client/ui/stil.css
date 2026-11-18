@@ -743,3 +743,7 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .cal-tb .ganztag svg.lu { width: 14px; height: 14px; }
 .einst .tageszeit { display: flex; align-items: center; gap: 6px; font-size: 12px; }
 .einst .tageszeit select { border: 1px solid var(--line2); border-radius: 5px; padding: 2px 4px; font: inherit; background: #fff; }
+/* Stundenraster: erste und letzte Stunde beschriftet, abschließende Linie unten */
+.hours span.erst { transform: translateY(1px); }
+.hours span.letzt { transform: translateY(-100%); }
+.dcol { box-shadow: inset 0 -1px 0 var(--line); }
