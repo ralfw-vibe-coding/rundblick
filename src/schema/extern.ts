@@ -8,6 +8,8 @@ export type KalenderInfo = {
   konto: string;
   /** Farbe als #rrggbb */
   farbe: string;
+  /** darf Rundblick hier Einträge anlegen (Spiegelung)? */
+  schreibbar?: boolean;
 };
 
 export type ExternerTermin = {
@@ -19,7 +21,15 @@ export type ExternerTermin = {
   start: Uhrzeit | null;
   dauer: Minuten;
   ort: string;
+  /** Kennung beim Anbieter (geräteübergreifend gleich) – Grundlage der Spiegelung */
+  uid?: string;
+  notiz?: string;
+  /** letzte Änderung beim Anbieter (ISO) – für „jüngere Änderung gewinnt“ */
+  geaendert?: string | null;
 };
+
+/** Inhalt eines gespiegelten Termins */
+export type TerminDaten = { titel: string; notiz: string; datum: Datum; start: Uhrzeit; dauer: Minuten };
 
 /** Gerätebezogene Einstellung je externem Kalender */
 export type KalenderEinstellung = { sichtbar: boolean; belegt: boolean };

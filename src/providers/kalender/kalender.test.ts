@@ -23,6 +23,19 @@ describe('EventKit-Kalenderquelle (gegen Ersatz-Helfer)', () => {
     q.beenden();
   });
 
+  it('Spiegelung: anlegen, ändern, löschen, lesen per UID', async () => {
+    const q = eventKitKalender(HELFER);
+    const t = { titel: 'Call', notiz: 'N', datum: '2026-11-19', start: '10:00', dauer: 45 };
+    expect(await q.terminAnlegen('k1', t)).toMatchObject({ uid: 'u1', titel: 'Call', start: '10:00', dauer: 45, notiz: 'N' });
+    expect(await q.terminAendern('u1', { ...t, titel: 'Neu' })).toMatchObject({ uid: 'u1', titel: 'Neu' });
+    expect(await q.terminAendern('fehlt', t)).toBeNull();
+    expect(await q.terminLoeschen('u1')).toBe(true);
+    expect(await q.terminLoeschen('fehlt')).toBe(false);
+    expect(await q.terminLesen('u1')).toMatchObject({ uid: 'u1' });
+    expect(await q.terminLesen('fehlt')).toBeNull();
+    q.beenden();
+  });
+
   it('meldet Fehlerantworten, Zeitüberschreitung und Prozessende als Fehler', async () => {
     const q = eventKitKalender(HELFER, { anfrage: 200, termine: 200, zugriff: 200 });
     await expect(q.termine('fehler', 'x')).rejects.toThrow('Helfer-Fehler');
@@ -73,6 +86,23 @@ describe('Kalender-Cache', () => {
 });
 
 describe('Beispiel-Kalender', () => {
+  it('spiegelt Termine im Speicher und simuliert Änderungen von außen', async () => {
+    const q = beispielKalender('erlaubt', () => '2026-11-18T10:00:00Z');
+    const t = { titel: 'Call', notiz: '', datum: '2026-11-19', start: '10:00', dauer: 60 };
+    await expect(q.terminAnlegen('familie', t)).rejects.toThrow('nicht beschreibbar');
+    const e = await q.terminAnlegen('arbeit', t);
+    expect((await q.termine('2026-11-19', '2026-11-19')).some(x => x.uid === e.uid)).toBe(true);
+    expect(await q.terminAendern(e.uid!, { ...t, dauer: 30 })).toMatchObject({ dauer: 30 });
+    expect(await q.terminAendern('fehlt', t)).toBeNull();
+    q.extern.aendern(e.uid!, { titel: 'Von außen' }, '2026-11-18T11:00:00Z');
+    q.extern.aendern('fehlt', { titel: 'x' }, '');
+    expect(await q.terminLesen(e.uid!)).toMatchObject({ titel: 'Von außen', geaendert: '2026-11-18T11:00:00Z' });
+    q.extern.loeschen(e.uid!);
+    expect(await q.terminLesen(e.uid!)).toBeNull();
+    expect(await q.terminLoeschen(e.uid!)).toBe(false);
+    expect(q.extern.alle()).toEqual([]);
+  });
+
   it('liefert Kalender und wiederkehrende Termine; Abmelden beendet Benachrichtigung', async () => {
     const q = beispielKalender();
     expect(await q.zugriff()).toBe('erlaubt');

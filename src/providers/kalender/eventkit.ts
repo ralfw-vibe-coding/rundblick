@@ -3,7 +3,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
-import type { ExternerTermin, KalenderInfo, KalenderZugriff } from '../../schema/extern';
+import type { ExternerTermin, KalenderInfo, KalenderZugriff, TerminDaten } from '../../schema/extern';
 import type { Kalenderquelle } from './interface';
 
 type Offen = { ok: (d: unknown) => void; nein: (e: Error) => void; timer: ReturnType<typeof setTimeout> };
@@ -57,6 +57,10 @@ export function eventKitKalender(helferPfad: string, zeitlimit = { anfrage: 15_0
     kalender: () => frage<KalenderInfo[]>('kalender'),
     termine: (von, bis) => frage<ExternerTermin[]>('termine', { von, bis }, zeitlimit.termine),
     beiAenderung: cb => { abos.add(cb); return () => { abos.delete(cb); }; },
+    terminAnlegen: (kalenderId: string, t: TerminDaten) => frage<ExternerTermin>('anlegen', { kalenderId, ...t }),
+    terminAendern: (uid: string, t: TerminDaten) => frage<ExternerTermin | null>('aendern', { uid, ...t }),
+    terminLoeschen: (uid: string) => frage<boolean>('loeschen', { uid }),
+    terminLesen: (uid: string) => frage<ExternerTermin | null>('lesen', { uid }),
     beenden: () => { proc?.kill(); proc = null; },
   };
 }
