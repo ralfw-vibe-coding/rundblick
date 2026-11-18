@@ -10,6 +10,7 @@ import type { Uhr } from '../providers/uhr/interface';
 import type { KalenderEinstellung, KalenderZugriff } from '../schema/extern';
 import type { Datum } from '../schema/werte';
 import { board, liste, zeile } from './abfragen/aufgaben';
+import { logbuch, tagsAusText } from './abfragen/logbuch';
 import { buchungDto, KALENDER_STANDARD, zeitraum } from './abfragen/zeitraum';
 import type { Bereich, Body, CommandStatus, EinstellungenDto, ErfassungVorschau, Layout, StatusInfo } from './interface';
 import { parseErfassung } from './schnellerfassung/parse';
@@ -93,6 +94,41 @@ export class RundblickBody implements Body {
     const e = this.x.domain.anhangEntfernen(c);
     if (e.ok) this.x.anhaenge.entfernen(c.anhangId);
     return status(e);
+  }
+
+  // ---------------- Commands: Notizen (Logbuch) ----------------
+  async notizErfassen(c: { text: string; tags?: string[]; datum?: string }): Promise<CommandStatus> {
+    const notizId = this.x.ids.neu();
+    const t = c.tags === undefined ? tagsAusText(c.text) : { text: c.text, tags: c.tags };
+    return status(this.x.domain.notizErfassen({ notizId, text: t.text, tags: t.tags, datum: c.datum ?? this.x.uhr.heute() }), { notizId });
+  }
+  async notizAendern(c: { notizId: string; text?: string; tags?: string[]; datum?: string }): Promise<CommandStatus> {
+    const { notizId, ...aenderungen } = c;
+    return status(this.x.domain.notizAendern({ notizId, aenderungen }));
+  }
+  async notizVerwerfen(c: { notizId: string }): Promise<CommandStatus> {
+    const n = this.x.domain.notiz(c.notizId);
+    const e = this.x.domain.notizVerwerfen(c);
+    if (e.ok && n) n.anhaenge.forEach(a => this.x.anhaenge.entfernen(a.id));
+    return status(e);
+  }
+  async notizAnhangHinzufuegen(c: { notizId: string; name: string; typ: string; daten: string }): Promise<CommandStatus> {
+    let bytes: Uint8Array;
+    try { bytes = ausBase64(c.daten); } catch { return { ok: false, fehler: ['Die Bilddaten sind beschädigt.'] }; }
+    const anhangId = this.x.ids.neu();
+    this.x.anhaenge.speichern(anhangId, bytes);
+    const e = this.x.domain.notizAnhangHinzufuegen({ notizId: c.notizId, anhangId, name: c.name, typ: c.typ, groesse: bytes.length });
+    if (!e.ok) this.x.anhaenge.entfernen(anhangId);
+    return status(e, { anhangId });
+  }
+  async notizAnhangEntfernen(c: { notizId: string; anhangId: string }): Promise<CommandStatus> {
+    const e = this.x.domain.notizAnhangEntfernen(c);
+    if (e.ok) this.x.anhaenge.entfernen(c.anhangId);
+    return status(e);
+  }
+  async aufgabeAusNotiz(c: { notizId: string }): Promise<CommandStatus> {
+    const aufgabeId = this.x.ids.neu();
+    return status(this.x.domain.aufgabeAusNotiz({ notizId: c.notizId, aufgabeId }), { aufgabeId });
   }
 
   // ---------------- Commands: Buchungen ----------------
@@ -234,12 +270,22 @@ export class RundblickBody implements Body {
       const werte = q.art === 'tag' ? a.tags : q.art === 'person' ? [a.verantwortlich] : [a.ort];
       werte.filter(Boolean).forEach(w => zaehler.set(w, (zaehler.get(w) ?? 0) + 1));
     }
+    if (q.art === 'tag') for (const n of this.x.domain.notizen()) n.tags.forEach(w => zaehler.set(w, (zaehler.get(w) ?? 0) + 1));
     const p = q.praefix.toLowerCase();
     return [...zaehler.entries()].filter(([w]) => w.toLowerCase().startsWith(p)).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'de')).map(([w]) => w).slice(0, 12);
   }
 
+  async logbuch(q: { bis?: string | null; tage?: number; filter?: string }) {
+    return logbuch({ aufgaben: this.x.domain.aufgaben(), notizen: this.x.domain.notizen(), heute: this.x.uhr.heute(), bis: q.bis ?? null, tage: q.tage, filter: q.filter });
+  }
+
+  async notiz(q: { notizId: string }) {
+    const n = this.x.domain.notiz(q.notizId);
+    return n ? { id: n.id, text: n.text, tags: n.tags, datum: n.datum, erfasst: n.erfasst, anhangliste: n.anhaenge.map((a, i) => ({ ...a, nr: i + 1 })) } : null;
+  }
+
   async anhang(q: { anhangId: string }) {
-    const info = this.x.domain.aufgaben().flatMap(a => a.anhaenge).find(x => x.id === q.anhangId);
+    const info = [...this.x.domain.aufgaben().flatMap(a => a.anhaenge), ...this.x.domain.notizen().flatMap(n => n.anhaenge)].find(x => x.id === q.anhangId);
     const bytes = info ? this.x.anhaenge.lesen(q.anhangId) : null;
     return info && bytes ? { name: info.name, typ: info.typ, url: `data:${info.typ};base64,${inBase64(bytes)}` } : null;
   }

@@ -114,7 +114,7 @@ describe('Queries über den Body', () => {
   it('Dringlichkeit und Filter als pure Funktionen', () => {
     expect(dringlichkeit(null, '2026-11-16')).toBeNull();
     expect(['2026-11-15', '2026-11-16', '2026-11-18', '2026-11-30'].map(f => dringlichkeit(f, '2026-11-16'))).toEqual(['ueberfaellig', 'heute', 'woche', 'spaeter']);
-    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [], rang: 0 };
+    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [], rang: 0, abgeschlossenAm: null, abgehakt: [] };
     expect(passtZuFilter(a, '  ')).toBe(true);
     expect(passtZuFilter(a, 'angebot #kunde')).toBe(true);
     expect(passtZuFilter(a, 'angebot #büro')).toBe(false);

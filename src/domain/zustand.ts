@@ -1,5 +1,6 @@
 // Reine Entwicklungsfunktionen: aus Events wird Zustand. Genutzt von den Kontextmodellen der
 // Commands und vom Bestand (Projektion für Queries).
+import { checklistenpunkte } from '../basis/markdown';
 import type { DomainEvent } from '../schema/events';
 import { KATEGORIEN, type Datum, type Id, type KategorieId, type Minuten, type Uhrzeit } from '../schema/werte';
 
@@ -11,7 +12,24 @@ export type AufgabeZ = {
   anhaenge: AnhangZ[];
   /** Rang für die manuelle Reihenfolge (kleiner = weiter oben); neue Aufgaben kommen nach oben */
   rang: number;
+  /** Zeitpunkt (ISO) des Abschließens – fürs Logbuch */
+  abgeschlossenAm: string | null;
+  /** explizit abgehakte Checklisten-Punkte der Notiz mit Zeitpunkt – fürs Logbuch */
+  abgehakt: { text: string; zeit: string }[];
 };
+
+/** Notiz im Logbuch: nur Text (erste Zeile = Titel), Tags, Bilder und ein Tag */
+export type NotizZ = {
+  id: Id; text: string; tags: string[]; datum: Datum; anhaenge: AnhangZ[];
+  /** Zeitpunkt (ISO) des Erfassens */
+  erfasst: string;
+  verworfen: boolean;
+  /** Aufgabe, zu der die Notiz geworden ist */
+  umgewandelt: Id | null;
+};
+
+/** Event mit Zeitpunkt (gespeicherte Events haben ihn; reine Domain-Events in Tests nicht) */
+export type ZeitEvent = DomainEvent & { zeit?: string };
 
 export type AnhangZ = { id: Id; name: string; typ: string; groesse: number };
 
@@ -25,18 +43,24 @@ export type SpalteZ = { id: Id; name: string; kategorie: KategorieId; rang: numb
 export type PlanungZ = { kapazitaet: Minuten[]; standarddauer: Minuten };
 export const PLANUNG_STANDARD: PlanungZ = { kapazitaet: [360, 360, 360, 360, 300, 0, 0], standarddauer: 60 };
 
-export function aufgabeEntwickeln(z: AufgabeZ | null, e: DomainEvent): AufgabeZ | null {
+const NEU = { abgeschlossen: false, verworfen: false, archiviert: false, rang: 0, abgeschlossenAm: null, abgehakt: [] } as const;
+
+export function aufgabeEntwickeln(z: AufgabeZ | null, e: ZeitEvent): AufgabeZ | null {
   switch (e.typ) {
-    case 'AufgabeErfasst': return { ...e.daten, id: e.daten.aufgabeId, tags: [...e.daten.tags], abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [], rang: 0 };
+    case 'AufgabeErfasst': return { ...e.daten, ...NEU, id: e.daten.aufgabeId, tags: [...e.daten.tags], anhaenge: [], abgehakt: [] };
     case 'AufgabeAusBuchungErstellt': return {
-      id: e.daten.aufgabeId, titel: e.daten.titel, beschreibung: e.daten.beschreibung, ort: '', verantwortlich: '', tags: [],
-      frist: null, wiedervorlage: null, status: e.daten.status, abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [], rang: 0,
+      ...NEU, id: e.daten.aufgabeId, titel: e.daten.titel, beschreibung: e.daten.beschreibung, ort: '', verantwortlich: '', tags: [],
+      frist: null, wiedervorlage: null, status: e.daten.status, anhaenge: [], abgehakt: [],
+    };
+    case 'AufgabeAusNotizErstellt': return {
+      ...NEU, id: e.daten.aufgabeId, titel: e.daten.titel, beschreibung: e.daten.beschreibung, ort: '', verantwortlich: '', tags: [...e.daten.tags],
+      frist: null, wiedervorlage: null, status: null, anhaenge: e.daten.anhaenge.map(a => ({ ...a })), abgehakt: [],
     };
   }
   if (!z) return z;
   switch (e.typ) {
     case 'AufgabeUmbenannt': return { ...z, titel: e.daten.titel };
-    case 'BeschreibungGeaendert': return { ...z, beschreibung: e.daten.beschreibung };
+    case 'BeschreibungGeaendert': return { ...z, beschreibung: e.daten.beschreibung, abgehakt: abgehaktFortschreiben(z, e.daten.beschreibung, e.zeit) };
     case 'OrtGeaendert': return { ...z, ort: e.daten.ort };
     case 'VerantwortlicherGeaendert': return { ...z, verantwortlich: e.daten.verantwortlich };
     case 'AufgabeGetaggt': return z.tags.includes(e.daten.tag) ? z : { ...z, tags: [...z.tags, e.daten.tag] };
@@ -47,14 +71,39 @@ export function aufgabeEntwickeln(z: AufgabeZ | null, e: DomainEvent): AufgabeZ 
     case 'WiedervorlageAufgehoben': return { ...z, wiedervorlage: null };
     case 'StatusGesetzt': return { ...z, status: e.daten.status };
     case 'StatusEntfernt': return { ...z, status: null };
-    case 'AufgabeAbgeschlossen': return { ...z, abgeschlossen: true };
-    case 'AufgabeWiedereroeffnet': return { ...z, abgeschlossen: false };
+    case 'AufgabeAbgeschlossen': return { ...z, abgeschlossen: true, abgeschlossenAm: e.zeit ?? null };
+    case 'AufgabeWiedereroeffnet': return { ...z, abgeschlossen: false, abgeschlossenAm: null };
     case 'AufgabeVerworfen': return { ...z, verworfen: true };
     case 'AufgabeArchiviert': return { ...z, archiviert: true };
     case 'AufgabeAusArchivGeholt': return { ...z, archiviert: false };
     case 'AnhangHinzugefuegt': return { ...z, anhaenge: [...z.anhaenge, { id: e.daten.anhangId, name: e.daten.name, typ: e.daten.typ, groesse: e.daten.groesse }] };
     case 'AufgabeEinsortiert': return { ...z, rang: e.daten.rang };
     case 'AnhangEntfernt': return { ...z, anhaenge: z.anhaenge.filter(x => x.id !== e.daten.anhangId) };
+    default: return z;
+  }
+}
+
+/** Neu abgehakte Punkte bekommen den Zeitpunkt des Events; wieder geöffnete oder entfernte fallen heraus */
+function abgehaktFortschreiben(z: AufgabeZ, neu: string, zeit: string | undefined): { text: string; zeit: string }[] {
+  const vorher = new Set(checklistenpunkte(z.beschreibung).filter(p => p.erledigt).map(p => p.text));
+  const jetzt = checklistenpunkte(neu).filter(p => p.erledigt).map(p => p.text);
+  const bleiben = z.abgehakt.filter(a => jetzt.includes(a.text));
+  const dazu = zeit ? jetzt.filter(t => !vorher.has(t) && !bleiben.some(a => a.text === t)).map(text => ({ text, zeit })) : [];
+  return [...bleiben, ...dazu];
+}
+
+export function notizEntwickeln(z: NotizZ | null, e: ZeitEvent): NotizZ | null {
+  if (e.typ === 'NotizErfasst') return { id: e.daten.notizId, text: e.daten.text, tags: [...e.daten.tags], datum: e.daten.datum, anhaenge: [], erfasst: e.zeit ?? '', verworfen: false, umgewandelt: null };
+  if (!z) return z;
+  switch (e.typ) {
+    case 'NotizTextGeaendert': return { ...z, text: e.daten.text };
+    case 'NotizGetaggt': return z.tags.includes(e.daten.tag) ? z : { ...z, tags: [...z.tags, e.daten.tag] };
+    case 'NotizTagEntfernt': return { ...z, tags: z.tags.filter(t => t !== e.daten.tag) };
+    case 'NotizDatumGeaendert': return { ...z, datum: e.daten.datum };
+    case 'NotizAnhangHinzugefuegt': return { ...z, anhaenge: [...z.anhaenge, { id: e.daten.anhangId, name: e.daten.name, typ: e.daten.typ, groesse: e.daten.groesse }] };
+    case 'NotizAnhangEntfernt': return { ...z, anhaenge: z.anhaenge.filter(a => a.id !== e.daten.anhangId) };
+    case 'NotizVerworfen': return { ...z, verworfen: true };
+    case 'AufgabeAusNotizErstellt': return { ...z, umgewandelt: e.daten.aufgabeId };
     default: return z;
   }
 }

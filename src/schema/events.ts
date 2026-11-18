@@ -45,6 +45,17 @@ export type DomainEvent =
   | E<'BuchungsdauerGeaendert', { buchungId: Id; dauer: Minuten }>
   | E<'BuchungStorniert', { buchungId: Id }>
   | E<'AufgabeAusBuchungErstellt', { aufgabeId: Id; buchungId: Id; titel: string; beschreibung: string; status: Id | null }>
+  // ---- Notizen (Logbuch): nur Text, Tags, Bilder und ein Tag; quasi schon erledigt
+  | E<'NotizErfasst', { notizId: Id; text: string; tags: string[]; datum: Datum }>
+  | E<'NotizTextGeaendert', { notizId: Id; text: string }>
+  | E<'NotizGetaggt', { notizId: Id; tag: string }>
+  | E<'NotizTagEntfernt', { notizId: Id; tag: string }>
+  | E<'NotizDatumGeaendert', { notizId: Id; datum: Datum }>
+  | E<'NotizAnhangHinzugefuegt', { notizId: Id; anhangId: Id; name: string; typ: string; groesse: number }>
+  | E<'NotizAnhangEntfernt', { notizId: Id; anhangId: Id }>
+  | E<'NotizVerworfen', { notizId: Id }>
+  /** aus einer Notiz wird eine Aufgabe; die Notiz verschwindet aus dem Logbuch */
+  | E<'AufgabeAusNotizErstellt', { aufgabeId: Id; notizId: Id; titel: string; beschreibung: string; tags: string[]; anhaenge: { id: Id; name: string; typ: string; groesse: number }[] }>
   // ---- Board
   | E<'StatusspalteAngelegt', { statusId: Id; name: string; kategorie: KategorieId }>
   | E<'StatusspalteUmbenannt', { statusId: Id; name: string }>
@@ -82,6 +93,7 @@ export type GespeichertesEvent = NeuesEvent & {
 export const tag = {
   aufgabe: (id: Id) => `aufgabe:${id}`,
   buchung: (id: Id) => `buchung:${id}`,
+  notiz: (id: Id) => `notiz:${id}`,
   spalten: 'spalten',
   planung: 'planung',
 } as const;

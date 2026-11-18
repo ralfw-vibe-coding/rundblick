@@ -4,8 +4,10 @@ import type { Datum, Id, KategorieId, Minuten, Uhrzeit, Wochentag } from '../sch
 import type { AufgabeAenderungen, AufgabeFelder } from './commands/aufgaben';
 import type { Ergebnis } from './commands/basis';
 import type { BuchungAenderungen } from './commands/buchungen';
-import type { AnhangZ, AufgabeZ, BuchungZ, PlanungZ, SpalteZ } from './zustand';
+import type { NotizAenderungen } from './commands/notizen';
+import type { AnhangZ, AufgabeZ, BuchungZ, NotizZ, PlanungZ, SpalteZ } from './zustand';
 
+export type { NotizAenderungen, NotizZ };
 export type { AufgabeAenderungen, AufgabeFelder, BuchungAenderungen, Ergebnis, AnhangZ, AufgabeZ, BuchungZ, PlanungZ, SpalteZ };
 
 export interface DomainInterface {
@@ -34,6 +36,13 @@ export interface DomainInterface {
   spalteEntfernen(c: { statusId: Id }): Ergebnis;
   tageskapazitaetFestlegen(c: { wochentag: Wochentag; minuten: Minuten }): Ergebnis;
   standarddauerFestlegen(c: { minuten: Minuten }): Ergebnis;
+  // ---- Commands: Notizen (Logbuch)
+  notizErfassen(c: { notizId: Id; text: string; tags?: string[]; datum: Datum }): Ergebnis;
+  notizAendern(c: { notizId: Id; aenderungen: NotizAenderungen }): Ergebnis;
+  notizVerwerfen(c: { notizId: Id }): Ergebnis;
+  notizAnhangHinzufuegen(c: { notizId: Id; anhangId: Id; name: string; typ: string; groesse: number }): Ergebnis;
+  notizAnhangEntfernen(c: { notizId: Id; anhangId: Id }): Ergebnis;
+  aufgabeAusNotiz(c: { notizId: Id; aufgabeId: Id }): Ergebnis;
 
   // ---- Queries (aus der Projektion im Speicher)
   /** alle nicht verworfenen Aufgaben (auch archivierte), in Erfassungsreihenfolge */
@@ -48,6 +57,9 @@ export interface DomainInterface {
   /** die drei Kategorien in fester Reihenfolge mit ihren (ggf. umbenannten) Namen */
   kategorien(): { id: KategorieId; name: string }[];
   planung(): PlanungZ;
+  /** Notizen, die im Logbuch stehen (nicht verworfen, nicht zur Aufgabe geworden) */
+  notizen(): NotizZ[];
+  notiz(id: Id): NotizZ | null;
 
   /** meldet jede Änderung des Domain state (auch Events anderer Geräte) */
   beiAenderung(cb: () => void): () => void;

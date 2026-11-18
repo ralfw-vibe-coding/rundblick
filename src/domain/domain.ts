@@ -6,6 +6,7 @@ import { anwenden, aufbauen, type Bestand } from './bestand';
 import * as A from './commands/aufgaben';
 import * as B from './commands/buchungen';
 import * as S from './commands/board';
+import * as N from './commands/notizen';
 import type { DomainInterface } from './interface';
 import { aktiveSpalten, type BuchungZ } from './zustand';
 
@@ -47,6 +48,12 @@ export class Domain implements DomainInterface {
   spalteEntfernen: DomainInterface['spalteEntfernen'] = c => S.spalteEntfernen(this.es, c);
   tageskapazitaetFestlegen: DomainInterface['tageskapazitaetFestlegen'] = c => S.tageskapazitaetFestlegen(this.es, c);
   standarddauerFestlegen: DomainInterface['standarddauerFestlegen'] = c => S.standarddauerFestlegen(this.es, c);
+  notizErfassen: DomainInterface['notizErfassen'] = c => N.notizErfassen(this.es, c);
+  notizAendern: DomainInterface['notizAendern'] = c => N.notizAendern(this.es, c);
+  notizVerwerfen: DomainInterface['notizVerwerfen'] = c => N.notizVerwerfen(this.es, c);
+  notizAnhangHinzufuegen: DomainInterface['notizAnhangHinzufuegen'] = c => N.notizAnhangHinzufuegen(this.es, c);
+  notizAnhangEntfernen: DomainInterface['notizAnhangEntfernen'] = c => N.notizAnhangEntfernen(this.es, c);
+  aufgabeAusNotiz: DomainInterface['aufgabeAusNotiz'] = c => N.aufgabeAusNotiz(this.es, c);
 
   aufgaben() { return [...this.bestand.aufgaben.values()].filter(a => !a.verworfen); }
   aufgabe(id: Id) { const a = this.bestand.aufgaben.get(id); return a && !a.verworfen ? a : null; }
@@ -60,6 +67,8 @@ export class Domain implements DomainInterface {
   spalten() { return aktiveSpalten(this.bestand.spalten); }
   kategorien() { return KATEGORIEN.map(k => ({ id: k.id, name: this.bestand.kategorien[k.id] })); }
   planung() { return this.bestand.planung; }
+  notizen() { return [...this.bestand.notizen.values()].filter(n => !n.verworfen && !n.umgewandelt); }
+  notiz(id: Id) { const n = this.bestand.notizen.get(id); return n && !n.verworfen && !n.umgewandelt ? n : null; }
 
   beiAenderung(cb: () => void): () => void {
     this.abos.add(cb);

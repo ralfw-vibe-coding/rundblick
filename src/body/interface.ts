@@ -72,6 +72,17 @@ export type AufgabeDetails = AufgabeZeile & {
 
 export type BuchungDetails = BuchungDto & { tag: Auslastung };
 
+// ---------- Logbuch ----------
+/** Ein Eintrag im Logbuch: abgeschlossene Aufgabe, abgehakter Checklisten-Punkt oder Notiz */
+export type LogEintrag =
+  | { art: 'aufgabe'; aufgabeId: Id; titel: string; tags: string[]; uhrzeit: Uhrzeit; archiviert: boolean }
+  | { art: 'punkt'; aufgabeId: Id; aufgabentitel: string; text: string; uhrzeit: Uhrzeit }
+  | { art: 'notiz'; notizId: Id; titel: string; vorschau: string; tags: string[]; bilder: number; uhrzeit: Uhrzeit | null };
+export type LogbuchTag = { datum: Datum; eintraege: LogEintrag[] };
+/** Tage mit Einträgen, neuester zuerst; `weiter` = ältester noch nicht gelieferter Tag (fürs Nachladen) */
+export type Logbuch = { heute: Datum; tage: LogbuchTag[]; weiter: Datum | null };
+export type NotizDetails = { id: Id; text: string; tags: string[]; datum: Datum; erfasst: string; anhangliste: AnhangInfo[] };
+
 export type KalenderEintrag = { id: string; name: string; konto: string; farbe: string; sichtbar: boolean; belegt: boolean };
 
 export type EinstellungenDto = {
@@ -142,6 +153,16 @@ export interface Body {
   synchronisieren(): Promise<CommandStatus>;
   layoutSpeichern(c: { layout: Layout }): Promise<CommandStatus>;
 
+  // ---- Commands: Notizen (Logbuch)
+  /** Ohne `tags` werden #tags aus dem Text übernommen (und dort entfernt); ohne `datum` gilt heute */
+  notizErfassen(c: { text: string; tags?: string[]; datum?: Datum }): Promise<CommandStatus>;
+  notizAendern(c: { notizId: Id; text?: string; tags?: string[]; datum?: Datum }): Promise<CommandStatus>;
+  notizVerwerfen(c: { notizId: Id }): Promise<CommandStatus>;
+  notizAnhangHinzufuegen(c: { notizId: Id; name: string; typ: string; daten: string }): Promise<CommandStatus>;
+  notizAnhangEntfernen(c: { notizId: Id; anhangId: Id }): Promise<CommandStatus>;
+  /** Aus der Notiz wird eine Aufgabe (erste Zeile = Titel); liefert die aufgabeId */
+  aufgabeAusNotiz(c: { notizId: Id }): Promise<CommandStatus>;
+
   // ---- Queries
   liste(q: { filter?: string }): Promise<Aufgabenliste>;
   board(): Promise<Board>;
@@ -153,6 +174,9 @@ export interface Body {
   vorschlaege(q: { art: 'tag' | 'person' | 'ort'; praefix: string }): Promise<string[]>;
   layout(): Promise<Layout>;
   heute(): Promise<{ datum: Datum; minute: number }>;
+  /** Logbuch ab `bis` (Standard: heute bzw. spätester Eintrag) rückwärts, höchstens `tage` Tage mit Einträgen */
+  logbuch(q: { bis?: Datum | null; tage?: number; filter?: string }): Promise<Logbuch>;
+  notiz(q: { notizId: Id }): Promise<NotizDetails | null>;
   /** Bild als data:-URL (null, wenn unbekannt oder die Datei noch nicht synchronisiert ist) */
   anhang(q: { anhangId: Id }): Promise<{ name: string; typ: string; url: string } | null>;
 
@@ -167,5 +191,6 @@ export const BODY_METHODEN: readonly BodyMethode[] = [
   'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung',
   'spalteAnlegen', 'spalteUmbenennen', 'kategorieUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen', 'tageszeitFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',
+  'notizErfassen', 'notizAendern', 'notizVerwerfen', 'notizAnhangHinzufuegen', 'notizAnhangEntfernen', 'aufgabeAusNotiz', 'logbuch', 'notiz',
   'liste', 'board', 'zeitraum', 'aufgabe', 'buchung', 'einstellungen', 'erfassungVorschau', 'vorschlaege', 'layout', 'heute', 'anhang',
 ];

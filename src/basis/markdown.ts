@@ -59,3 +59,13 @@ export function checkboxUmschalten(quelle: string, nr: number): string {
   zeilen[nr] = z.replace(/^(\s*[-*]\s+\[)( |x|X)(\])/, (_m, a: string, x: string, b: string) => a + (x === ' ' ? 'x' : ' ') + b);
   return zeilen.join('\n');
 }
+
+/** Alle Checklisten-Punkte („- [ ] …“ / „- [x] …“) eines Textes */
+export function checklistenpunkte(quelle: string): { text: string; erledigt: boolean }[] {
+  const r: { text: string; erledigt: boolean }[] = [];
+  for (const z of quelle.split('\n')) {
+    const m = z.match(/^\s*[-*]\s+\[( |x|X)\]\s+(.*\S)\s*$/);
+    if (m) r.push({ text: m[2]!, erledigt: m[1] !== ' ' });
+  }
+  return r;
+}

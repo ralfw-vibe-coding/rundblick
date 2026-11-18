@@ -25,7 +25,7 @@ function pruefeFelder(f: Partial<AufgabeFelder>, b: Bestand): string[] {
   return p;
 }
 const aktiv = (b: Bestand, statusId: Id) => { const s = b.spalten.get(statusId); return !!s && !s.entfernt; };
-const normTags = (t: string[] = []) => [...new Set(t.map(x => x.trim().replace(/^#/, '').toLowerCase()).filter(Boolean))];
+export const normTags = (t: string[] = []) => [...new Set(t.map(x => x.trim().replace(/^#/, '').toLowerCase()).filter(Boolean))];
 
 function bearbeitbar(a: AufgabeZ | undefined): string | null {
   if (!a) return 'Aufgabe unbekannt.';
