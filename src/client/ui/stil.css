@@ -767,3 +767,11 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .mc .me.mehr { color: var(--mute); padding-left: 6px; }
 .mo.compact .mc .me { font-size: 10px; line-height: 14px; }
 .mc .me.hl { box-shadow: 0 0 0 2px var(--own); }
+/* Uhrzeitfeld: Textfeld + Liste in Viertelstunden (statt nativem Zeit-Picker) */
+input.uhrzeit { width: 72px !important; font-variant-numeric: tabular-nums; text-align: center; }
+.uhrzeit-liste { position: fixed; z-index: 120; width: 96px; max-height: 220px; overflow-y: auto; background: #fff; border: 1px solid var(--line2); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 4px; display: flex; flex-direction: column; }
+.uhrzeit-liste button { border: 0; background: none; text-align: center; padding: 3px 0; border-radius: 5px; font: inherit; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); cursor: pointer; }
+.uhrzeit-liste button.voll { font-weight: 600; }
+.uhrzeit-liste button.ausser { color: var(--mute); }
+.uhrzeit-liste button:hover { background: var(--bg); }
+.uhrzeit-liste button.gewaehlt { background: var(--own); color: #fff; }

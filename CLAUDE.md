@@ -25,6 +25,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - **Zerstörende Aktionen zweistufig, keine Bestätigungsdialoge:** Symbol (Mülleimer, bei Bildern „×“) → 1. Klick verwandelt es in ein rotes „?“ → 2. Klick führt aus. Klick woanders oder 5 s ohne Klick → zurück. Umsetzung: `data-zweistufig="<aktion>"` + Handler `ZWEISTUFIG` in `interaktion.ts`.
 - Oberfläche = frei teilbares Raster mit Arbeitsbereichen; Überblick ist King.
 - Kopfzeile: Arbeitsbereiche · „+“ neuer Arbeitsbereich · „−“ aktuellen löschen (zweistufig) · Kalender aktualisieren · Einstellungen. Ein „Arbeitsbereiche zurücksetzen“ gibt es bewusst nicht.
+- **Uhrzeiten nie mit nativem `<input type="time">`**, sondern mit `uhrzeitFeld()` (`uhrzeitfeld.ts`): Textfeld + Liste nur in Viertelstunden (00/15/30/45), an aktueller Zeit bzw. Beginn der Tageszeit; Stunden außerhalb der Tageszeit blasser; Tippen „930“/„9:30“/„9“ wird auf die Viertelstunde gerundet; ↑/↓ ±15 min, ↵ übernimmt, Esc verwirft; leer erlaubt.
 - Scrollbalken überall schmal (6 px) und dezent (hellgrau, ohne Spur) – global in `stil.css`.
 
 **Aufgabenliste**

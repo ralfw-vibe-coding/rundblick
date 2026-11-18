@@ -8,10 +8,12 @@ import { I } from './icons';
 import { Raster } from './raster';
 import { ausgewaehlteVerschieben } from './sichten/liste';
 import { schnellerfassungAnbinden } from './schnellerfassung';
+import { uhrzeitfelderAnbinden } from './uhrzeitfeld';
 
 const raster = new Raster($('#area'), $('#ws'));
 const erfassung = schnellerfassungAnbinden($('#qc'));
 interaktionAnbinden();
+uhrzeitfelderAnbinden();
 $('#einstBtn').innerHTML = I.einstellungen;
 
 // Kalender manuell aktualisieren: Symbol dreht sich, solange geladen wird; Tooltip zeigt den letzten Stand

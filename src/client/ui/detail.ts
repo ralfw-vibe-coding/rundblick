@@ -6,6 +6,7 @@ import type { AufgabeDetails } from '../../body/interface';
 import { body } from './body';
 import { buchungArt, ICON, kapazitaetsBalken, muellKnopf, statusPunkt } from './bausteine';
 import { esc, pruefe } from './dom';
+import { uhrzeitFeld } from './uhrzeitfeld';
 import { markieren } from './frisch';
 import { I } from './icons';
 import { chipFeld } from './chipfeld';
@@ -99,7 +100,7 @@ export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
       ${a.anhangliste.length || !gesperrt ? anhaengeHtml(a.anhangliste, id, gesperrt) : ''}
       ${gesperrt ? '' : feld('Buchung hinzufügen', `<div class="buchen">
         <input type="date" data-b="datum" value="${morgen}" title="Datum">
-        <input type="time" data-b="start" title="Uhrzeit – leer lassen für eine Reservierung">
+        ${uhrzeitFeld('data-b="start"', null, 'Uhrzeit – leer lassen für eine Reservierung')}
         <select data-b="dauer" title="Dauer">${[15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 480].map(m => `<option value="${m}" ${m === e.standarddauer ? 'selected' : ''}>${dauerText(m)}</option>`).join('')}</select>
         <button class="btn primary" data-d="buchen">Buchen</button></div>`)}
       ${feld(`Buchungen · gebucht ${dauerText(a.buchungen.gebucht)}`, `<div class="bk-list">${buchungsliste(a)}</div>`)}
@@ -168,7 +169,7 @@ export async function buchungOeffnen(id: string): Promise<void> {
     <div class="db">
       <div class="fld-grid">
         ${feld('Datum', `<input type="date" data-f="datum" value="${b.datum}">`)}
-        ${feld('Uhrzeit', `<div class="inl"><input type="time" data-f="start" value="${b.start ?? ''}"><button data-leer="start" title="Uhrzeit entfernen → Reservierung">${I.x}</button></div>`)}
+        ${feld('Uhrzeit', `<div class="inl">${uhrzeitFeld('data-f="start"', b.start)}<button data-leer="start" title="Uhrzeit entfernen → Reservierung">${I.x}</button></div>`)}
       </div>
       ${feld('Dauer', `<span class="dur"><button data-dur="-15">${I.minus}</button><b>${dauerText(b.dauer)}</b><button data-dur="15">${I.plus}</button></span><span class="durq">${[30, 45, 60, 90, 120, 180, 240].map(m => `<button data-dauer="${m}" class="${b.dauer === m ? 'on' : ''}">${dauerText(m).replace(' ', '')}</button>`).join('')}</span>`)}
       ${feld('Kapazität', `<label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)"><input type="checkbox" data-f="belegt" ${b.belegt ? 'checked' : ''}> belegt ${dauerText(b.dauer)} der Tageskapazität</label>`)}
