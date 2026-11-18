@@ -617,8 +617,8 @@
     <li>Dropbox-App „Rundblick“ anlegen (Nutzer, App Console) – <b>erledigt</b>: App-Key <code>npwte2lly4p0gdj</code> (öffentlich, PKCE ohne Secret), Zugriff „App folder“, Rechte <code>files.metadata.read</code>, <code>files.content.read</code>, <code>files.content.write</code>, Redirect zunächst <code>http://localhost:5174/</code>; Netlify-Adresse folgt.</li>
     <li>UI-Entwurf der Phone App (<code>entwuerfe/phone/index.html</code>, in Arbeit). Entschieden bisher:
       <ul>
-        <li>Liste: Rubrik <b>„Neu“</b> ganz oben – frisch erfasste Aufgaben stehen dort <i>zusätzlich</i> zu ihrer normalen Rubrik, bis man sie öffnet oder per Wischen „Gesehen“ wegräumt. Merkmal ist lokaler Zustand des Geräts (kein Event).</li>
-        <li>Wischen nach links: Liste = Archiv / Mülleimer, unter „Neu“ = Gesehen / Mülleimer, Logbuch = Mülleimer (immer zweistufig).</li>
+        <li>Liste: Rubrik <b>„Neu“</b> ganz oben – frisch erfasste Aufgaben stehen dort <i>zusätzlich</i> zu ihrer normalen Rubrik, bis man sie öffnet oder per Wischen „Gesehen“ wegräumt. Merkmal ist lokaler Zustand des Geräts, auf dem erfasst wurde (kein Event; Nutzer 18.11.2026).</li>
+        <li>Wischen nach links: Liste = Archiv / Mülleimer, unter „Neu“ = Gesehen / Mülleimer, Logbuch = Mülleimer (immer zweistufig). Eine gelöschte Aufgabe verschwindet auch aus dem Logbuch; Mülleimer im Logbuch löscht je nach Eintrag die Notiz, den Checklisten-Punkt oder die ganze Aufgabe.</li>
         <li>Lange drücken und ziehen: Liste innerhalb eines Abschnitts umsortieren; Board umsortieren und über Spalten ziehen (Rand rollt weiter); ohne Bewegung loslassen = Auswahlblatt „Verschieben nach“.</li>
         <li>Unter dem Titel immer: Fälligkeit, Wiedervorlage · Status, Verantwortlich, Ort, Tags. Aufgabe: Notiz füllt den Platz, Kurzinfo darunter öffnet die Angaben als Schublade.</li>
         <li>Suche erst nach Herunterziehen; Wolke nur als Symbol; Board-Spalten zuklappbar, Kategorie-Knopf fährt die erste Spalte der Gruppe an.</li>

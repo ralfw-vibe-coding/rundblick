@@ -217,7 +217,7 @@
 <body>
 <div class="seite">
   <h1>Rundblick Phone App – Entwurf</h1>
-  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig), unter „Neu“ = Gesehen / Mülleimer, im Logbuch = Mülleimer · neu Erfasstes steht oben unter „Neu“ (zusätzlich in seiner Rubrik), bis man es öffnet oder wegwischt · lange drücken und ziehen = umsortieren (in der Liste innerhalb des Abschnitts, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
+  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig), unter „Neu“ = Gesehen / Mülleimer, im Logbuch = Mülleimer (löscht Notiz, Punkt bzw. die ganze Aufgabe; eine gelöschte Aufgabe verschwindet auch aus dem Logbuch) · neu Erfasstes steht oben unter „Neu“ (zusätzlich in seiner Rubrik), bis man es öffnet oder wegwischt · lange drücken und ziehen = umsortieren (in der Liste innerhalb des Abschnitts, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
   <div class="reihe" id="reihe"></div>
 
   <div class="erkl">
@@ -280,11 +280,12 @@ function app(bs, start) {
     // „Neu“: frisch erfasste Aufgaben stehen oben (zusätzlich in ihrer Rubrik), bis man sie öffnet oder wegwischt
     neu: [] };
   z.neu = aufgaben.filter(a => a.titel.startsWith('Geschenk')).map(a => a.id);
-  let ln = 0; const L = (tag, zeit, t, art, unter = '') => ({ id: 'l' + (++ln), tag, zeit, t, art, unter });
+  let ln = 0; const L = (tag, zeit, t, art, unter = '', aufgabe = null) => ({ id: 'l' + (++ln), tag, zeit, t, art, unter,
+    aufgabe: aufgabe ?? (art === 'aufgabe' ? aufgaben.find(a => a.titel === t)?.id ?? null : null) });
   const log = [
     L('Heute', '09:12', 'Telefonat mit Markus: Rohschnitt Freitag fertig #vorgestellt', 'notiz'),
     L('Heute', '08:40', 'Workshop-Feedback auswerten', 'aufgabe'),
-    L('Gestern', '17:05', 'Referenzen sammeln', 'punkt', 'Punkt in „Angebot Möbeltischlerei Hüttner“'),
+    L('Gestern', '17:05', 'Referenzen sammeln', 'punkt', 'Punkt in „Angebot Möbeltischlerei Hüttner“', aufgaben.find(a => a.titel.startsWith('Angebot Möbel'))?.id),
     L('Gestern', '11:20', 'Reisekosten Oktober einreichen', 'aufgabe'),
     L('Mo 16.11.', '', 'Idee: Rundblick fürs Handy als PWA #rundblick', 'notiz'),
   ];
@@ -499,6 +500,13 @@ function app(bs, start) {
   }
   const blattZu = () => { bs.querySelector('.blatt').className = 'blatt'; bs.querySelector('.blatt-hg').classList.remove('offen'); };
 
+  // Aufgabe löschen: verschwindet überall – Liste, „Neu“, Board und Logbuch
+  const aufgabeLoeschen = id => {
+    if (!id) return;
+    const i = aufgaben.findIndex(x => x.id === id); if (i >= 0) aufgaben.splice(i, 1);
+    z.neu = z.neu.filter(x => x !== id);
+    for (let k = log.length - 1; k >= 0; k--) if (log[k].aufgabe === id) log.splice(k, 1);
+  };
   let fragenId = null, fragenT;
   bs.addEventListener('click', e => {
     const t = e.target;
@@ -515,8 +523,18 @@ function app(bs, start) {
       const id = m.dataset.muell || m.dataset.muell2 || m.dataset.muellLog;
       if (fragenId !== id) { fragenId = id; m.classList.add('fragen'); m.textContent = '?'; clearTimeout(fragenT); fragenT = setTimeout(() => { fragenId = null; zeichnen(); if (detail.classList.contains('offen')) detailZeigen(detail.dataset.id); }, 5000); return; }
       fragenId = null;
-      if (m.dataset.muellLog) { log.splice(log.findIndex(x => x.id === id), 1); toast('Eintrag gelöscht'); zeichnen(); return; }
-      z.neu = z.neu.filter(x => x !== id); aufgaben.splice(aufgaben.findIndex(x => x.id === id), 1); detail.classList.remove('offen'); toast('Gelöscht'); zeichnen(); return;
+      if (m.dataset.muellLog) {
+        const e = log.find(x => x.id === id);
+        if (e.art === 'aufgabe') { aufgabeLoeschen(e.aufgabe); log.splice(log.indexOf(e), 1); toast('Aufgabe gelöscht'); }
+        else if (e.art === 'punkt') {
+          // Punkt löschen = aus der Checkliste der Aufgabe entfernen
+          const a = aufgaben.find(x => x.id === e.aufgabe);
+          if (a) a.notiz = a.notiz.split('\n').filter(l => !/^\[( |x)\] /.test(l) || l.slice(4) !== e.t).join('\n');
+          log.splice(log.indexOf(e), 1); toast('Punkt gelöscht');
+        } else { log.splice(log.indexOf(e), 1); toast('Notiz gelöscht'); }
+        zeichnen(); return;
+      }
+      aufgabeLoeschen(id); detail.classList.remove('offen'); toast('Gelöscht'); zeichnen(); return;
     }
     if (q('[data-angaben]')) { angabenBlatt(aufgaben.find(x => x.id === detail.dataset.id)); return; }
     if (q('[data-blatt-zu]')) { blattZu(); return; }
