@@ -970,3 +970,12 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .tl2-rahmen.heute { box-shadow: inset 2px 0 0 var(--today), inset -2px 0 0 var(--today), inset 0 -2px 0 var(--today); }
 .tl2-rahmen.markiert, .tl2 .tl-head .r .tl2-rahmen-std.markiert { box-shadow: inset 2px 0 0 var(--markiert), inset -2px 0 0 var(--markiert); background: color-mix(in srgb, var(--markiert) 5%, transparent); }
 .tl2-rahmen.markiert { box-shadow: inset 2px 0 0 var(--markiert), inset -2px 0 0 var(--markiert), inset 0 -2px 0 var(--markiert); }
+/* Auslastungsbalken immer auf derselben Höhe – das Warndreieck nimmt nicht am Fluss teil,
+   sondern sitzt rechts daneben, vertikal auf die Balkenmitte zentriert (Band, Monat, Schublade, Timeline) */
+.cap-w { position: relative; }
+.cap-w:has(.cap-warn) { padding-right: 15px; }
+.cap-w.gross:has(.cap-warn) { padding-right: 18px; }
+.cap-warn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.tl2 .tl-head .r .tl2-tag .cap-w { position: relative; }
+.tl2 .tl-head .r .tl2-tag .cap-w:has(.cap-warn) { padding-right: 14px; }
+.tl2 .tl-head .r .tl2-tag span.cap-warn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
