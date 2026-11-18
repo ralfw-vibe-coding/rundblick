@@ -730,7 +730,7 @@ svg.lu { width: 1em; height: 1em; flex: none; vertical-align: -0.125em; }
 .day-side .row .right > :not(.muell):not(.bk) { display: none; }  /* gebuchte Zeit wie in der Liste, Status ausgeblendet */
 /* Kalender aktualisieren: Symbol dreht sich während des Ladens */
 #syncBtn svg.lu { transition: color .15s; }
-#syncBtn.dreht svg.lu { animation: rb-drehen .9s linear infinite; color: var(--own); }
-@keyframes rb-drehen { to { transform: rotate(-360deg); } }
+#syncBtn.dreht svg.lu { animation: rb-pulsen .9s ease-in-out infinite; color: var(--own); }
+@keyframes rb-pulsen { 50% { opacity: .35; transform: scale(.88); } }
 /* „−“ (Arbeitsbereich löschen) im Frage-Zustand */
 .ws .add.fragen { background: var(--over); color: #fff; font-weight: 700; }

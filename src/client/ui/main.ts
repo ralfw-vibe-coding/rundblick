@@ -16,7 +16,7 @@ $('#einstBtn').innerHTML = I.einstellungen;
 
 // Kalender manuell aktualisieren: Symbol dreht sich, solange geladen wird; Tooltip zeigt den letzten Stand
 const syncBtn = $('#syncBtn');
-syncBtn.innerHTML = I.zuruecksetzen;
+syncBtn.innerHTML = I.kalenderSync;
 const syncTitel = async () => {
   const z = (await body.einstellungen()).letzteSynchronisation;
   syncBtn.title = `Kalender aktualisieren${z ? ` · zuletzt ${new Date(z).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr` : ''}`;
