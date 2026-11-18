@@ -159,6 +159,23 @@
   .spalte.zu .spalte-h .nm { writing-mode: vertical-rl; font-size: 14px; }
   .spalte.zu .spalte-h .kat { display: none; }
   /* Aufgabe: Notiz zuerst, Angaben nur bei Bedarf */
+  .detail .koerper .notiz.gross { flex: 1; min-height: 160px; overflow-y: auto; }
+  .kurzinfo { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 12px; color: var(--mute); cursor: pointer; padding: 0 2px; flex: none; }
+  .kurzinfo .frist { margin-left: 0; font-size: 12px; }
+  .kurzinfo .chip { font-size: 11px; }
+  .kurzinfo .chev { margin-left: auto; }
+  .kurzinfo .chev svg.lucide { width: 14px; height: 14px; }
+  .frist.wv { color: var(--mute); font-weight: 500; }
+  .frist.wv svg.lucide { fill: none; }
+  .meta.termine { margin-top: 3px; gap: 8px; }
+  .meta.termine .frist { margin-left: 0; }
+  .blatt.angaben-blatt { left: 0; right: 0; bottom: 0; border-radius: 18px 18px 0 0; padding: 6px 16px 30px; max-height: 80%; overflow-y: auto; }
+  .blatt.angaben-blatt .griff { width: 36px; height: 5px; border-radius: 3px; background: var(--line2); margin: 2px auto 10px; }
+  .blatt.angaben-blatt .bk { display: flex; align-items: center; margin-bottom: 10px; font-weight: 700; font-size: 16px; }
+  .blatt.angaben-blatt .bk button { margin-left: auto; width: auto; padding: 0; border: 0; color: var(--own); font-size: 15px; font-weight: 600; }
+  .blatt.angaben-blatt .status-chips button { display: inline-flex; width: auto; padding: 6px 11px; font-size: 13px; border: 1px solid var(--line); background: #fff; border-radius: 16px; gap: 5px; }
+  .blatt.angaben-blatt .status-chips button.an { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .blatt.angaben-blatt button + button { border-top: 0; }
   .angaben-zeile { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; cursor: pointer; font-size: 13px; color: var(--mute); }
   .angaben-zeile .chev { margin-left: auto; }
   .angaben-zeile .chev svg.lucide { width: 16px; height: 16px; transition: transform .15s; }
@@ -190,7 +207,7 @@
 <body>
 <div class="seite">
   <h1>Rundblick Phone App – Entwurf</h1>
-  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig) · auf dem Board waagerecht wischen, Karte lange drücken = verschieben · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe „Angaben“ antippen = Status, Frist usw.</p>
+  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig) · auf dem Board waagerecht wischen, Karte lange drücken = verschieben · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
   <div class="reihe" id="reihe"></div>
 
   <div class="erkl">
@@ -265,7 +282,11 @@ function app(bs, start) {
   const suche = () => `<div class="suche ${z.suche ? 'offen' : ''}"><div class="feld2">${ICON('search')}<input data-suche placeholder="Suchen … Titel, #tag, @person" value="${z.filter}"></div><button data-suche-zu>Abbrechen</button></div>`;
   const passt = a => !z.filter || [a.titel, ...a.tags.map(t => '#' + t), a.person ? '@' + a.person : ''].join(' ').toLowerCase().includes(z.filter.toLowerCase());
   const frist = a => { if (!a.frist || a.done) return ''; const k = abschnittVon({ ...a, wv: null }); return `<span class="frist ${k === 'ohne' ? '' : k}">${ICON('diamond')}${fristText(a.frist)}</span>`; };
-  const chips = a => [...a.tags.map(t => `<span class="chip">#${t}</span>`), a.person ? `<span class="chip person">@${a.person}</span>` : '', a.ort ? `<span class="chip ort">${ICON('map-pin')}${a.ort}</span>` : ''].join('');
+  const chips = a => [a.person ? `<span class="chip person">@${a.person}</span>` : '', a.ort ? `<span class="chip ort">${ICON('map-pin')}${a.ort}</span>` : '', ...a.tags.map(t => `<span class="chip">#${t}</span>`)].join('');
+  const wv = a => a.wv && !a.done ? `<span class="frist wv">${ICON('calendar-clock')}${fristText(a.wv)}</span>` : '';
+  // unter dem Titel immer: Zeile 1 Fälligkeit, Wiedervorlage · Zeile 2 Status, Verantwortlich, Ort, Tags
+  const meta = (a, mitStatus = true) => { const t = frist(a) + wv(a), r = (mitStatus ? sdot(a) : '') + chips(a);
+    return (t ? `<div class="meta termine">${t}</div>` : '') + (r ? `<div class="meta">${r}</div>` : ''); };
   const sdot = a => { const s = SPALTEN.find(x => x.id === a.status); return s ? `<span class="chip"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</span>` : ''; };
 
   function liste() {
@@ -278,7 +299,7 @@ function app(bs, start) {
       h += `<div class="abschnitt ${k} ${offen ? 'offen' : ''}" data-abschnitt="${k}">${ICON('chevron-right')}${name} <span class="n">${as.length}</span></div>`;
       if (offen) h += `<div class="gruppe">${as.map(a => `<div class="zeile-huelle"><div class="aktionen"><button class="arch" data-arch="${a.id}">${ICON('archive')}Archiv</button><button class="muell" data-muell="${a.id}">${ICON('trash-2')}</button></div>
         <div class="zeile ${a.done ? 'erledigt' : ''} ${z.frisch === a.id ? 'frisch' : ''}" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON(a.done ? 'circle-check' : 'circle')}</button>
-        <div class="mitte"><div class="t"><span class="tt">${a.titel}</span>${frist(a)}</div>${chips(a) || sdot(a) ? `<div class="meta">${sdot(a)}${chips(a)}</div>` : ''}</div></div></div>`).join('')}</div>`;
+        <div class="mitte"><div class="t"><span class="tt">${a.titel}</span></div>${meta(a)}</div></div></div>`).join('')}</div>`;
     }
     return h + '</div>';
   }
@@ -289,7 +310,7 @@ function app(bs, start) {
       <div class="spalten">${sp.map(s => z.spalteZu.has(s.id)
         ? `<div class="spalte zu" data-spalte="${s.id}"><div class="spalte-h" data-spalte-zu="${s.id}"><span class="chev">${ICON('chevron-right')}</span><span class="sdot" style="background:${s.farbe}"></span><span class="n">${s.karten.length}</span><span class="nm">${s.name}</span></div></div>`
         : `<div class="spalte" data-spalte="${s.id}"><div class="spalte-h" data-spalte-zu="${s.id}"><span class="chev">${ICON('chevron-right')}</span><span class="sdot" style="background:${s.farbe}"></span><span class="nm">${s.name}</span> <span class="n">${s.karten.length}</span><span class="kat">${s.kat}</span></div>
-        <div class="karten">${s.karten.map(a => `<div class="karte" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON('circle')}</button><div class="mitte"><div class="t">${a.titel}${frist(a)}</div>${chips(a) ? `<div class="meta">${chips(a)}</div>` : ''}</div></div>`).join('') || '<div style="color:var(--mute);font-size:13px;padding:8px 4px">leer</div>'}</div></div>`).join('')}</div>
+        <div class="karten">${s.karten.map(a => `<div class="karte" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON('circle')}</button><div class="mitte"><div class="t">${a.titel}</div>${meta(a, false)}</div></div>`).join('') || '<div style="color:var(--mute);font-size:13px;padding:8px 4px">leer</div>'}</div></div>`).join('')}</div>
       <div class="punkte">${sp.map((s, i) => `<i class="${i === 0 ? 'an' : ''}"></i>`).join('')}</div>`;
   }
 
@@ -307,9 +328,22 @@ function app(bs, start) {
   // eingeklappte Angaben: knappe Zusammenfassung des Gesetzten
   const zusammenfassung = a => {
     const s = SPALTEN.find(x => x.id === a.status);
-    const teile = [s ? `<span class="chip"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</span>` : '', a.frist ? frist(a) : '', a.wv ? `<span class="chip">${ICON('calendar-clock')}${fristText(a.wv)}</span>` : '', chips(a)].join('');
+    const teile = [frist(a), wv(a), s ? `<span class="chip"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</span>` : '', chips(a)].join('');
     return teile || 'Status, Frist, Wiedervorlage, Verantwortlich, Ort, Tags';
   };
+  // Angaben als Schublade von unten
+  function angabenBlatt(a) {
+    const b = bs.querySelector('.blatt');
+    b.className = 'blatt angaben-blatt offen'; b.dataset.id = a.id;
+    b.innerHTML = `<div class="griff"></div><div class="bk">Angaben<button data-blatt-zu>Fertig</button></div><div class="angaben">
+        <div class="zwei"><div class="feld"><label>Frist</label><div class="wert ${a.frist ? '' : 'leer'}">${ICON('diamond')}${a.frist ? fristText(a.frist) : '–'}</div></div><div class="feld"><label>Wiedervorlage</label><div class="wert ${a.wv ? '' : 'leer'}">${ICON('calendar-clock')}${a.wv ? fristText(a.wv) : '–'}</div></div></div>
+        <div class="feld"><label>Status</label><div class="status-chips"><button class="${!a.status ? 'an' : ''}" data-status="">ohne</button>${SPALTEN.map(s => `<button class="${a.status === s.id ? 'an' : ''}" data-status="${s.id}"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</button>`).join('')}</div></div>
+        <div class="zwei"><div class="feld"><label>Verantwortlich</label><div class="wert ${a.person ? '' : 'leer'}">${a.person ? `<span class="chip person">@${a.person}</span>` : '–'}</div></div><div class="feld"><label>Ort</label><div class="wert ${a.ort ? '' : 'leer'}">${a.ort ? `<span class="chip ort">${ICON('map-pin')}${a.ort}</span>` : '–'}</div></div></div>
+        <div class="feld"><label>Tags</label><div class="wert ${a.tags.length ? '' : 'leer'}">${a.tags.map(t => `<span class="chip">#${t}</span>`).join('') || '–'}</div></div>
+      </div>`;
+    lucide.createIcons({ root: b });
+    bs.querySelector('.blatt-hg').classList.add('offen');
+  }
   function detailZeigen(id) {
     const a = aufgaben.find(x => x.id === id);
     const notiz = a.notiz ? a.notiz.split('\n').map((l, i) => { const m = l.match(/^\[( |x)\] (.*)/); return m ? `<div class="cb ${m[1] === 'x' ? 'an' : ''}" data-cb="${i}">${ICON(m[1] === 'x' ? 'square-check' : 'square')}<span>${m[2]}</span></div>` : `<div>${l}</div>`; }).join('') : '<span style="color:var(--mute)">Notiz …</span>';
@@ -318,13 +352,7 @@ function app(bs, start) {
         <div style="display:flex;gap:10px;align-items:flex-start"><button class="kreis" data-kreis="${a.id}" style="margin-top:2px">${ICON(a.done ? 'circle-check' : 'circle')}</button><textarea class="titel-feld" rows="2">${a.titel}</textarea></div>
         <div class="notiz gross">${notiz}</div>
         <div class="feld"><div class="bilder">${a.id === 'a3' ? '<div class="bild"><b>1</b></div>' : ''}<div class="neu">${ICON('image-plus')}</div></div></div>
-        <div class="angaben-zeile ${z.angaben ? 'offen' : ''}" data-angaben>${zusammenfassung(a)}<span class="chev">${ICON('chevron-right')}</span></div>
-        ${z.angaben ? `<div class="angaben">
-        <div class="feld"><label>Status</label><div class="status-chips"><button class="${!a.status ? 'an' : ''}" data-status="">ohne</button>${SPALTEN.map(s => `<button class="${a.status === s.id ? 'an' : ''}" data-status="${s.id}"><span class="sdot" style="background:${s.farbe}"></span>${s.name}</button>`).join('')}</div></div>
-        <div class="zwei"><div class="feld"><label>Frist</label><div class="wert ${a.frist ? '' : 'leer'}">${ICON('diamond')}${a.frist ? fristText(a.frist) : '–'}</div></div><div class="feld"><label>Wiedervorlage</label><div class="wert ${a.wv ? '' : 'leer'}">${ICON('calendar-clock')}${a.wv ? fristText(a.wv) : '–'}</div></div></div>
-        <div class="zwei"><div class="feld"><label>Verantwortlich</label><div class="wert ${a.person ? '' : 'leer'}">${a.person ? `<span class="chip person">@${a.person}</span>` : '–'}</div></div><div class="feld"><label>Ort</label><div class="wert ${a.ort ? '' : 'leer'}">${a.ort ? `<span class="chip ort">${ICON('map-pin')}${a.ort}</span>` : '–'}</div></div></div>
-        <div class="feld"><label>Tags</label><div class="wert ${a.tags.length ? '' : 'leer'}">${a.tags.map(t => `<span class="chip">#${t}</span>`).join('') || '–'}</div></div>
-        </div>` : ''}
+        <div class="kurzinfo" data-angaben>${zusammenfassung(a)}<span class="chev">${ICON('chevron-up')}</span></div>
       </div>`;
     detail.dataset.id = id;
     detail.classList.add('offen');
@@ -375,7 +403,7 @@ function app(bs, start) {
     lucide.createIcons({ root: bs.querySelector('.blatt') });
     bs.querySelector('.blatt').classList.add('offen'); bs.querySelector('.blatt-hg').classList.add('offen');
   }
-  const blattZu = () => { bs.querySelector('.blatt').classList.remove('offen'); bs.querySelector('.blatt-hg').classList.remove('offen'); };
+  const blattZu = () => { bs.querySelector('.blatt').className = 'blatt'; bs.querySelector('.blatt-hg').classList.remove('offen'); };
 
   let fragenId = null, fragenT;
   bs.addEventListener('click', e => {
@@ -393,15 +421,19 @@ function app(bs, start) {
       if (fragenId !== id) { fragenId = id; m.classList.add('fragen'); m.textContent = '?'; clearTimeout(fragenT); fragenT = setTimeout(() => { fragenId = null; zeichnen(); if (detail.classList.contains('offen')) detailZeigen(detail.dataset.id); }, 5000); return; }
       fragenId = null; aufgaben.splice(aufgaben.findIndex(x => x.id === id), 1); detail.classList.remove('offen'); toast('Gelöscht'); zeichnen(); return;
     }
-    if (q('[data-angaben]')) { z.angaben = !z.angaben; detailZeigen(detail.dataset.id); return; }
+    if (q('[data-angaben]')) { angabenBlatt(aufgaben.find(x => x.id === detail.dataset.id)); return; }
+    if (q('[data-blatt-zu]')) { blattZu(); return; }
     if (q('[data-spalte-zu]') || q('.spalte.zu')) { const id = (q('[data-spalte-zu]') || q('.spalte.zu')).dataset.spalteZu ?? q('.spalte.zu').dataset.spalte; z.spalteZu.has(id) ? z.spalteZu.delete(id) : z.spalteZu.add(id); zeichnen(); return; }
     if (q('[data-suche-zu]')) { z.suche = false; z.filter = ''; zeichnen(); return; }
     if (q('[data-zurueck]')) { detail.classList.remove('offen'); zeichnen(); return; }
-    if (q('[data-status]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); a.status = q('[data-status]').dataset.status || null; detailZeigen(a.id); return; }
+    if (q('[data-status]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); a.status = q('[data-status]').dataset.status || null; detailZeigen(a.id); angabenBlatt(a); return; }
     if (q('[data-cb]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); const l = a.notiz.split('\n'); const i = +q('[data-cb]').dataset.cb; l[i] = l[i].startsWith('[x]') ? l[i].replace('[x]', '[ ]') : l[i].replace('[ ]', '[x]'); a.notiz = l.join('\n'); detailZeigen(a.id); return; }
     if (q('[data-nach]')) { const a = aufgaben.find(x => x.id === bs.querySelector('.blatt').dataset.id); const n = q('[data-nach]').dataset.nach; if (n !== 'nach-oben') { a.status = n; toast(`Nach „${SPALTEN.find(s => s.id === n).name}“ verschoben`); } else toast('Ganz nach oben'); blattZu(); zeichnen(); return; }
     if (q('.blatt-hg')) { blattZu(); return; }
-    if (q('[data-kat]')) { const k = q('[data-kat]').dataset.kat; const i = SPALTEN.findIndex(s => s.kat === k); const sp = haupt.querySelector('.spalten'); sp.scrollTo({ left: i * (sp.clientWidth * .86 + 10), behavior: 'smooth' }); return; }
+    if (q('[data-kat]')) { const k = q('[data-kat]').dataset.kat; const id = SPALTEN.find(s => s.kat === k)?.id; const sp = haupt.querySelector('.spalten'); const el = sp.querySelector(`[data-spalte="${id}"]`); if (!el) return;
+      // Lage aus dem DOM messen – stimmt egal, welche Spalten zugeklappt sind; offene Spalten rasten mittig ein, zugeklappte am Anfang
+      const links = el.getBoundingClientRect().left - sp.getBoundingClientRect().left + sp.scrollLeft;
+      sp.scrollTo({ left: el.classList.contains('zu') ? links - 12 : links - (sp.clientWidth - el.offsetWidth) / 2, behavior: 'smooth' }); return; }
     const zl = q('.zeile'); if (zl) { if (zl.dataset.gewischt) { zl.dataset.gewischt = ''; return; } if (zl.dataset.wisch) { zl.style.transform = ''; zl.dataset.wisch = ''; return; } detailZeigen(zl.dataset.id); return; }
     const k = q('.karte'); if (k) { detailZeigen(k.dataset.id); return; }
   });
@@ -429,7 +461,7 @@ function app(bs, start) {
 }
 
 telefon('liste', 'Liste', 'Abschnitte wie am Desktop · Wischen nach links = Archiv / Mülleimer (zweistufig) · oben Schnellerfassung · herunterziehen = Suche');
-telefon('detail', 'Aufgabe', 'Vollbild statt Schublade · Status als Chips · Notiz zuerst (mit abhakbarer Checkliste) · Bilder · Angaben eingeklappt · „‹“ zurück');
+telefon('detail', 'Aufgabe', 'Vollbild statt Schublade · Status als Chips · Notiz zuerst (mit abhakbarer Checkliste) · Bilder · Kurzinfo unter der Notiz öffnet die Angaben als Schublade · „‹“ zurück');
 telefon('board', 'Board', 'Eine Spalte pro Breite, waagerecht wischen · Kategorien oben als Sprungmarken · Karte lange drücken = verschieben');
 telefon('logbuch', 'Logbuch', 'Notiz-Eingabe oben · Tage, neuester oben · runder Haken = Aufgabe, eckiger = Punkt, Notiz-Symbol');
 </script>
