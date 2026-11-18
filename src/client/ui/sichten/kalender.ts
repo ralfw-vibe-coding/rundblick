@@ -37,7 +37,7 @@ function erweitertesFenster(tage: Tag[], kern: { von: number; bis: number }): [n
   return [Math.max(0, h0), Math.min(24, h1)];
 }
 const ZEITANSICHTEN: KalAnsicht[] = ['tag', 'tage3', 'woche'];
-const NAMEN: Record<KalAnsicht, string> = { tag: 'Tag', tage3: '3 Tage', woche: 'Woche', monat: 'Monat', monate3: '3 Monate', timeline: 'Timeline' };
+const NAMEN: Record<KalAnsicht, string> = { tag: '1 Tag', tage3: '3 Tage', woche: 'Woche', monat: 'Monat', monate3: '3 Monate', timeline: 'Timeline' };
 
 type Ev = { kind: 'own' | 'extern'; s: number; e: number; lane: number; n: number; titel: string; b?: BuchungDto & { s: number; e: number }; x?: ExternDto };
 

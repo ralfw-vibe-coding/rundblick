@@ -10,7 +10,7 @@ import { KalenderSicht, type KalZustand } from './sichten/kalender';
 import { ListenSicht, type ListeZustand } from './sichten/liste';
 import type { Dichte, Sicht } from './sichten/sicht';
 
-export type SichtArt = 'liste' | 'board' | 'tag' | 'mehrtage' | 'timeline';
+export type SichtArt = 'liste' | 'board' | 'kalender' | 'timeline';
 type Zelle = { t: 'zelle'; id: string; sicht: SichtArt | null; zustand: unknown };
 type Split = { t: 'split'; richtung: 'row' | 'col'; anteile: number[]; kinder: Knoten[] };
 type Knoten = Zelle | Split;
@@ -19,8 +19,7 @@ type Arbeitsbereich = { name: string; wurzel: Knoten };
 export const SICHTEN: Record<SichtArt, { name: string; icon: string }> = {
   liste: { name: 'Aufgabenliste', icon: I.liste },
   board: { name: 'Kanban-Board', icon: I.board },
-  tag: { name: 'Tageskalender', icon: I.tag },
-  mehrtage: { name: 'Mehrtageskalender', icon: I.mehrtage },
+  kalender: { name: 'Kalender', icon: I.mehrtage },
   timeline: { name: 'Timeline', icon: I.timeline },
 };
 
@@ -30,19 +29,26 @@ const S = (richtung: 'row' | 'col', anteile: number[], kinder: Knoten[]): Split 
 
 function vorlagen(): Arbeitsbereich[] {
   return [
-    { name: 'Überblick', wurzel: S('row', [27, 73], [Z('liste'), S('col', [42, 58], [Z('board'), Z('mehrtage', { ansicht: 'woche', anker: null, pph: 10 })])]) },
-    { name: 'Heute', wurzel: S('row', [30, 70], [Z('tag'), S('col', [55, 45], [Z('liste'), Z('timeline')])]) },
-    { name: 'Planen', wurzel: S('col', [40, 60], [Z('timeline'), S('row', [30, 70], [Z('liste'), Z('mehrtage', { ansicht: 'monate3', anker: null, pph: 10 })])]) },
-    { name: 'Board', wurzel: S('row', [76, 24], [Z('board'), Z('tag')]) },
+    { name: 'Überblick', wurzel: S('row', [27, 73], [Z('liste'), S('col', [42, 58], [Z('board'), Z('kalender', { ansicht: 'woche', anker: null, pph: 10 })])]) },
+    { name: 'Heute', wurzel: S('row', [30, 70], [Z('kalender', { ansicht: 'tag', anker: null, pph: 10 }), S('col', [55, 45], [Z('liste'), Z('timeline')])]) },
+    { name: 'Planen', wurzel: S('col', [40, 60], [Z('timeline'), S('row', [30, 70], [Z('liste'), Z('kalender', { ansicht: 'monate3', anker: null, pph: 10 })])]) },
+    { name: 'Board', wurzel: S('row', [76, 24], [Z('board'), Z('kalender', { ansicht: 'tag', anker: null, pph: 10 })]) },
   ];
+}
+
+/** Alte Layouts: „Tageskalender“/„Mehrtageskalender“ sind jetzt eine Sicht „Kalender“ mit Zeitraum-Auswahl */
+function umstellen(k: Knoten): void {
+  if (k.t === 'split') { k.kinder.forEach(umstellen); return; }
+  const alt = k.sicht as string | null;
+  if (alt === 'tag') { k.sicht = 'kalender'; k.zustand = { ...(k.zustand as object ?? {}), ansicht: 'tag' }; }
+  if (alt === 'mehrtage') k.sicht = 'kalender';
 }
 
 function sichtErzeugen(z: Zelle): Sicht | null {
   switch (z.sicht) {
     case 'liste': return new ListenSicht((z.zustand as ListeZustand) ?? {});
     case 'board': return new BoardSicht((z.zustand as BoardZustand) ?? {});
-    case 'tag': return new KalenderSicht({ ansicht: 'tag', anker: null, pph: 10, ...(z.zustand as Partial<KalZustand>) }, ['tag']);
-    case 'mehrtage': return new KalenderSicht({ ansicht: 'woche', anker: null, pph: 10, ...(z.zustand as Partial<KalZustand>) }, ['tage3', 'woche', 'monat', 'monate3']);
+    case 'kalender': return new KalenderSicht({ ansicht: 'woche', anker: null, pph: 10, ...(z.zustand as Partial<KalZustand>) }, ['tag', 'tage3', 'woche', 'monat', 'monate3']);
     case 'timeline': return new KalenderSicht({ ansicht: 'timeline', anker: null, pph: 16, ...(z.zustand as Partial<KalZustand>) }, ['timeline']);
     default: return null;
   }
@@ -76,6 +82,7 @@ export class Raster {
     const l = await body.layout();
     if (l && Array.isArray(l.arbeitsbereiche) && l.arbeitsbereiche.length) {
       this.bereiche = l.arbeitsbereiche as Arbeitsbereich[];
+      this.bereiche.forEach(b => umstellen(b.wurzel));
       this.aktiv = Math.min(l.aktiv, this.bereiche.length - 1);
     }
     this.aufbauen();
