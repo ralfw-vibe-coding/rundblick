@@ -62,7 +62,8 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - **Symbolzeile** für Punktuelles: Frist (gefüllte Raute in Listenfarbe), Wiedervorlage (`CalendarClock`), Reservierung (`Hourglass`, Rundblick-Farbe bzw. „frei“).
 - **Strichzeile** für Termine (eigene und externe, Kalenderfarbe) als Striche (8 px) von Beginn bis Ende, bei Überlappung **gestaffelt**.
 - Überfahren → Tooltip; **Klick** auf Symbol/Strich → Info-Fenster mit mehr Angaben (**kein Knopf**); **nochmal klicken** – auf den Eintrag oder ins Fenster – öffnet die Schublade (Aufgabe, Buchung bzw. externer Termin).
-- **Klick auf einen Tag** (Kopf oder freie Fläche) markiert ihn → darunter (unterhalb der Strichzeile) **Leitlinien** von jedem Eintrag zu einer Beschriftung mit Details (Klick darauf öffnet die Schublade); Beschriftungen bleiben **im Block ihres Tages** (nach links gerückt, sonst mit „…“ gekürzt, voller Text im Tooltip); nochmal klicken = weg. Die Markierung holt den Tag nur waagerecht in den Blick.
+- **Beschriftungen dauerhaft für alle Tage** unter der Strichzeile: von jedem Eintrag eine Leitlinie nach unten zu einer Beschriftung mit Details (Klick darauf öffnet die Schublade). Jede Beschriftung beginnt an ihrem Eintrag und darf **in den nächsten Tag ragen**, wenn dort in derselben Zeile nichts steht; sonst rutscht sie eine Zeile tiefer (keine Überlappungen; Breite gemessen, höchstens 300 px, sonst „…“ mit vollem Text im Tooltip). Bei sehr kleinem Zoom (Tage < 90 px) nur für den markierten Tag. **Klick auf einen Tag** markiert ihn (Rahmen), nochmal klicken = weg; die Markierung holt den Tag nur waagerecht in den Blick.
+- **Jetzt-Linie** dünn (1 px) und **unter** den Beschriftungen.
 - Hineinziehen: in die Symbolzeile = Reservierung, in die Strichzeile = Termin.
 - **Zoom** (Regler oder ⌘ + Mausrad) zeichnet nur den Timeline-Inhalt neu, nicht die Werkzeugleiste – sonst ließe sich der Regler nicht ziehen.
 

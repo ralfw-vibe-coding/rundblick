@@ -26,6 +26,16 @@ type Eintrag = {
 const SYM = 16, SYM_ABSTAND = 15, STRICH = 8, STRICH_ABSTAND = 12, ZEILE = 20;
 let EINTRAEGE = new Map<string, Eintrag>();
 
+/** Breite einer Beschriftung in px (gemessen mit der Schrift der Oberfläche) */
+const LABEL_MAX = 300;
+let messer: CanvasRenderingContext2D | null = null;
+function labelBreite(text: string, mitSymbol: boolean): number {
+  messer ??= document.createElement('canvas').getContext('2d');
+  if (messer) messer.font = '11px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif';
+  const t = messer ? messer.measureText(text).width : text.length * 6;
+  return Math.ceil(t) + 3 + 7 + 6 + (mitSymbol ? 15 : 0); // Rand links + Polster + Symbol
+}
+
 const herkunftText = (b: BuchungDto) => (b.herkunft === 'board' ? 'Aufgabe auf dem Kanban-Board' : b.herkunft === 'liste' ? 'Aufgabe in der Aufgabenliste' : 'Buchung ohne Aufgabe');
 const herkunftSym = (b: BuchungDto) => (b.herkunft === 'board' ? I.board : b.herkunft === 'liste' ? I.liste : '');
 
@@ -129,24 +139,26 @@ export function timelineZeichnen(z: Zeitraum, pph: number, h0: number, h1: numbe
     EINTRAEGE.set(e.key, e);
   }
 
-  // Details des markierten Tages: Leitlinien nach unten zu Beschriftungen
+  // Beschriftungen für alle Tage (dauerhaft): unter der Strichzeile, je Eintrag ab seiner Lage nach rechts.
+  // Sie dürfen in den nächsten Tag ragen; was sich in einer Zeile überlappen würde, rutscht eine Zeile tiefer.
+  // Bei sehr kleinem Zoom (Tage schmaler als 90 px) nur für den markierten Tag.
   let details = '', hDetails = 0;
-  const iM = markiert ? differenz(start, markiert) : -1;
-  // Beschriftungen bleiben im Block ihres Tages: links ab dem Eintrag, notfalls nach links gerückt, sonst gekürzt
-  const tagLinks = iM * dayW, tagRechts = tagLinks + dayW, minBreite = Math.min(170, dayW - 8);
-  const labelLage = (x: number) => {
-    const links = Math.max(tagLinks + 4, Math.min(x, tagRechts - 4 - minBreite));
-    return `left:${links}px;max-width:${tagRechts - 4 - links}px`;
-  };
-  if (iM >= 0 && iM < N) {
-    const liste = [...EINTRAEGE.values()].filter(e => e.datum === markiert).sort((a, b) => a.x - b.x || a.y - b.y);
-    hDetails = 14 + Math.max(1, liste.length) * ZEILE;
+  const alle = dayW >= 90;
+  const liste = [...EINTRAEGE.values()].filter(e => alle || e.datum === markiert).sort((a, b) => a.x - b.x || a.y - b.y);
+  if (liste.length) {
     const oben = hSym + hStrich;
-    details = liste.map((e, k) => {
-      const yLabel = oben + 14 + k * ZEILE + ZEILE / 2;
+    const zeilenEnde: number[] = [];
+    const teile = liste.map(e => {
+      const breite = Math.min(LABEL_MAX, labelBreite(e.zeile, !!e.symbol));
+      let zeile = zeilenEnde.findIndex(ende => ende + 6 <= e.x);
+      if (zeile < 0) { zeile = zeilenEnde.length; zeilenEnde.push(0); }
+      zeilenEnde[zeile] = e.x + breite;
+      const yLabel = oben + 12 + zeile * ZEILE + ZEILE / 2;
       return `<span class="tl2-leit" style="left:${e.x}px;top:${e.y}px;height:${yLabel - e.y}px;border-color:${e.farbe}"></span>`
-        + `<span class="tl2-label" data-tl="${e.key}" title="${esc(e.zeile)}" style="${labelLage(e.x)};top:${yLabel - 9}px;--lf:${e.farbe}">${e.symbol ? `<span class="sy">${e.symbol}</span>` : ''}<span class="tx">${esc(e.zeile)}</span></span>`;
-    }).join('') || `<span class="tl2-label leer" style="left:${iM * dayW + 6}px;top:${oben + 14}px">An diesem Tag ist nichts eingetragen.</span>`;
+        + `<span class="tl2-label" data-tl="${e.key}" title="${esc(e.zeile)}" style="left:${e.x}px;max-width:${LABEL_MAX}px;top:${yLabel - 9}px;--lf:${e.farbe}">${e.symbol ? `<span class="sy">${e.symbol}</span>` : ''}<span class="tx">${esc(e.zeile)}</span></span>`;
+    });
+    hDetails = 12 + zeilenEnde.length * ZEILE + 8;
+    details = teile.join('');
   }
 
   const iHeute = differenz(start, z.heute);

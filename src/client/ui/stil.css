@@ -942,3 +942,7 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .tl2-info.klickbar:hover { border-color: var(--own); box-shadow: 0 0 0 3px var(--own-soft), 0 12px 40px rgba(0,0,0,.18); }
 .tl2-info .hinweis-klick { margin-top: 6px; font-size: 11px; color: var(--mute); }
 .tl2-info .punkt { width: 12px; height: 8px; border-radius: 4px; }
+/* Timeline: Jetzt-Linie dünner und unter den Beschriftungen */
+.tl2 .tl-now { width: 1px; z-index: 1; opacity: .7; }
+.tl2-label { z-index: 3; }
+.tl2-leit { z-index: 0; }
