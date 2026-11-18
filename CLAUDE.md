@@ -7,7 +7,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - **Regelmäßig committen** (Repo `rundblick/`), Commit-Nachrichten auf Deutsch.
 - Vor jedem Commit: `npm run check` (Typecheck, Schichtregeln mit dependency-cruiser, Tests mit **≥ 90 % Abdeckung** für `src/body`, `src/domain`, `src/providers` – sonst bricht der Check ab).
 - App bauen und starten: `npm run app` → `dist/mac-arm64/Rundblick.app`, signiert mit **„HyperRec Code Signing“** (Schlüsselbund). Läuft die App, vorher `osascript -e 'quit app "Rundblick"'`, danach `open dist/mac-arm64/Rundblick.app`.
-- Sichtprüfung ohne die Daten des Nutzers anzufassen: `RB_PROFIL=/tmp/rb-prof RB_DATEN=/tmp/rb-s1 RB_KALENDER=beispiel RB_SCREENSHOT=/tmp/x.png RB_JS='(async()=>{…; return ergebnis})()' npx electron .` (vorher `npx electron-vite build`). Das Ergebnis von `RB_JS` erscheint als `RB_JS → …` auf der Konsole.
+- Sichtprüfung ohne die Daten des Nutzers anzufassen: `RB_PROFIL=/tmp/rb-prof RB_DATEN=/tmp/rb-s1 RB_KALENDER=beispiel RB_SCREENSHOT=/tmp/x.png RB_JS='(async()=>{…; return ergebnis})()' npx electron .` (vorher `npx electron-vite build`). Das Ergebnis von `RB_JS` erscheint als `RB_JS → …` auf der Konsole. Achtung: In diesem Modus hat das Fenster keinen System-Fokus – `focus()`/`blur()` lösen **keine** focusin/focusout-Ereignisse aus; im Test selbst `dispatchEvent(new FocusEvent('focusin'|'focusout', {bubbles:true}))` senden.
 - Testdaten in Stufen: `npm run testdaten -- <stufe>`. **Löscht alle Events im Datenordner!** Nur auf Anweisung des Nutzers gegen die echten Daten laufen lassen; für eigene Prüfungen `RB_DATEN=/tmp/…` setzen.
 - Echte Daten: `~/Dropbox/Apps/Rundblick/events/<gerät>.jsonl` (+ `anhaenge/`). Profil/Layouts: `~/Library/Application Support/Rundblick/geraet.json`.
 
@@ -25,7 +25,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - **Zerstörende Aktionen zweistufig, keine Bestätigungsdialoge:** Symbol (Mülleimer, bei Bildern „×“) → 1. Klick verwandelt es in ein rotes „?“ → 2. Klick führt aus. Klick woanders oder 5 s ohne Klick → zurück. Umsetzung: `data-zweistufig="<aktion>"` + Handler `ZWEISTUFIG` in `interaktion.ts`.
 - Oberfläche = frei teilbares Raster mit Arbeitsbereichen; Überblick ist King.
 - Kopfzeile: Arbeitsbereiche · „+“ neuer Arbeitsbereich · „−“ aktuellen löschen (zweistufig) · Kalender aktualisieren · Einstellungen. Ein „Arbeitsbereiche zurücksetzen“ gibt es bewusst nicht.
-- **Uhrzeiten nie mit nativem `<input type="time">`**, sondern mit `uhrzeitFeld()` (`uhrzeitfeld.ts`): Textfeld + Liste nur in Viertelstunden (00/15/30/45), an aktueller Zeit bzw. Beginn der Tageszeit; Stunden außerhalb der Tageszeit blasser; Tippen „930“/„9:30“/„9“ wird auf die Viertelstunde gerundet; ↑/↓ ±15 min, ↵ übernimmt, Esc verwirft; leer erlaubt.
+- **Uhrzeiten nie mit nativem `<input type="time">`**, sondern mit `uhrzeitFeld()` (`uhrzeitfeld.ts`): Textfeld + Liste nur in Viertelstunden (00/15/30/45), an aktueller Zeit bzw. Beginn der Tageszeit; Stunden außerhalb der Tageszeit blasser; Tippen „930“/„9:30“/„9“ – getippte Minuten bleiben **exakt** (10:33 bleibt 10:33), nur die Liste bietet Viertelstunden; ↑/↓ springt zur vorigen/nächsten Viertelstunde, ↵ übernimmt, Esc verwirft; leer erlaubt.
 - Scrollbalken überall schmal (6 px) und dezent (hellgrau, ohne Spur) – global in `stil.css`.
 
 **Aufgabenliste**

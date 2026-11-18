@@ -1,6 +1,6 @@
 // Uhrzeitfeld statt des nativen <input type="time">: Textfeld + Auswahlliste in Viertelstunden.
-// Tippen: „930“, „9:30“, „9.30“, „9“ → 09:30 / 09:00; krumme Minuten werden auf die Viertelstunde gerundet.
-// ↑/↓ = ±15 min, ↵ übernimmt, Esc schließt. Leer ist erlaubt. Nach jeder Übernahme feuert das Feld
+// Tippen: „930“, „9:30“, „9.30“, „9“ → 09:30 / 09:00; getippte Minuten bleiben exakt (10:33 bleibt 10:33).
+// Die Liste bietet Viertelstunden an. ↑/↓ = zur vorigen/nächsten Viertelstunde, ↵ übernimmt, Esc schließt. Leer ist erlaubt. Nach jeder Übernahme feuert das Feld
 // ein normales 'change'-Ereignis – bestehende Handler (data-f / data-b) funktionieren unverändert.
 import { body } from './body';
 import { esc } from './dom';
@@ -13,7 +13,7 @@ export function uhrzeitFeld(attribute: string, wert: string | null, titel = ''):
 const SCHRITT = 15;
 const hm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
-/** Freie Eingabe → „HH:MM“ auf Viertelstunden gerundet; '' bleibt leer; null = nicht verstanden */
+/** Freie Eingabe → „HH:MM“ (Minuten exakt); '' bleibt leer; null = nicht verstanden */
 export function uhrzeitLesen(text: string): string | null {
   const t = text.trim();
   if (!t) return '';
@@ -23,8 +23,7 @@ export function uhrzeitLesen(text: string): string | null {
   else if (/^\d{1,4}$/.test(t)) { h = t.length <= 2 ? Number(t) : Number(t.slice(0, t.length - 2)); m = t.length <= 2 ? 0 : Number(t.slice(-2)); }
   else return null;
   if (h > 23 || m > 59) return null;
-  const gesamt = Math.min(23 * 60 + 45, Math.round((h * 60 + m) / SCHRITT) * SCHRITT);
-  return hm(gesamt);
+  return hm(h * 60 + m);
 }
 
 let liste: HTMLDivElement | null = null;
@@ -46,7 +45,7 @@ function oeffnen(f: HTMLInputElement): void {
   f.dataset.wert ??= f.value;
   liste = document.createElement('div');
   liste.className = 'uhrzeit-liste';
-  const aktuell = uhrzeitLesen(f.value) || null;
+  const aktuell = viertel(uhrzeitLesen(f.value) || null);
   let h = '';
   for (let min = 0; min < 24 * 60; min += SCHRITT) {
     const z = hm(min), ausser = min < tageszeit.von * 60 || min >= tageszeit.bis * 60;
@@ -71,8 +70,16 @@ function oeffnen(f: HTMLInputElement): void {
   });
 }
 
+/** nächstgelegene Viertelstunde (für Markierung in der Liste) */
+function viertel(z: string | null): string | null {
+  if (!z) return null;
+  const [h, m] = z.split(':').map(Number);
+  return hm(Math.min(23 * 60 + 45, Math.round((h! * 60 + m!) / SCHRITT) * SCHRITT));
+}
+
 function markieren(wert: string | null): void {
   if (!liste) return;
+  wert = viertel(wert);
   liste.querySelectorAll('.gewaehlt').forEach(x => x.classList.remove('gewaehlt'));
   const b = wert ? liste.querySelector<HTMLElement>(`[data-zeit="${wert}"]`) : null;
   if (b) { b.classList.add('gewaehlt'); b.scrollIntoView({ block: 'nearest' }); }
@@ -110,7 +117,10 @@ export function uhrzeitfelderAnbinden(): void {
       e.preventDefault();
       const z = uhrzeitLesen(f.value) || hm(tageszeit.von * 60);
       const [hh, mm] = z.split(':').map(Number);
-      const min = Math.max(0, Math.min(23 * 60 + 45, hh! * 60 + mm! + (e.key === 'ArrowUp' ? -SCHRITT : SCHRITT)));
+      const jetzt = hh! * 60 + mm!;
+      // krumme Zeit → zur vorigen bzw. nächsten Viertelstunde, sonst ±15 min
+      const ziel = e.key === 'ArrowUp' ? Math.ceil(jetzt / SCHRITT) * SCHRITT - SCHRITT : Math.floor(jetzt / SCHRITT) * SCHRITT + SCHRITT;
+      const min = Math.max(0, Math.min(23 * 60 + 45, ziel));
       f.value = hm(min);
       markieren(f.value);
     } else if (e.key === 'Enter') {
