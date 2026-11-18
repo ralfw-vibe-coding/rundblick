@@ -1016,3 +1016,7 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .akt-status.ok { color: var(--st-fertig); }
 .akt-status.neu { color: var(--own); font-weight: 600; }
 .akt-status.fehler { color: var(--over); }
+/* vier Reiter passen nebeneinander */
+.einst { width: 520px; }
+.einst-reiter { flex-wrap: nowrap; min-width: 0; }
+.einst-reiter button { white-space: nowrap; }

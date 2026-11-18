@@ -12,11 +12,11 @@ import { muellKnopf } from './bausteine';
 let panel: HTMLDivElement | null = null;
 
 type Reiter = 'standards' | 'board' | 'kalender' | 'aktualisierung';
-const REITER: { id: Reiter; name: string; icon: string }[] = [
-  { id: 'standards', name: 'Standards', icon: I.einstellungen },
-  { id: 'board', name: 'Board-Spalten', icon: I.board },
-  { id: 'kalender', name: 'Externe Kalender', icon: I.kalenderSync },
-  { id: 'aktualisierung', name: 'Aktualisierung', icon: I.aktualisierung },
+const REITER: { id: Reiter; name: string; titel: string; icon: string }[] = [
+  { id: 'standards', name: 'Standards', titel: 'Standarddauer, Tageszeit, Kapazität', icon: I.einstellungen },
+  { id: 'board', name: 'Board', titel: 'Board-Spalten und Spaltengruppen', icon: I.board },
+  { id: 'kalender', name: 'Kalender', titel: 'Externe Kalender (Google, iCloud)', icon: I.kalenderSync },
+  { id: 'aktualisierung', name: 'Updates', titel: 'Automatische Aktualisierung', icon: I.aktualisierung },
 ];
 /** zuletzt gewählter Reiter (pro Gerät im Browser-Speicher) */
 let reiter: Reiter = (localStorage.getItem('rb-einstellungen-reiter') as Reiter) ?? 'standards';
@@ -106,7 +106,7 @@ export async function einstellungenZeichnen(): Promise<void> {
   const akt = await body.aktualisierung();
   const reiterListe = REITER.filter(r => r.id !== 'aktualisierung' || akt.stand.stand !== 'nichtVerfuegbar');
   if (!reiterListe.some(r => r.id === reiter)) reiter = 'standards';
-  const kopf = `<div class="einst-kopf"><div class="seg einst-reiter">${reiterListe.map(r => `<button data-reiter="${r.id}" class="${r.id === reiter ? 'on' : ''}">${r.icon}${r.name}</button>`).join('')}</div>
+  const kopf = `<div class="einst-kopf"><div class="seg einst-reiter">${reiterListe.map(r => `<button data-reiter="${r.id}" class="${r.id === reiter ? 'on' : ''}" title="${esc(r.titel)}">${r.icon}${r.name}</button>`).join('')}</div>
     <span class="spacer"></span><button class="btn einst-zu" data-zu="1" title="Schließen (Esc)">${I.x}</button></div>`;
 
   const standards = `
