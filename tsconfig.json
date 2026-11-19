@@ -14,5 +14,5 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["src", "tools/**/*.ts", "electron.vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "tools/**/*.ts", "electron.vite.config.ts", "vite.phone.config.ts", "vitest.config.ts"]
 }

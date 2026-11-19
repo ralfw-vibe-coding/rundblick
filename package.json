@@ -20,7 +20,11 @@
     "demo": "electron-vite build && RB_DATEN=/tmp/rundblick-demo RB_DEMO=1 RB_KALENDER=beispiel electron .",
     "test:cov": "vitest run --coverage",
     "testdaten": "rolldown tools/testdaten.ts --platform node --format esm --file out/testdaten.mjs --log-level warn && node out/testdaten.mjs",
-    "installieren": "node tools/installieren.mjs"
+    "installieren": "node tools/installieren.mjs",
+    "phone": "vite --config vite.phone.config.ts",
+    "phone:bauen": "vite build --config vite.phone.config.ts",
+    "phone:vorschau": "vite build --config vite.phone.config.ts && vite preview --config vite.phone.config.ts",
+    "phone:veroeffentlichen": "vite build --config vite.phone.config.ts && npx -y netlify-cli deploy --prod --dir out/phone --site wwe-rundblick"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
