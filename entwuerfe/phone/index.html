@@ -196,6 +196,15 @@
   .bilder { display: flex; gap: 8px; }
   .bilder .bild { width: 64px; height: 64px; border-radius: 10px; background: linear-gradient(135deg,#dfe7f7,#f7e4d4); position: relative; }
   .bilder .bild b { position: absolute; top: -5px; left: -5px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 11px; display: grid; place-items: center; }
+  .bilder { flex-wrap: wrap; }
+  .bilder .bild { background-size: cover; background-position: center; cursor: pointer; }
+  .bilder .neu { cursor: pointer; }
+  .bildansicht { position: absolute; inset: 0; z-index: 30; background: #000; display: flex; flex-direction: column; }
+  .bildansicht .ba-kopf { display: flex; align-items: center; justify-content: space-between; padding: 52px 10px 8px; color: #fff; font-size: 13px; }
+  .bildansicht .knopf { color: #fff; }
+  .bildansicht .muell-ba.fragen { background: var(--over); color: #fff; font-weight: 700; width: 34px; height: 34px; font-size: 18px; }
+  .bildansicht .ba-bild { flex: 1; background: linear-gradient(135deg,#dfe7f7,#f7e4d4) center / contain no-repeat; margin: 0 0 40px; }
+  .bildansicht .ba-bild[style*="url"] { background-color: #000; }
   .bilder .neu { width: 64px; height: 64px; border-radius: 10px; border: 1.5px dashed var(--line2); display: grid; place-items: center; color: var(--mute); }
   /* Board: Spalten zuklappbar (schmaler Streifen mit senkrechtem Namen) */
   .spalte-h { cursor: pointer; user-select: none; }
@@ -312,7 +321,7 @@
 <body>
 <div class="seite">
   <h1>Rundblick Phone App – Entwurf</h1>
-  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig), unter „Neu“ = Gesehen / Mülleimer, im Logbuch = Mülleimer (löscht Notiz, Punkt bzw. die ganze Aufgabe; eine gelöschte Aufgabe verschwindet auch aus dem Logbuch) · neu Erfasstes steht oben unter „Neu“ (zusätzlich in seiner Rubrik), bis man es öffnet oder wegwischt · lange drücken und ziehen = umsortieren (in der Liste innerhalb gleicher Frist, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Zahnrad oben rechts = Einstellungen (Dropbox, Gerät, Abgleich, Version; im Logbuch-Telefon liegt zur Ansicht eine neue Version bereit) · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · Notiz antippen = bearbeiten (Markdown), Links mit „://“ sind klickbar, Haken in Checklisten antippbar · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
+  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig), unter „Neu“ = Gesehen / Mülleimer, im Logbuch = Mülleimer (löscht Notiz, Punkt bzw. die ganze Aufgabe; eine gelöschte Aufgabe verschwindet auch aus dem Logbuch) · neu Erfasstes steht oben unter „Neu“ (zusätzlich in seiner Rubrik), bis man es öffnet oder wegwischt · lange drücken und ziehen = umsortieren (in der Liste innerhalb gleicher Frist, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Zahnrad oben rechts = Einstellungen (Dropbox, Gerät, Abgleich, Version; im Logbuch-Telefon liegt zur Ansicht eine neue Version bereit) · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · „+“ bei den Bildern = Foto aufnehmen oder aus der Mediathek / Dateien wählen (wie üblich am iPhone), Bild antippen = groß, dort Mülleimer zweistufig · Notiz antippen = bearbeiten (Markdown), Links mit „://“ sind klickbar, Haken in Checklisten antippbar · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
   <div class="reihe" id="reihe"></div>
 
   <div class="erkl">
@@ -543,6 +552,38 @@ function app(bs, start) {
     lucide.createIcons({ root: b });
     bs.querySelector('.blatt-hg').classList.add('offen');
   }
+  // Bilder: iOS zeigt beim Tipp auf „+“ das übliche Menü (Fotomediathek · Foto aufnehmen · Datei auswählen).
+  // Vor dem Hochladen verkleinern (längste Seite 2000 px, JPEG) – spart Dropbox-Platz und Datenvolumen; HEIC liefert Safari bereits als JPEG.
+  const bilderVon = a => (a.bilder ??= a.id === 'a3' ? [{ name: 'skizze.jpg', url: '' }] : []);
+  const verkleinern = datei => new Promise(ok => {
+    const img = new Image(), url = URL.createObjectURL(datei);
+    img.onload = () => {
+      const f = Math.min(1, 2000 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * f); c.height = Math.round(img.height * f);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(b => ok({ name: datei.name.replace(/\.\w+$/, '') + '.jpg', url: URL.createObjectURL(b), groesse: b.size }), 'image/jpeg', .85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); ok(null); };
+    img.src = url;
+  });
+  // Großansicht: wischen/antippen zum Schließen, Mülleimer zweistufig
+  function bildZeigen(a, i) {
+    const b = bilderVon(a)[i]; if (!b) return;
+    const v = document.createElement('div'); v.className = 'bildansicht';
+    v.innerHTML = `<div class="ba-kopf"><button class="knopf" data-ba-zu>${ICON('x')}</button><span>${i + 1} / ${bilderVon(a).length}</span><button class="knopf muell-ba" data-ba-muell>${ICON('trash-2')}</button></div>
+      <div class="ba-bild" style="${b.url ? `background-image:url(${b.url})` : ''}"></div>`;
+    bs.appendChild(v); lucide.createIcons({ root: v });
+    let fragen = false, uhr;
+    v.addEventListener('click', e => {
+      if (e.target.closest('[data-ba-muell]')) {
+        const k = e.target.closest('[data-ba-muell]');
+        if (!fragen) { fragen = true; k.classList.add('fragen'); k.textContent = '?'; uhr = setTimeout(() => { fragen = false; k.classList.remove('fragen'); k.innerHTML = ICON('trash-2'); lucide.createIcons({ root: k }); }, 5000); return; }
+        clearTimeout(uhr); bilderVon(a).splice(i, 1); v.remove(); toast('Bild entfernt'); detailZeigen(a.id); return;
+      }
+      if (fragen) { fragen = false; clearTimeout(uhr); const k = v.querySelector('[data-ba-muell]'); k.classList.remove('fragen'); k.innerHTML = ICON('trash-2'); lucide.createIcons({ root: k }); return; }
+      if (e.target.closest('[data-ba-zu]') || e.target.classList.contains('ba-bild')) v.remove();
+    });
+  }
   function detailZeigen(id) {
     const a = aufgaben.find(x => x.id === id);
     // Notiz: Ansicht (Markdown, Links klickbar, Checklisten abhakbar); Tipp auf freie Fläche → Bearbeiten
@@ -553,7 +594,8 @@ function app(bs, start) {
       <div class="koerper">
         <div style="display:flex;gap:10px;align-items:flex-start"><button class="kreis" data-kreis="${a.id}" style="margin-top:2px">${ICON(a.done ? 'circle-check' : 'circle')}</button><textarea class="titel-feld" rows="1">${a.titel}</textarea></div>
         <div class="notiz gross ${z.notizBearbeiten === a.id ? 'bearbeiten' : ''}">${notiz}</div>
-        <div class="feld"><div class="bilder">${a.id === 'a3' ? '<div class="bild"><b>1</b></div>' : ''}<div class="neu">${ICON('image-plus')}</div></div></div>
+        <div class="feld"><div class="bilder">${bilderVon(a).map((b, i) => `<div class="bild" data-bild="${i}" style="${b.url ? `background-image:url(${b.url})` : ''}"><b>${i + 1}</b></div>`).join('')}
+          <label class="neu" title="Foto aufnehmen oder auswählen">${ICON('image-plus')}<input type="file" accept="image/*" multiple data-bild-neu hidden></label></div></div>
         <div class="kurzinfo" data-angaben>${zusammenfassung(a)}<span class="chev">${ICON('chevron-up')}</span></div>
       </div>`;
     detail.dataset.id = id;
@@ -742,6 +784,7 @@ function app(bs, start) {
     if (q('[data-suche-zu]')) { z.suche = false; z.filter = ''; zeichnen(); return; }
     if (q('[data-zurueck]')) { detail.classList.remove('offen'); zeichnen(); return; }
     if (q('[data-status]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); a.status = q('[data-status]').dataset.status || null; detailZeigen(a.id); angabenBlatt(a); return; }
+    if (q('[data-bild]')) { bildZeigen(aufgaben.find(x => x.id === detail.dataset.id), +q('[data-bild]').dataset.bild); return; }
     if (q('[data-notiz-ansicht] a')) { e.stopPropagation(); return; }   // Link öffnet sich (neuer Tab)
     if (q('[data-notiz-ansicht] [data-zeile]')) { const a = aufgaben.find(x => x.id === detail.dataset.id); a.notiz = checkboxUmschalten(a.notiz, +q('[data-zeile]').dataset.zeile); detailZeigen(a.id); return; }
     if (q('[data-notiz-ansicht]')) { z.notizBearbeiten = detail.dataset.id; detailZeigen(detail.dataset.id); return; }
@@ -754,6 +797,13 @@ function app(bs, start) {
     const zl = q('.zeile'); if (zl) { if (zl.dataset.gewischt) { zl.dataset.gewischt = ''; return; } if (zl.dataset.wisch) { zl.style.transform = ''; zl.dataset.wisch = ''; return; } z.neu = z.neu.filter(x => x !== zl.dataset.id); detailZeigen(zl.dataset.id); return; }
     const ei = q('.eintrag'); if (ei) { if (ei.dataset.gewischt) { ei.dataset.gewischt = ''; return; } if (ei.dataset.wisch) { ei.style.transform = ''; ei.dataset.wisch = ''; } return; }
     const k = q('.karte'); if (k) { detailZeigen(k.dataset.id); return; }
+  });
+  bs.addEventListener('change', async e => {
+    if (!e.target.matches('[data-bild-neu]')) return;
+    const a = aufgaben.find(x => x.id === detail.dataset.id);
+    const neu = (await Promise.all([...e.target.files].map(verkleinern))).filter(Boolean);
+    bilderVon(a).push(...neu); detailZeigen(a.id);
+    if (neu.length) toast(neu.length === 1 ? 'Bild hinzugefügt – wird hochgeladen' : `${neu.length} Bilder hinzugefügt – werden hochgeladen`);
   });
   bs.addEventListener('input', e => {
     if (!e.target.matches('[data-suche]')) return;
