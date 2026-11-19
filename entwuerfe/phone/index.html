@@ -82,7 +82,8 @@
   .abschnitt svg.lucide { width: 14px; height: 14px; transition: transform .15s; }
   .abschnitt.offen svg.lucide { transform: rotate(90deg); }
   .abschnitt.ueberfaellig { color: var(--d-ueberfaellig); } .abschnitt.heute { color: var(--d-heute); }
-  .abschnitt.woche { color: var(--d-woche); } .abschnitt.spaeter { color: var(--d-spaeter); }
+  .abschnitt.woche { color: var(--d-woche); }
+  .abschnitt.faellig { color: var(--d-ueberfaellig); } .abschnitt.wird { color: var(--d-woche); } .abschnitt.spaeter { color: var(--d-spaeter); }
   .gruppe { margin: 0 12px; background: #fff; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
   .zeile-huelle { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
   .zeile-huelle:last-child { border-bottom: 0; }
@@ -291,7 +292,7 @@
 <body>
 <div class="seite">
   <h1>Rundblick Phone App – Entwurf</h1>
-  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig), unter „Neu“ = Gesehen / Mülleimer, im Logbuch = Mülleimer (löscht Notiz, Punkt bzw. die ganze Aufgabe; eine gelöschte Aufgabe verschwindet auch aus dem Logbuch) · neu Erfasstes steht oben unter „Neu“ (zusätzlich in seiner Rubrik), bis man es öffnet oder wegwischt · lange drücken und ziehen = umsortieren (in der Liste innerhalb des Abschnitts, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Zahnrad oben rechts = Einstellungen (Dropbox, Gerät, Abgleich, Version; im Logbuch-Telefon liegt zur Ansicht eine neue Version bereit) · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
+  <p class="lead">Klickbare Attrappe, Version 1: nur Aufgaben (Kalender später). Jedes Telefon ist eine eigene Instanz mit anderem Startbildschirm. Bedienung: Kreis antippen = abschließen · Zeile antippen = Aufgabe öffnen · Zeile nach links wischen = Archiv / Mülleimer (zweistufig), unter „Neu“ = Gesehen / Mülleimer, im Logbuch = Mülleimer (löscht Notiz, Punkt bzw. die ganze Aufgabe; eine gelöschte Aufgabe verschwindet auch aus dem Logbuch) · neu Erfasstes steht oben unter „Neu“ (zusätzlich in seiner Rubrik), bis man es öffnet oder wegwischt · lange drücken und ziehen = umsortieren (in der Liste innerhalb gleicher Frist, auf dem Board auch über Spalten) · auf dem Board waagerecht wischen · Zahnrad oben rechts = Einstellungen (Dropbox, Gerät, Abgleich, Version; im Logbuch-Telefon liegt zur Ansicht eine neue Version bereit) · Wolke antippen = Abgleich (zeigt hier zur Ansicht die drei Zustände: Haken, Pfeil, offline) · Liste/Logbuch oben herunterziehen = Suche · Spaltenkopf antippen = Spalte zuklappen · in der Aufgabe Kurzinfo unter der Notiz antippen = Schublade mit Frist, Status usw.</p>
   <div class="reihe" id="reihe"></div>
 
   <div class="erkl">
@@ -315,6 +316,9 @@ const WT = ['So','Mo','Di','Mi','Do','Fr','Sa'];
 const fristText = d => { const n = Math.round((d - HEUTE) / 864e5); return n === 0 ? 'Heute' : n === 1 ? 'Morgen' : n === -1 ? 'Gestern' : n > 1 && n < 7 ? `${WT[d.getDay()]} ${d.getDate()}.${d.getMonth()+1}.` : `${d.getDate()}.${d.getMonth()+1}.`; };
 const sonntag = (() => { const d = new Date(HEUTE); d.setDate(d.getDate() + ((7 - d.getDay()) % 7)); return d; })();
 const abschnittVon = a => { if (a.done) return 'fertig'; if (a.wv && a.wv > HEUTE) return 'zurueck'; if (!a.frist) return 'ohne'; const n = Math.round((a.frist - HEUTE) / 864e5); return n < 0 ? 'ueberfaellig' : n === 0 ? 'heute' : a.frist <= sonntag ? 'woche' : 'spaeter'; };
+// Phone-Liste: nur zwei Fristgruppen – „Fällig“ (überfällig + heute) und „Wird fällig“ (Zukunft), je nach Frist sortiert (dringendste oben)
+const GRUPPEN = [['faellig','Fällig',['ueberfaellig','heute']],['wird','Wird fällig',['woche','spaeter']],['ohne','Ohne Frist',['ohne']],['zurueck','Zurückgestellt',['zurueck']],['fertig','Abgeschlossen',['fertig']]];
+const gruppeVon = a => GRUPPEN.find(g => g[2].includes(abschnittVon(a)))[0];
 const ABSCHNITTE = [['ueberfaellig','Überfällig'],['heute','Heute fällig'],['woche','Diese Woche'],['spaeter','Später'],['ohne','Ohne Frist'],['zurueck','Zurückgestellt'],['fertig','Abgeschlossen']];
 const SPALTEN = [
   { id: 'idee', name: 'Idee', kat: 'Nicht begonnen', farbe: '#c4b5a5' }, { id: 'backlog', name: 'Backlog', kat: 'Nicht begonnen', farbe: '#94a3b8' },
@@ -350,7 +354,7 @@ function telefon(start, titel, unter) {
 
 function app(bs, start) {
   const aufgaben = daten();
-  const z = { sicht: start === 'detail' ? 'liste' : start, offen: new Set(['neu','ueberfaellig','heute','woche','spaeter','ohne']), wolke: 0, frisch: null, suche: false, filter: '', spalteZu: new Set(['erledigt']), angaben: false,
+  const z = { sicht: start === 'detail' ? 'liste' : start, offen: new Set(['neu','faellig','wird','ohne']), wolke: 0, frisch: null, suche: false, filter: '', spalteZu: new Set(['erledigt']), angaben: false,
     // „Neu“: frisch erfasste Aufgaben stehen oben (zusätzlich in ihrer Rubrik), bis man sie öffnet oder wegwischt
     neu: [], abmeldenFragen: false, neueVersion: start === 'logbuch' };
   z.neu = aufgaben.filter(a => a.titel.startsWith('Geschenk')).map(a => a.id);
@@ -392,8 +396,9 @@ function app(bs, start) {
       h += `<div class="abschnitt neu ${z.offen.has('neu') ? 'offen' : ''}" data-abschnitt="neu">${ICON('chevron-right')}Neu <span class="n">${neue.length}</span></div>`;
       if (z.offen.has('neu')) h += `<div class="gruppe" data-neu-gruppe>${neue.map(a => zeileHtml(a, true)).join('')}</div>`;
     }
-    for (const [k, name] of ABSCHNITTE) {
-      const as = aufgaben.filter(a => abschnittVon(a) === k && passt(a));
+    for (const [k, name] of GRUPPEN) {
+      // nach Frist sortieren; gleiche Frist behält die eigene (umsortierbare) Reihenfolge
+      const as = aufgaben.filter(a => gruppeVon(a) === k && passt(a)).sort((x, y) => (x.frist && y.frist ? x.frist - y.frist : 0) || aufgaben.indexOf(x) - aufgaben.indexOf(y));
       if (!as.length) continue;
       const offen = z.offen.has(k);
       h += `<div class="abschnitt ${k} ${offen ? 'offen' : ''}" data-abschnitt="${k}">${ICON('chevron-right')}${name} <span class="n">${as.length}</span></div>`;
@@ -680,7 +685,7 @@ function app(bs, start) {
       const text = inp.value.trim(); const tags = [...text.matchAll(/#(\S+)/g)].map(m => m[1]); const person = (text.match(/@(\S+)/) || [])[1] || '';
       const fr = /!heute/.test(text) ? tag(0) : /!morgen/.test(text) ? tag(1) : /!fr/.test(text) ? tag((5 - HEUTE.getDay() + 7) % 7) : null;
       const a = { id: 'n' + Date.now(), titel: text.replace(/[#@!]\S+/g, '').trim(), tags, person, ort: '', frist: fr, wv: null, status: null, done: false, notiz: '' };
-      aufgaben.unshift(a); z.neu.unshift(a.id); z.frisch = a.id; z.offen.add(abschnittVon(a)); inp.value = ''; toast('Erfasst – wird abgeglichen'); zeichnen();
+      aufgaben.unshift(a); z.neu.unshift(a.id); z.frisch = a.id; z.offen.add(gruppeVon(a)); inp.value = ''; toast('Erfasst – wird abgeglichen'); zeichnen();
     } else if (inp.closest('.notizfeld')) {
       log.unshift(L('Heute', new Date().toTimeString().slice(0, 5), inp.value.trim(), 'notiz')); inp.value = ''; zeichnen();
     }
@@ -689,7 +694,7 @@ function app(bs, start) {
   if (start === 'detail') detailZeigen('a3');
 }
 
-telefon('liste', 'Liste', '„Neu“ oben, dann Abschnitte wie am Desktop · Wischen nach links = Archiv / Mülleimer (zweistufig) · lange drücken und ziehen = im Abschnitt umsortieren · oben Schnellerfassung · herunterziehen = Suche');
+telefon('liste', 'Liste', '„Neu“ oben, dann „Fällig“ und „Wird fällig“ (je dringendste oben, Farbe der Frist bleibt), ohne Frist, zurückgestellt, abgeschlossen · Wischen nach links = Archiv / Mülleimer (zweistufig) · lange drücken und ziehen = im Abschnitt umsortieren · oben Schnellerfassung · herunterziehen = Suche');
 telefon('detail', 'Aufgabe', 'Vollbild statt Schublade · Status als Chips · Notiz zuerst (mit abhakbarer Checkliste) · Bilder · Kurzinfo unter der Notiz öffnet die Angaben als Schublade · „‹“ zurück');
 telefon('board', 'Board', 'Eine Spalte pro Breite, waagerecht wischen · Kategorien oben als Sprungmarken · Karte lange drücken und ziehen = umsortieren, auch über Spalten (am Rand rollt das Board weiter) · lange drücken und loslassen = Auswahlblatt');
 telefon('logbuch', 'Logbuch', 'Notiz-Eingabe oben · nach links wischen = Mülleimer (zweistufig) · Tage, neuester oben · runder Haken = Aufgabe, eckiger = Punkt, Notiz-Symbol');
