@@ -31,6 +31,11 @@ export function logbuch(x: { aufgaben: AufgabeZ[]; notizen: NotizZ[]; heute: Dat
       const l = lokal(a.abgeschlossenAm);
       alle.push({ datum: l.datum, schluessel: a.abgeschlossenAm, text: suche, e: { art: 'aufgabe', aufgabeId: a.id, titel: a.titel, tags: a.tags, uhrzeit: l.uhrzeit, archiviert: a.archiviert } });
     }
+    // wiederkehrende Aufgaben: jede Erledigung steht an ihrem Tag
+    for (const zeit of a.erledigt ?? []) {
+      const l = lokal(zeit);
+      alle.push({ datum: l.datum, schluessel: zeit, text: suche, e: { art: 'aufgabe', aufgabeId: a.id, titel: a.titel, tags: a.tags, uhrzeit: l.uhrzeit, archiviert: a.archiviert } });
+    }
     for (const p of a.abgehakt) {
       const l = lokal(p.zeit);
       alle.push({ datum: l.datum, schluessel: p.zeit, text: `${p.text} ${suche}`, e: { art: 'punkt', aufgabeId: a.id, aufgabentitel: a.titel, text: p.text, uhrzeit: l.uhrzeit } });

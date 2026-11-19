@@ -4,7 +4,8 @@
 import type { AbgleichStand } from '../providers/abgleich/interface';
 import type { AktualisierungsStand } from '../providers/aktualisierung/interface';
 import type { KalenderZugriff } from '../schema/extern';
-import type { Datum, Id, KategorieId, Minuten, Uhrzeit, Wochentag } from '../schema/werte';
+import type { Datum, Id, KategorieId, Minuten, Uhrzeit, Wiederholung, Wochentag } from '../schema/werte';
+export type { Wiederholung };
 
 export type CommandStatus = { ok: true; ids?: Record<string, Id> } | { ok: false; fehler: string[] };
 export type Bereich = 'aufgaben' | 'board' | 'kalender' | 'einstellungen' | 'aktualisierung' | 'abgleich';
@@ -26,6 +27,8 @@ export type AufgabeZeile = {
   buchungen: { reservierungen: number; termine: number; gebucht: Minuten };
   /** Anzahl der Bildanhänge */
   anhaenge: number;
+  /** wiederkehrend ab Frist (Symbol hinter der Frist) */
+  wiederholung: Wiederholung | null;
 };
 
 export type AnhangInfo = { id: Id; nr: number; name: string; typ: string; groesse: number };
@@ -131,6 +134,8 @@ export type AufgabeEingabe = {
   buchung?: { datum: Datum; start?: Uhrzeit | null; dauer?: Minuten };
   /** steht unter „Neu“, bis sie gesehen wird (Standard: ja – frisch Erfasstes; Import: nein) */
   neu?: boolean;
+  /** wiederkehrend ab Frist (nur mit Frist); null = Wiederholung beenden */
+  wiederholung?: Wiederholung | null;
 };
 
 export interface Body {

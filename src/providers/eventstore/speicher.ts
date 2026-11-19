@@ -1,5 +1,5 @@
 // Event Store im Arbeitsspeicher. Grundlage für den JSONL-Store und für Tests.
-import { SCHEMA_VERSION, type GespeichertesEvent, type NeuesEvent } from '../../schema/events';
+import { schemaVon, type GespeichertesEvent, type NeuesEvent } from '../../schema/events';
 import { Hlc, stromVergleich } from './hlc';
 import { passt, type Aenderung, type AnhaengenErgebnis, type Bedingung, type EventAbfrage, type EventStore } from './interface';
 
@@ -30,7 +30,7 @@ export class SpeicherEventStore implements EventStore {
     if (neu.length === 0) return { ok: true, events: [] };
     const zeit = this.jetzt().toISOString();
     const roh: Rohevent[] = neu.map(n => ({
-      ...n, id: this.neueId(), zeit, meta: { schema: SCHEMA_VERSION, geraet: this.geraet, hlc: this.hlc.neu() },
+      ...n, id: this.neueId(), zeit, meta: { schema: schemaVon(n.typ), geraet: this.geraet, hlc: this.hlc.neu() },
     }));
     this.persistieren(roh);
     const basis = this.strom.length;

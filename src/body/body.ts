@@ -108,12 +108,13 @@ export class RundblickBody implements Body {
     return this.aufgabeErfassen({
       titel: p.titel, tags: p.tags, verantwortlich: p.verantwortlich, ort: p.ort, frist: p.frist,
       wiedervorlage: p.wiedervorlage, status: p.status, ...(p.buchung ? { buchung: p.buchung } : {}),
+      ...(p.wiederholung ? { wiederholung: p.wiederholung } : {}),
     });
   }
 
   async aufgabeAendern(c: Parameters<Body['aufgabeAendern']>[0]) { return status(this.x.domain.aufgabeAendern(c)); }
   async statusSetzen(c: Parameters<Body['statusSetzen']>[0]) { return status(this.x.domain.statusSetzen(c)); }
-  async aufgabeAbschliessen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeAbschliessen(c)); }
+  async aufgabeAbschliessen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeAbschliessen({ ...c, heute: this.x.uhr.heute() })); }
   async aufgabeWiedereroeffnen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeWiedereroeffnen(c)); }
   async aufgabeVerwerfen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeVerwerfen(c)); }
   async aufgabeArchivieren(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeArchivieren(c)); }

@@ -5,6 +5,7 @@
 import { differenz, kurz, WT, wochentag } from '../../basis/datum';
 import { checkboxUmschalten, markdownHtml } from '../../basis/markdown';
 import type { AbgleichStand, AufgabeDetails, AufgabeZeile, Board, Body, CommandStatus, LogbuchTag, StatusInfo } from '../../body/interface';
+import { wiederholungFelder, wiederholungLesen } from '../wiederholung';
 import { I } from './icons';
 
 /** Was die PWA-Hülle (Service Worker) beisteuert */
@@ -19,7 +20,7 @@ type Sicht = 'liste' | 'board' | 'logbuch';
 type UiZustand = { sicht: Sicht; offen: string[]; spalteZu: string[]; fertigOffen: string[] };
 
 const UI_SCHLUESSEL = 'rundblick.phone.ui';
-const GRUPPEN: [string, string][] = [['faellig', 'Fällig'], ['wird', 'Wird fällig'], ['ohne', 'Ohne Frist'], ['zurueck', 'Zurückgestellt'], ['fertig', 'Abgeschlossen']];
+const GRUPPEN: [string, string][] = [['faellig', 'Fällig'], ['ohne', 'Ohne Frist'], ['wird', 'Wird fällig'], ['zurueck', 'Zurückgestellt'], ['fertig', 'Abgeschlossen']];
 const KAT_FARBE: Record<string, string> = { nichtBegonnen: 'var(--kat-offen)', begonnen: 'var(--kat-begonnen)', beendet: 'var(--kat-beendet)' };
 const KAT_VAR: Record<string, string> = { nichtBegonnen: '--kat-offen', begonnen: '--kat-begonnen', beendet: '--kat-beendet' };
 
@@ -70,7 +71,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     const n = differenz(z.heute, d);
     return n === 0 ? 'Heute' : n === 1 ? 'Morgen' : n === -1 ? 'Gestern' : n > 1 && n < 7 ? `${WT[wochentag(d)]} ${kurz(d)}` : kurz(d);
   };
-  const frist = (a: AufgabeZeile) => (!a.frist || a.abgeschlossen ? '' : `<span class="frist ${a.dringlichkeit ?? ''}">${I.frist}${fristText(a.frist)}</span>`);
+  const frist = (a: AufgabeZeile) => (!a.frist || a.abgeschlossen ? '' : `<span class="frist ${a.dringlichkeit ?? ''}">${I.frist}${fristText(a.frist)}${a.wiederholung ? `<span class="wh-zeichen">${I.wiederholung}</span>` : ''}</span>`);
   const wv = (a: AufgabeZeile) => (!a.wiedervorlage || a.abgeschlossen ? '' : `<span class="frist wv">${I.wiedervorlage}${fristText(a.wiedervorlage)}</span>`);
   const statusChip = (s: StatusInfo | null) => (s ? `<span class="chip"><span class="sdot" style="background:${KAT_FARBE[s.kategorie]}"></span>${esc(s.name)}</span>` : '');
   const chips = (a: { verantwortlich: string; ort: string; tags: string[] }) => [
@@ -284,6 +285,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     blattAuf(`<div class="griff"></div><div class="bk">Angaben<button data-blatt-zu>Fertig</button></div><div class="angaben">
       <div class="zwei"><div class="feld"><label>Frist</label><div class="wert">${I.frist}<input type="date" data-angabe="frist" value="${a.frist ?? ''}"></div></div>
         <div class="feld"><label>Wiedervorlage</label><div class="wert">${I.wiedervorlage}<input type="date" data-angabe="wiedervorlage" value="${a.wiedervorlage ?? ''}"></div></div></div>
+      <div class="feld"><label>Wiederholung (ab Frist)</label><div class="wert" data-wh-feld>${I.wiederholung}${wiederholungFelder(a.wiederholung, false, !a.frist)}</div></div>
       <div class="feld"><label>Status</label><div class="status-chips"><button class="${!a.status ? 'an' : ''}" data-status="">ohne</button>${z.spalten.map(s => `<button class="${a.status?.id === s.id ? 'an' : ''}" data-status="${s.id}"><span class="sdot" style="background:${KAT_FARBE[s.kategorie]}"></span>${esc(s.name)}</button>`).join('')}</div></div>
       <div class="zwei"><div class="feld"><label>Verantwortlich</label><div class="wert"><input data-angabe="verantwortlich" value="${esc(a.verantwortlich)}" autocomplete="off"></div></div>
         <div class="feld"><label>Ort</label><div class="wert">${I.ort}<input data-angabe="ort" value="${esc(a.ort)}" autocomplete="off"></div></div></div>
@@ -636,6 +638,10 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
         if (b) pruefe(await body.anhangHinzufuegen({ aufgabeId: a.id, name: b.name, typ: 'image/jpeg', daten: b.daten }));
       }
       if (dateien.length) toast(dateien.length === 1 ? 'Bild hinzugefügt' : `${dateien.length} Bilder hinzugefügt`);
+      return;
+    }
+    if (t.matches('[data-wh]') && a) {
+      if (pruefe(await body.aufgabeAendern({ aufgabeId: a.id, aenderungen: { wiederholung: wiederholungLesen(t.closest('[data-wh-feld]')!) } }))) { await detailZeigen(); void angabenBlatt(); }
       return;
     }
     if (t.matches('[data-angabe]') && a) {

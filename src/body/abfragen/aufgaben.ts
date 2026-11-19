@@ -29,6 +29,7 @@ export function zeile(a: AufgabeZ, buchungen: BuchungZ[], spalten: Map<Id, Spalt
       gebucht: eigene.filter(b => b.belegt).reduce((x, b) => x + b.dauer, 0),
     },
     anhaenge: a.anhaenge.length,
+    wiederholung: a.wiederholung && { einheit: a.wiederholung.einheit, alle: a.wiederholung.alle },
   };
 }
 

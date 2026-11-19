@@ -114,7 +114,7 @@ describe('Queries über den Body', () => {
   it('Dringlichkeit und Filter als pure Funktionen', () => {
     expect(dringlichkeit(null, '2026-11-16')).toBeNull();
     expect(['2026-11-15', '2026-11-16', '2026-11-18', '2026-11-30'].map(f => dringlichkeit(f, '2026-11-16'))).toEqual(['ueberfaellig', 'heute', 'woche', 'spaeter']);
-    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, neu: false, archiviert: false, anhaenge: [], rang: 0, abgeschlossenAm: null, abgehakt: [] };
+    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, neu: false, wiederholung: null, erledigt: [], archiviert: false, anhaenge: [], rang: 0, abgeschlossenAm: null, abgehakt: [] };
     expect(passtZuFilter(a, '  ')).toBe(true);
     expect(passtZuFilter(a, 'angebot #kunde')).toBe(true);
     expect(passtZuFilter(a, 'angebot #büro')).toBe(false);
@@ -391,5 +391,23 @@ describe('Rubrik „Neu“ (geräteübergreifend) und Liste ohne Board-Aufgaben'
     const es = new SpeicherEventStore('t', zaehlerIds('e').neu, () => uhr.jetzt());
     const body = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: beispielKalender(), cache: kalenderCache(), anhaenge: speicherAnhaenge(), info: { datenordner: '', geraet: '' }, zuNeueEvents: () => 3 });
     expect(await body.datenstand()).toEqual({ zuNeu: 3 });
+  });
+});
+
+describe('Wiederholung über den Body', () => {
+  it('Schnellerfassung *monatlich / *17t, Zeile zeigt die Regel, Abhaken springt weiter, Logbuch zählt jede Erledigung', async () => {
+    const { body } = aufbau();
+    const a = id(await body.schnellErfassen({ text: 'Backup !12.11. *monatlich' }), 'aufgabeId');
+    const b = id(await body.schnellErfassen({ text: 'Karte *17t' }), 'aufgabeId');
+    expect(await body.schnellErfassen({ text: 'X *irgendwann' })).toMatchObject({ ok: false });
+    expect(await body.aufgabe({ aufgabeId: b })).toMatchObject({ frist: '2026-11-16', wiederholung: { einheit: 'tag', alle: 17 } });
+    expect(await body.aufgabe({ aufgabeId: a })).toMatchObject({ frist: '2026-11-12', wiederholung: { einheit: 'monat', alle: 1 } });
+    await body.aufgabeAbschliessen({ aufgabeId: a });
+    expect(await body.aufgabe({ aufgabeId: a })).toMatchObject({ frist: '2026-12-12', abgeschlossen: false });
+    await body.aufgabeAbschliessen({ aufgabeId: a });
+    const log = await body.logbuch({});
+    expect(log.tage[0]!.eintraege.filter(e => e.art === 'aufgabe')).toHaveLength(2);
+    await body.aufgabeAendern({ aufgabeId: a, aenderungen: { wiederholung: null } });
+    expect((await body.aufgabe({ aufgabeId: a }))!.wiederholung).toBeNull();
   });
 });

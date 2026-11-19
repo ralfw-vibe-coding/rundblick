@@ -1,15 +1,32 @@
 // Parser der Schnellerfassung (pure). Syntax:
-//   Titel  #tag  @person  /ort  !frist  ^wiedervorlage  =status  >datum [hh:mm] [dauer]
+//   Titel  #tag  @person  /ort  !frist  ^wiedervorlage  =status  >datum [hh:mm] [dauer]  *wiederholung
+// *wiederholung: *täglich *wöchentlich *monatlich *jährlich oder *3t *2w *6m *1j (ab Frist; ohne !frist gilt heute)
 // Beginnt die Zeile mit '>', entsteht nur eine (freie) Buchung, keine Aufgabe.
 import { plusTage, wochentag, WT_LANG, fmt, parse as parseDatum, istDatum, minuten, uhrzeit } from '../../basis/datum';
-import type { Datum, Minuten, Uhrzeit } from '../../schema/werte';
+import type { Datum, Minuten, Uhrzeit, Wiederholung } from '../../schema/werte';
 
 export type Erfassung = {
   titel: string; tags: string[]; verantwortlich: string; ort: string;
   frist: Datum | null; wiedervorlage: Datum | null; status: string | null;
   buchung: { datum: Datum; start: Uhrzeit | null; dauer: Minuten } | null;
+  wiederholung: Wiederholung | null;
   nurBuchung: boolean; fehler: string[];
 };
+
+const WORTE: Record<string, Wiederholung> = {
+  täglich: { einheit: 'tag', alle: 1 }, taeglich: { einheit: 'tag', alle: 1 },
+  wöchentlich: { einheit: 'woche', alle: 1 }, woechentlich: { einheit: 'woche', alle: 1 },
+  monatlich: { einheit: 'monat', alle: 1 }, quartalsweise: { einheit: 'monat', alle: 3 }, halbjährlich: { einheit: 'monat', alle: 6 },
+  jährlich: { einheit: 'jahr', alle: 1 }, jaehrlich: { einheit: 'jahr', alle: 1 },
+};
+const KUERZEL: Record<string, Wiederholung['einheit']> = { t: 'tag', w: 'woche', m: 'monat', j: 'jahr' };
+
+export function wiederholungAusText(s: string): Wiederholung | null {
+  s = s.toLowerCase();
+  if (WORTE[s]) return { ...WORTE[s]! };
+  const m = s.match(/^(\d{1,3})([twmj])$/);
+  return m && Number(m[1]) >= 1 ? { einheit: KUERZEL[m[2]!]!, alle: Number(m[1]) } : null;
+}
 
 const WDK = ['mo', 'di', 'mi', 'do', 'fr', 'sa', 'so'];
 
@@ -46,7 +63,7 @@ export function dauerAusText(s: string): Minuten | null {
 }
 
 export function parseErfassung(text: string, heute: Datum, spalten: { id: string; name: string }[], standarddauer: Minuten): Erfassung {
-  const r: Erfassung = { titel: '', tags: [], verantwortlich: '', ort: '', frist: null, wiedervorlage: null, status: null, buchung: null, nurBuchung: false, fehler: [] };
+  const r: Erfassung = { titel: '', tags: [], verantwortlich: '', ort: '', frist: null, wiedervorlage: null, status: null, buchung: null, wiederholung: null, nurBuchung: false, fehler: [] };
   const toks = text.trim().split(/\s+/).filter(Boolean);
   r.nurBuchung = !!toks[0] && toks[0].startsWith('>');
   const woerter: string[] = [];
@@ -57,6 +74,7 @@ export function parseErfassung(text: string, heute: Datum, spalten: { id: string
     else if (c === '@') r.verantwortlich = rest;
     else if (c === '/') r.ort = rest.replace(/_/g, ' ');
     else if (c === '!') { r.frist = datumAusText(rest, heute); if (!r.frist) r.fehler.push(tk); }
+    else if (c === '*') { r.wiederholung = wiederholungAusText(rest); if (!r.wiederholung) r.fehler.push(tk); }
     else if (c === '^') { r.wiedervorlage = datumAusText(rest, heute); if (!r.wiedervorlage) r.fehler.push(tk); }
     else if (c === '=') {
       const n = rest.toLowerCase().replace(/[^a-zäöüß]/g, '');
@@ -75,6 +93,7 @@ export function parseErfassung(text: string, heute: Datum, spalten: { id: string
     } else woerter.push(tk);
   }
   r.titel = woerter.join(' ');
+  if (r.wiederholung && !r.frist) r.frist = heute;
   if (r.nurBuchung && !r.buchung) r.fehler.push('Datum der Buchung fehlt');
   return r;
 }

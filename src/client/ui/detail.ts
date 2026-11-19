@@ -1,6 +1,7 @@
 // Detail-Schublade: Aufgabe oder Buchung ansehen und direkt bearbeiten.
 // Jede Feldänderung wird sofort als Command an den Body geschickt.
 // Kopf: [Abschließen-Kreis] Titel … [Archiv] [Mülleimer] [×]
+import { wiederholungFelder, wiederholungLesen } from '../wiederholung';
 import { dauerText, kurz, plusTage, uhrzeit, WT, wochentag } from '../../basis/datum';
 import type { AufgabeDetails } from '../../body/interface';
 import { body } from './body';
@@ -97,6 +98,7 @@ export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
       </div>`)}
       <div class="fld-grid">
         ${feld('Frist', `<div class="inl"><input type="date" data-f="frist" value="${a.frist ?? ''}" ${zu}><button data-leer="frist" title="Frist entfernen">${I.x}</button></div>`)}
+        ${feld('Wiederholung', wiederholungFelder(a.wiederholung, gesperrt, !a.frist), 'title="ab Frist – nach dem Abhaken springt die Frist auf den nächsten Termin"')}
         ${feld('Wiedervorlage', `<div class="inl"><input type="date" data-f="wiedervorlage" value="${a.wiedervorlage ?? ''}" ${zu}><button data-leer="wiedervorlage" title="Wiedervorlage aufheben">${I.x}</button></div>`)}
         ${feld('Verantwortlich', '<div data-chips="person"></div>')}
         ${feld('Ort', '<div data-chips="ort"></div>')}
@@ -121,6 +123,7 @@ export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
   vorschauenLaden(s);
   s.onchange = async ev => {
     const t = ev.target as HTMLInputElement;
+    if (t.dataset.wh) { if (pruefe(await body.aufgabeAendern({ aufgabeId: id, aenderungen: { wiederholung: wiederholungLesen(s) } }))) void aufgabeOeffnen(id); return; }
     const f = t.dataset.f;
     if (!f) return;
     const wert = f === 'tags' ? t.value.split(/[,\s]+/).filter(Boolean) : (f === 'frist' || f === 'wiedervorlage') ? (t.value || null) : t.value;

@@ -2,7 +2,8 @@
 import { istDatum, istUhrzeit } from '../../basis/datum';
 import type { EventStore } from '../../providers/eventstore/interface';
 import { tag, type NeuesEvent } from '../../schema/events';
-import type { Datum, Id, Minuten, Uhrzeit } from '../../schema/werte';
+import type { Datum, Id, Minuten, Uhrzeit, Wiederholung } from '../../schema/werte';
+import { istWiederholung, naechsterTermin } from '../wiederholung';
 import { anwenden, leererBestand, type Bestand } from '../bestand';
 import type { AufgabeZ } from '../zustand';
 import { entscheide, fehler, nichtLeer, type Entscheidung, type Ergebnis } from './basis';
@@ -16,6 +17,8 @@ export type AufgabeFelder = {
   frist?: Datum | null; wiedervorlage?: Datum | null; status?: Id | null;
   /** frisch erfasst → Rubrik „Neu“ (Standard: nein, z. B. beim Import) */
   neu?: boolean;
+  /** wiederkehrend ab Frist – nur mit Frist möglich */
+  wiederholung?: Wiederholung | null;
 };
 
 function pruefeFelder(f: Partial<AufgabeFelder>, b: Bestand): string[] {
@@ -24,6 +27,7 @@ function pruefeFelder(f: Partial<AufgabeFelder>, b: Bestand): string[] {
   if (f.frist != null && !istDatum(f.frist)) p.push('Frist ist kein gültiges Datum.');
   if (f.wiedervorlage != null && !istDatum(f.wiedervorlage)) p.push('Wiedervorlage ist kein gültiges Datum.');
   if (f.status != null && !aktiv(b, f.status)) p.push('Diese Board-Spalte gibt es nicht.');
+  if (f.wiederholung != null && !istWiederholung(f.wiederholung)) p.push('Wiederholung ist ungültig.');
   return p;
 }
 const aktiv = (b: Bestand, statusId: Id) => { const s = b.spalten.get(statusId); return !!s && !s.entfernt; };
@@ -44,6 +48,7 @@ export function aufgabeErfassen(es: EventStore, c: { aufgabeId: Id; felder: Aufg
     if (!nichtLeer(f.titel)) p.unshift('Titel fehlt.');
     if (b.aufgaben.has(c.aufgabeId)) p.push('Aufgabe existiert bereits.');
     if (c.buchung) p.push(...pruefeBuchung(c.buchung));
+    if (f.wiederholung && !f.frist) p.push('Wiederholung braucht eine Frist.');
     if (p.length) return { ok: false, fehler: [...new Set(p)] };
     const titel = f.titel.trim();
     const ev: NeuesEvent[] = [{
@@ -54,6 +59,7 @@ export function aufgabeErfassen(es: EventStore, c: { aufgabeId: Id; felder: Aufg
         wiedervorlage: f.wiedervorlage ?? null, status: f.status ?? null, ...(f.neu ? { neu: true } : {}),
       },
     }];
+    if (f.wiederholung && f.frist) ev.push({ typ: 'WiederholungGesetzt', tags: [tag.aufgabe(c.aufgabeId)], daten: { aufgabeId: c.aufgabeId, wiederholung: { einheit: f.wiederholung.einheit, alle: f.wiederholung.alle } } });
     if (c.buchung) ev.push({
       typ: 'BuchungAngelegt', tags: [tag.buchung(c.buchung.buchungId), tag.aufgabe(c.aufgabeId)],
       daten: {
@@ -96,6 +102,16 @@ export function aufgabeAendern(es: EventStore, c: { aufgabeId: Id; aenderungen: 
     }
     if (x.frist !== undefined && x.frist !== a!.frist) ev.push(x.frist === null ? { typ: 'FristEntfernt', tags: t, daten: { aufgabeId: id } } : { typ: 'FristGesetzt', tags: t, daten: { aufgabeId: id, frist: x.frist } });
     if (x.wiedervorlage !== undefined && x.wiedervorlage !== a!.wiedervorlage) ev.push(x.wiedervorlage === null ? { typ: 'WiedervorlageAufgehoben', tags: t, daten: { aufgabeId: id } } : { typ: 'WiedervorlageGesetzt', tags: t, daten: { aufgabeId: id, datum: x.wiedervorlage } });
+    // Wiederholung: braucht eine Frist; Frist weg → Wiederholung weg
+    const frist = x.frist !== undefined ? x.frist : a!.frist;
+    const w = x.wiederholung !== undefined ? x.wiederholung : a!.wiederholung;
+    if (w && !frist) {
+      if (x.wiederholung) return { ok: false, fehler: ['Wiederholung braucht eine Frist.'] };
+      ev.push({ typ: 'WiederholungAufgehoben', tags: t, daten: { aufgabeId: id } });
+    } else if (x.wiederholung === null && a!.wiederholung) ev.push({ typ: 'WiederholungAufgehoben', tags: t, daten: { aufgabeId: id } });
+    else if (x.wiederholung && (x.wiederholung.einheit !== a!.wiederholung?.einheit || x.wiederholung.alle !== a!.wiederholung?.alle)) {
+      ev.push({ typ: 'WiederholungGesetzt', tags: t, daten: { aufgabeId: id, wiederholung: { einheit: x.wiederholung.einheit, alle: x.wiederholung.alle } } });
+    }
     return ev;
   });
 }
@@ -114,13 +130,18 @@ export function statusSetzen(es: EventStore, c: { aufgabeId: Id; status: Id | nu
   });
 }
 
-export function aufgabeAbschliessen(es: EventStore, c: { aufgabeId: Id }): Ergebnis {
+/** Abschließen; wiederkehrende Aufgaben bleiben offen und springen auf den nächsten Termin nach heute (bzw. nach der Frist, wenn früher erledigt) */
+export function aufgabeAbschliessen(es: EventStore, c: { aufgabeId: Id; heute?: Datum }): Ergebnis {
   return ctx(es, [tag.aufgabe(c.aufgabeId)], b => {
     const a = b.aufgaben.get(c.aufgabeId);
     if (!a) return { ok: false, fehler: ['Aufgabe unbekannt.'] };
     if (a.verworfen) return { ok: false, fehler: ['Aufgabe wurde verworfen.'] };
     if (a.archiviert) return { ok: false, fehler: ['Aufgabe ist archiviert.'] };
     if (a.abgeschlossen) return [];
+    if (a.wiederholung && a.frist && c.heute) {
+      const nach = a.frist > c.heute ? a.frist : c.heute;
+      return [{ typ: 'WiederholungErledigt', tags: [tag.aufgabe(a.id)], daten: { aufgabeId: a.id, naechsteFrist: naechsterTermin(a.wiederholung.anker, a.wiederholung, nach) } }];
+    }
     return [{ typ: 'AufgabeAbgeschlossen', tags: [tag.aufgabe(a.id)], daten: { aufgabeId: a.id } }];
   });
 }

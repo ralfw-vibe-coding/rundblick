@@ -1,8 +1,16 @@
 // Application state schema: die Events des Domain state.
 // Events werden nie umgeschrieben. Ändert sich ein Format, wird beim Lesen hochgerechnet (Upcaster).
-import type { Datum, Id, KategorieId, Minuten, Uhrzeit, Wochentag } from './werte';
+import type { Datum, Id, KategorieId, Minuten, Uhrzeit, Wiederholung, Wochentag } from './werte';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+
+/**
+ * Schema-Version je Event-Typ: Jedes Event trägt die Version, die man mindestens kennen muss, um es richtig zu verstehen.
+ * Ältere Apps überspringen nur diese Events (und melden „bitte aktualisieren“), alles andere lesen sie weiter.
+ * 2: Wiederholungen (eine ältere App würde nach dem Weiterspringen die alte Frist zeigen).
+ */
+const AB_VERSION: Partial<Record<string, number>> = { WiederholungGesetzt: 2, WiederholungAufgehoben: 2, WiederholungErledigt: 2 };
+export const schemaVon = (typ: string): number => AB_VERSION[typ] ?? 1;
 
 type E<T extends string, D> = { typ: T; daten: D };
 
@@ -15,6 +23,11 @@ export type DomainEvent =
       neu?: boolean;
     }>
   | E<'AufgabeGesehen', { aufgabeId: Id }>
+  /** Wiederholung ab der aktuellen Frist (Anker); Frist ändern verschiebt den Anker */
+  | E<'WiederholungGesetzt', { aufgabeId: Id; wiederholung: Wiederholung }>
+  | E<'WiederholungAufgehoben', { aufgabeId: Id }>
+  /** wiederkehrende Aufgabe abgehakt: fürs Logbuch erledigt, Frist springt auf den nächsten Termin (nach heute) */
+  | E<'WiederholungErledigt', { aufgabeId: Id; naechsteFrist: Datum }>
   | E<'AufgabeUmbenannt', { aufgabeId: Id; titel: string }>
   | E<'BeschreibungGeaendert', { aufgabeId: Id; beschreibung: string }>
   | E<'OrtGeaendert', { aufgabeId: Id; ort: string }>

@@ -16,7 +16,8 @@ export interface DomainInterface {
   aufgabeErfassen(c: { aufgabeId: Id; felder: AufgabeFelder; buchung?: { buchungId: Id; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten } }): Ergebnis;
   aufgabeAendern(c: { aufgabeId: Id; aenderungen: AufgabeAenderungen }): Ergebnis;
   statusSetzen(c: { aufgabeId: Id; status: Id | null }): Ergebnis;
-  aufgabeAbschliessen(c: { aufgabeId: Id }): Ergebnis;
+  /** heute: nötig, damit wiederkehrende Aufgaben auf den nächsten Termin nach heute springen */
+  aufgabeAbschliessen(c: { aufgabeId: Id; heute?: Datum }): Ergebnis;
   aufgabeWiedereroeffnen(c: { aufgabeId: Id }): Ergebnis;
   aufgabeVerwerfen(c: { aufgabeId: Id }): Ergebnis;
   aufgabeArchivieren(c: { aufgabeId: Id }): Ergebnis;

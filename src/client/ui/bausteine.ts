@@ -1,4 +1,5 @@
 // HTML-Bausteine für Aufgaben (Zeile, Karte, Fristen, Buchungssymbole) aus den DTOs des Body.
+import { wiederholungText } from '../../basis/wiederholung';
 import { dauerText, kurz, relativ, WT, wochentag } from '../../basis/datum';
 import type { AufgabeZeile, Auslastung, BuchungDto, Dringlichkeit } from '../../body/interface';
 import { esc } from './dom';
@@ -8,7 +9,8 @@ const DRING: Record<Dringlichkeit, string> = { ueberfaellig: 'd-ueberfaellig', h
 export const dringKlasse = (d: Dringlichkeit | null) => (d ? DRING[d] : '');
 
 export function frist(a: AufgabeZeile, heute: string): string {
-  return a.frist ? `<span class="due ${dringKlasse(a.dringlichkeit)}" title="Frist ${WT[wochentag(a.frist)]} ${kurz(a.frist)}">${I.frist}${relativ(a.frist, heute)}</span>` : '';
+  const wh = a.wiederholung ? `<span class="wh-zeichen" title="wiederholt sich ${wiederholungText(a.wiederholung)}">${I.wiederholung}</span>` : '';
+  return a.frist ? `<span class="due ${dringKlasse(a.dringlichkeit)}" title="Frist ${WT[wochentag(a.frist)]} ${kurz(a.frist)}${a.wiederholung ? ' · ' + wiederholungText(a.wiederholung) : ''}">${I.frist}${relativ(a.frist, heute)}${wh}</span>` : '';
 }
 
 export const anhangSymbol = (a: AufgabeZeile) => (a.anhaenge ? `<span class="bk-i anh" title="${a.anhaenge} Bild(er)">${I.anhang}<b>${a.anhaenge}</b></span>` : '');

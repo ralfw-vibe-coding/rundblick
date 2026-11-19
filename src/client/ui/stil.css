@@ -1038,3 +1038,8 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .veraltet { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; background: var(--d-heute); color: #fff; font-size: 12.5px; box-shadow: 0 4px 16px rgba(0,0,0,.18); cursor: pointer; }
 .veraltet[hidden] { display: none; }
 .veraltet svg.lu { width: 16px; height: 16px; }
+/* Wiederholung */
+.wh-zeichen { display: inline-flex; margin-left: 3px; opacity: .8; }
+.wh-zeichen svg.lu { width: 11px; height: 11px; }
+.wh { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--mute); }
+.wh input[type=number] { width: 52px; }

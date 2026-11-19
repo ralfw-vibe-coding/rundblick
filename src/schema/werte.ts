@@ -16,3 +16,6 @@ export const KATEGORIEN: readonly { id: KategorieId; name: string }[] = [
 
 /** 1 = Montag … 7 = Sonntag */
 export type Wochentag = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+/** Wiederholung einer Aufgabe: alle n Tage/Wochen/Monate/Jahre, gerechnet ab der Frist (nicht ab Erledigung) */
+export type Wiederholung = { einheit: 'tag' | 'woche' | 'monat' | 'jahr'; alle: number };

@@ -323,3 +323,7 @@
   .zahnrad.update { background: var(--own); color: #fff; margin-left: 2px; }
   .zahnrad.update svg.lucide { width: 20px; height: 20px; }
 .veraltet { margin: 8px 12px 0; padding: 10px 12px; border-radius: 10px; background: var(--d-heute, #d9534f); color: #fff; font-size: 14px; }
+.wh-zeichen { display: inline-flex; margin-left: 3px; opacity: .8; }
+.wh-zeichen svg { width: 12px; height: 12px; }
+.wh { display: inline-flex; align-items: center; gap: 8px; flex: 1; }
+.wh input[type=number] { width: 56px; }

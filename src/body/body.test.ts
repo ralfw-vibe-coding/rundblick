@@ -191,10 +191,10 @@ describe('Parser der Schnellerfassung', () => {
   it.each([['2h', 120], ['90m', 90], ['1,5h', 90], ['45min', 45], ['0m', null], ['abc', null]])('Dauer %s → %s', (t, m) => expect(dauerAusText(t)).toBe(m));
 
   it('erkennt alle Bestandteile', () => {
-    const p = parseErfassung('Call Jan >morgen 14:00 45m =inarbeit @Jan /Hamburg_Mitte #kunde ^+2w !24.12.', H, [{ id: 'inarbeit', name: 'In Arbeit' }], 60);
+    const p = parseErfassung('Call Jan >morgen 14:00 45m =inarbeit @Jan /Hamburg_Mitte #kunde ^+2w !24.12. *6m', H, [{ id: 'inarbeit', name: 'In Arbeit' }], 60);
     expect(p).toEqual({
       titel: 'Call Jan', tags: ['kunde'], verantwortlich: 'Jan', ort: 'Hamburg Mitte', frist: '2026-12-24', wiedervorlage: '2026-11-30',
-      status: 'inarbeit', buchung: { datum: '2026-11-17', start: '14:00', dauer: 45 }, nurBuchung: false, fehler: [],
+      status: 'inarbeit', buchung: { datum: '2026-11-17', start: '14:00', dauer: 45 }, wiederholung: { einheit: 'monat', alle: 6 }, nurBuchung: false, fehler: [],
     });
   });
 

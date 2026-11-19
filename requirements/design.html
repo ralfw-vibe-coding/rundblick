@@ -543,6 +543,7 @@
     <li>Aufgaben mit Board-Status stehen nur auf dem Board, nicht in der Liste (<code>liste({ ohneStatus: true })</code>).</li>
     <li>Schema-Schutz: zu neue Events werden gezählt (<code>datenstand().zuNeu</code>) und lösen „bitte aktualisieren“ aus.</li>
     <li>Release: <code>npm run release</code> bringt Desktop-Update und Phone aus demselben Commit heraus.</li>
+    <li>Wiederkehrende Aufgaben: „alle n Tage/Wochen/Monate/Jahre“ ab Frist; Abhaken → <code>WiederholungErledigt</code>, Frist springt auf den nächsten Termin nach heute, Aufgabe steht unter „Wird fällig“ (Abschnitt jetzt unter „Ohne Frist“). Events <code>WiederholungGesetzt/Aufgehoben/Erledigt</code> mit Schema 2 (Schema-Version je Event-Typ).</li>
   </ul>
   <h3>Entschieden (16.11.2026)</h3>
   <table>
@@ -559,7 +560,7 @@
   </table>
   <h3>Backlog (später)</h3>
   <ul>
-    <li><b>Wiederkehrende Aufgaben</b> (jeden Monat „Reisekosten einreichen“), etwa über <code>WiederholungFestgelegt</code> plus Erzeugung der nächsten Aufgabe beim Abschließen.</li>
+    <li><s>Wiederkehrende Aufgaben</s> – umgesetzt 19.11.2026 (siehe oben); offen: „ab Erledigung“, Wochentage („jeden Montag“).</li>
     <li><b>Vergangene Buchungen</b> als „wahrgenommen / nicht geschafft“ markieren, damit die Kalenderrückschau zum Werkzeug wird.</li>
     <li><b>Rundblick-Einträge nach Google Calendar oder iCloud übernehmen bzw. umwandeln</b> (Nutzerwunsch 17.11.2026). Bis dahin erscheinen sie im Kalender nur als eigene Rundblick-Einträge neben den externen Terminen. Verwandt: Veröffentlichen eigener Buchungen in einen Kalender „Rundblick“ und der Rückkanal (9).</li>
     <li>iPhone-App mit Zugriff auf denselben Dropbox-Ordner.</li>

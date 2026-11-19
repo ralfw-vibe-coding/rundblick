@@ -42,7 +42,7 @@ export class ListenSicht implements Sicht {
     // Aufgaben mit Board-Status stehen auf dem Board, nicht hier (Nutzer 19.11.2026)
     const l = await body.liste({ filter: this.z.filter ?? '', ohneStatus: true });
 
-    // Gruppen wie am Phone: Neu · Fällig (überfällig + heute) · Wird fällig · Ohne Frist · Zurückgestellt · Abgeschlossen
+    // Gruppen wie am Phone: Neu · Fällig (überfällig + heute) · Ohne Frist · Wird fällig · Zurückgestellt · Abgeschlossen
     // „Neu“ ist der Eingang: dort stehende Aufgaben erscheinen erst nach „Gesehen“ in ihrer Gruppe
     const istNeu = new Set(l.neu.map(a => a.id));
     const g = (art: string) => (l.gruppen.find(x => x.art === art)?.aufgaben ?? []).filter(a => !istNeu.has(a.id));
@@ -50,8 +50,9 @@ export class ListenSicht implements Sicht {
     const abschnitte: { k: string; name: string; aufgaben: AufgabeZeile[]; klasse?: string }[] = [
       { k: 'neu', name: 'Neu', aufgaben: l.neu, klasse: 'neu' },
       { k: 'faellig', name: 'Fällig', aufgaben: nachFrist([...g('ueberfaellig'), ...g('heute')]), klasse: 'faellig' },
-      { k: 'wird', name: 'Wird fällig', aufgaben: nachFrist([...g('woche'), ...g('spaeter')]), klasse: 'wird' },
       { k: 'ohne', name: 'Ohne Frist', aufgaben: g('ohne') },
+      // bewusst unter „Ohne Frist“: was erst kommt, lenkt nicht ab (u. a. wiederkehrende Aufgaben nach dem Abhaken)
+      { k: 'wird', name: 'Wird fällig', aufgaben: nachFrist([...g('woche'), ...g('spaeter')]), klasse: 'wird' },
       { k: 'zurueck', name: 'Zurückgestellt', aufgaben: l.zurueckgestellt },
       { k: 'fertig', name: 'Abgeschlossen', aufgaben: l.abgeschlossen },
       ...(this.z.archiv ? [{ k: 'archiv', name: 'Archiv', aufgaben: l.archiv }] : []),

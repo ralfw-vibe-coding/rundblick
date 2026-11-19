@@ -2,7 +2,7 @@
 // Commands und vom Bestand (Projektion für Queries).
 import { checklistenpunkte } from '../basis/markdown';
 import type { DomainEvent } from '../schema/events';
-import { KATEGORIEN, type Datum, type Id, type KategorieId, type Minuten, type Uhrzeit } from '../schema/werte';
+import { KATEGORIEN, type Datum, type Id, type KategorieId, type Minuten, type Uhrzeit, type Wiederholung } from '../schema/werte';
 
 export type AufgabeZ = {
   id: Id; titel: string; beschreibung: string; ort: string; verantwortlich: string; tags: string[];
@@ -10,6 +10,10 @@ export type AufgabeZ = {
   abgeschlossen: boolean; verworfen: boolean; archiviert: boolean;
   /** frisch erfasst und noch auf keinem Gerät gesehen (Rubrik „Neu“) */
   neu: boolean;
+  /** Wiederholung mit Anker (= Frist beim Setzen bzw. nach jeder manuellen Friständerung) */
+  wiederholung: (Wiederholung & { anker: Datum }) | null;
+  /** Zeitpunkte (ISO), zu denen die wiederkehrende Aufgabe erledigt wurde – fürs Logbuch */
+  erledigt: string[];
   /** Bildanhänge der Notiz, in Reihenfolge des Hinzufügens */
   anhaenge: AnhangZ[];
   /** Rang für die manuelle Reihenfolge (kleiner = weiter oben); neue Aufgaben kommen nach oben */
@@ -55,18 +59,18 @@ export type SpalteZ = { id: Id; name: string; kategorie: KategorieId; rang: numb
 export type PlanungZ = { kapazitaet: Minuten[]; standarddauer: Minuten };
 export const PLANUNG_STANDARD: PlanungZ = { kapazitaet: [360, 360, 360, 360, 300, 0, 0], standarddauer: 60 };
 
-const NEU = { abgeschlossen: false, verworfen: false, archiviert: false, neu: false, rang: 0, abgeschlossenAm: null, abgehakt: [] } as const;
+const NEU = { abgeschlossen: false, verworfen: false, archiviert: false, neu: false, rang: 0, abgeschlossenAm: null, abgehakt: [], wiederholung: null, erledigt: [] } as const;
 
 export function aufgabeEntwickeln(z: AufgabeZ | null, e: ZeitEvent): AufgabeZ | null {
   switch (e.typ) {
-    case 'AufgabeErfasst': { const { neu, ...d } = e.daten; return { ...d, ...NEU, neu: neu === true, id: e.daten.aufgabeId, tags: [...e.daten.tags], anhaenge: [], abgehakt: [] }; }
+    case 'AufgabeErfasst': { const { neu, ...d } = e.daten; return { ...d, ...NEU, neu: neu === true, id: e.daten.aufgabeId, tags: [...e.daten.tags], anhaenge: [], abgehakt: [], erledigt: [] }; }
     case 'AufgabeAusBuchungErstellt': return {
       ...NEU, id: e.daten.aufgabeId, titel: e.daten.titel, beschreibung: e.daten.beschreibung, ort: '', verantwortlich: '', tags: [],
-      frist: null, wiedervorlage: null, status: e.daten.status, anhaenge: [], abgehakt: [],
+      frist: null, wiedervorlage: null, status: e.daten.status, anhaenge: [], abgehakt: [], erledigt: [],
     };
     case 'AufgabeAusNotizErstellt': return {
       ...NEU, id: e.daten.aufgabeId, titel: e.daten.titel, beschreibung: e.daten.beschreibung, ort: '', verantwortlich: '', tags: [...e.daten.tags],
-      frist: null, wiedervorlage: null, status: null, anhaenge: e.daten.anhaenge.map(a => ({ ...a })), abgehakt: [],
+      frist: null, wiedervorlage: null, status: null, anhaenge: e.daten.anhaenge.map(a => ({ ...a })), abgehakt: [], erledigt: [],
     };
   }
   if (!z) return z;
@@ -77,8 +81,11 @@ export function aufgabeEntwickeln(z: AufgabeZ | null, e: ZeitEvent): AufgabeZ | 
     case 'VerantwortlicherGeaendert': return { ...z, verantwortlich: e.daten.verantwortlich };
     case 'AufgabeGetaggt': return z.tags.includes(e.daten.tag) ? z : { ...z, tags: [...z.tags, e.daten.tag] };
     case 'TagEntfernt': return { ...z, tags: z.tags.filter(t => t !== e.daten.tag) };
-    case 'FristGesetzt': return { ...z, frist: e.daten.frist };
-    case 'FristEntfernt': return { ...z, frist: null };
+    case 'FristGesetzt': return { ...z, frist: e.daten.frist, wiederholung: z.wiederholung && { ...z.wiederholung, anker: e.daten.frist } };
+    case 'FristEntfernt': return { ...z, frist: null, wiederholung: null };
+    case 'WiederholungGesetzt': return z.frist ? { ...z, wiederholung: { einheit: e.daten.wiederholung.einheit, alle: e.daten.wiederholung.alle, anker: z.frist } } : z;
+    case 'WiederholungAufgehoben': return { ...z, wiederholung: null };
+    case 'WiederholungErledigt': return { ...z, frist: e.daten.naechsteFrist, wiedervorlage: null, erledigt: e.zeit ? [...z.erledigt, e.zeit] : z.erledigt };
     case 'WiedervorlageGesetzt': return { ...z, wiedervorlage: e.daten.datum };
     case 'WiedervorlageAufgehoben': return { ...z, wiedervorlage: null };
     case 'StatusGesetzt': return { ...z, status: e.daten.status };
