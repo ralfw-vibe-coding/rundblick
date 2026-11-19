@@ -19,7 +19,7 @@ type Arbeitsbereich = { name: string; wurzel: Knoten };
 
 export const SICHTEN: Record<SichtArt, { name: string; icon: string }> = {
   liste: { name: 'Aufgabenliste', icon: I.liste },
-  board: { name: 'Kanban-Board', icon: I.board },
+  board: { name: 'Kanban', icon: I.board },
   kalender: { name: 'Kalender', icon: I.mehrtage },
   timeline: { name: 'Timeline', icon: I.timeline },
   logbuch: { name: 'Logbuch', icon: I.logbuch },
@@ -186,9 +186,11 @@ export class Raster {
   }
 
   // ---------- Zeichnen ----------
-  private dichteFuer(el: HTMLElement): Dichte {
+  private dichteFuer(el: HTMLElement, sicht: SichtArt | null): Dichte {
     const w = el.clientWidth, h = el.clientHeight;
     if (w < 230 || h < 150) return 'mini';
+    // Kanban: ob alle Spalten oder eine je Kategorie, hängt nur von der Breite ab – die Höhe kürzt nur die Spalten (die scrollen)
+    if (sicht === 'board') return w >= 640 ? 'full' : 'compact';
     if (w >= 640 && h >= 380) return 'full';
     return 'compact';
   }
@@ -196,14 +198,14 @@ export class Raster {
   private groesseGeaendert(cb: HTMLElement): void {
     const id = cb.closest<HTMLElement>('.cell')?.dataset.id;
     const z = this.zellen().find(x => x.id === id);
-    if (z && this.dichteFuer(cb) !== this.dichten.get(z.id)) void this.zeichnen(z);
+    if (z && this.dichteFuer(cb, z.sicht) !== this.dichten.get(z.id)) void this.zeichnen(z);
   }
 
   private async zeichnen(z: Zelle): Promise<void> {
     const el = this.flaeche.querySelector<HTMLElement>(`.cell[data-id="${z.id}"]`);
     if (!el) return;
     const cb = el.querySelector<HTMLElement>('.cb')!, info = el.querySelector<HTMLElement>('.info')!;
-    const dichte = this.dichteFuer(cb);
+    const dichte = this.dichteFuer(cb, z.sicht);
     this.dichten.set(z.id, dichte);
     const s = this.sichten.get(z.id);
     if (!s) {
