@@ -66,6 +66,10 @@ export type ExternDto = {
   /** Minuten seit Mitternacht; null = ganztägig */
   start: number | null; ende: number | null; belegt: boolean; ort: string;
   notiz: string; datum: Datum;
+  /** darf Rundblick ihn löschen (Kalender beschreibbar)? */
+  loeschbar: boolean;
+  /** Vorkommen einer Serie – gelöscht wird nur dieses */
+  serie: boolean;
 };
 
 export type Auslastung = { belegt: Minuten; eigene: Minuten; extern: Minuten; nichtBelegend: Minuten; kapazitaet: Minuten };
@@ -168,6 +172,8 @@ export interface Body {
   verknuepfungLoesen(c: { buchungId: Id }): Promise<CommandStatus>;
   /** externen Termin von Hand zu einer Aufgabe machen; die Buchung bleibt mit dem Termin verknüpft */
   aufgabeAusExtern(c: { externId: string }): Promise<CommandStatus>;
+  /** externen Termin in Google/iCloud löschen (bei Serien nur dieses Vorkommen) */
+  externLoeschen(c: { externId: string }): Promise<CommandStatus>;
   // ---- Commands: Board & Planung
   spalteAnlegen(c: { name: string; kategorie: KategorieId }): Promise<CommandStatus>;
   spalteUmbenennen(c: { statusId: Id; name: string }): Promise<CommandStatus>;
@@ -236,7 +242,7 @@ export const BODY_METHODEN: readonly BodyMethode[] = [
   'abgleich', 'abgleichen', 'abgleichVerbinden', 'abgleichTrennen',
   'aktualisierung', 'aktualisierungOrdnerWaehlen', 'aktualisierungOrdnerEntfernen', 'aktualisierungPruefen', 'aktualisierungInstallieren',
   'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeGesehen', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen', 'aufgabeVerschieben',
-  'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung', 'buchungSpiegeln', 'verknuepfungLoesen', 'aufgabeAusExtern',
+  'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung', 'buchungSpiegeln', 'verknuepfungLoesen', 'aufgabeAusExtern', 'externLoeschen',
   'spalteAnlegen', 'spalteUmbenennen', 'kategorieUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen', 'tageszeitFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',
   'notizErfassen', 'notizAendern', 'notizVerwerfen', 'notizAnhangHinzufuegen', 'notizAnhangEntfernen', 'aufgabeAusNotiz', 'logbuch', 'notiz',

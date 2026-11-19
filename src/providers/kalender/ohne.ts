@@ -11,7 +11,7 @@ export function ohneKalender(): Kalenderquelle {
     kalender: async () => [],
     termine: async () => [],
     beiAenderung: () => () => {},
-    terminAnlegen: NICHT, terminAendern: NICHT, terminLoeschen: NICHT, terminLesen: NICHT,
+    terminAnlegen: NICHT, terminAendern: NICHT, terminLoeschen: NICHT, vorkommenLoeschen: NICHT, terminLesen: NICHT,
   };
 }
 

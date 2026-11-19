@@ -3,7 +3,7 @@ import { body } from './body';
 import { auffrischen, offen as schubladeOffen, schliessen as schubladeSchliessen, schliessenWenn as schubladeSchliessenWenn } from './detail';
 import { $, pruefe, tippt, toast } from './dom';
 import { einstellungenOffen, einstellungenSchliessen, einstellungenUmschalten, einstellungenZeichnen } from './einstellungen';
-import { interaktionAnbinden, zweistufigAnbinden } from './interaktion';
+import { interaktionAnbinden, zweistufigAnbinden, zweistufigRegistrieren } from './interaktion';
 import { I } from './icons';
 import { Raster } from './raster';
 import { ausgewaehlteVerschieben } from './sichten/liste';
@@ -51,6 +51,8 @@ addEventListener('drop', e => { if (mitDateien(e)) e.preventDefault(); });
 
 addEventListener('rb-frisch', () => raster.aktualisieren(['aufgaben', 'board']));
 addEventListener('rb-auswahl', () => raster.aktualisieren(['aufgaben', 'board']));
+// externen Termin (Google/iCloud) löschen – aus der Schublade des Termins
+zweistufigRegistrieren('externLoeschen', async id => { if (pruefe(await body.externLoeschen({ externId: id }), 'Termin gelöscht')) schubladeSchliessen(); });
 zweistufigAnbinden((act, id) => { if (act === 'verwerfen' || act === 'stornieren' || act === 'notizVerwerfen') schubladeSchliessenWenn(id); });
 
 document.addEventListener('keydown', e => {

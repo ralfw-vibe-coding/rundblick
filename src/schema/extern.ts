@@ -26,6 +26,8 @@ export type ExternerTermin = {
   notiz?: string;
   /** letzte Änderung beim Anbieter (ISO) – für „jüngere Änderung gewinnt“ */
   geaendert?: string | null;
+  /** Vorkommen einer Terminserie */
+  serie?: boolean;
 };
 
 /** Inhalt eines gespiegelten Termins */

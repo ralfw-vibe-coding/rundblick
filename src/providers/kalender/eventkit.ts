@@ -60,6 +60,7 @@ export function eventKitKalender(helferPfad: string, zeitlimit = { anfrage: 15_0
     terminAnlegen: (kalenderId: string, t: TerminDaten) => frage<ExternerTermin>('anlegen', { kalenderId, ...t }),
     terminAendern: (uid: string, t: TerminDaten) => frage<ExternerTermin | null>('aendern', { uid, ...t }),
     terminLoeschen: (uid: string) => frage<boolean>('loeschen', { uid }),
+    vorkommenLoeschen: (terminId: string) => frage<boolean>('entfernen', { termin: terminId }),
     terminLesen: (uid: string) => frage<ExternerTermin | null>('lesen', { uid }),
     beenden: () => { proc?.kill(); proc = null; },
   };

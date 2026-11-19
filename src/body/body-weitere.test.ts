@@ -411,3 +411,34 @@ describe('Wiederholung über den Body', () => {
     expect((await body.aufgabe({ aufgabeId: a }))!.wiederholung).toBeNull();
   });
 });
+
+describe('Externe Termine löschen', () => {
+  it('löscht ein Vorkommen im Kalender; schreibgeschützt, unbekannt und Fehler werden gemeldet', async () => {
+    const quelle = beispielKalender();
+    const { body } = aufbau(quelle);
+    await body.synchronisieren();
+    const tag = async (d: string) => (await body.zeitraum({ von: d, bis: d })).tage[0]!.extern;
+    const jf = (await tag('2026-11-16')).find(e => e.titel === 'Jour fixe')!;
+    expect(jf).toMatchObject({ loeschbar: true, serie: true });
+    expect(await body.externLoeschen({ externId: jf.id })).toEqual({ ok: true });
+    expect((await tag('2026-11-16')).some(e => e.titel === 'Jour fixe')).toBe(false);
+    expect((await tag('2026-11-23')).some(e => e.titel === 'Jour fixe')).toBe(true); // nur dieses Vorkommen
+    expect(await body.externLoeschen({ externId: jf.id })).toMatchObject({ ok: false, fehler: ['Externer Termin nicht gefunden.'] });
+    const fam = (await tag('2026-12-01')).find(e => e.kalender === 'Familie')!;
+    expect(fam.loeschbar).toBe(false);
+    expect(await body.externLoeschen({ externId: fam.id })).toMatchObject({ ok: false, fehler: ['Dieser Kalender ist schreibgeschützt.'] });
+    const yoga = (await tag('2026-11-17')).find(e => e.titel === 'Yoga')!;
+    quelle.vorkommenLoeschen = async () => false;
+    expect(await body.externLoeschen({ externId: yoga.id })).toMatchObject({ ok: false, fehler: ['Der Termin ist im Kalender nicht mehr da.'] });
+    quelle.vorkommenLoeschen = async () => { throw new Error('kaputt'); };
+    expect(await body.externLoeschen({ externId: yoga.id })).toMatchObject({ ok: false, fehler: [expect.stringContaining('kaputt')] });
+  });
+  it('ohne geladenen Kalender: nicht gefunden; Beispielkalender löscht auch gespiegelte Termine', async () => {
+    const { body } = aufbau();
+    expect(await body.externLoeschen({ externId: 'x' })).toMatchObject({ ok: false });
+    const q = beispielKalender();
+    const e = await q.terminAnlegen('arbeit', { titel: 'T', notiz: '', datum: '2026-11-20', start: '10:00', dauer: 30 });
+    expect(await q.vorkommenLoeschen(e.id)).toBe(true);
+    expect(await q.vorkommenLoeschen('anderes-x')).toBe(false);
+  });
+});

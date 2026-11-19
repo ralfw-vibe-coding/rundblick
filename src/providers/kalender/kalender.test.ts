@@ -31,6 +31,8 @@ describe('EventKit-Kalenderquelle (gegen Ersatz-Helfer)', () => {
     expect(await q.terminAendern('fehlt', t)).toBeNull();
     expect(await q.terminLoeschen('u1')).toBe(true);
     expect(await q.terminLoeschen('fehlt')).toBe(false);
+    expect(await q.vorkommenLoeschen('k@123')).toBe(true);
+    expect(await q.vorkommenLoeschen('fehlt')).toBe(false);
     expect(await q.terminLesen('u1')).toMatchObject({ uid: 'u1' });
     expect(await q.terminLesen('fehlt')).toBeNull();
     q.beenden();

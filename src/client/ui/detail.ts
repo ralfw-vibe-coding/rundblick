@@ -239,6 +239,7 @@ export async function buchungOeffnen(id: string): Promise<void> {
 
 // ---------- Externer Termin (Google/iCloud) ----------
 // Nur lesen; von Hand lässt sich daraus eine Aufgabe machen (die Buchung bleibt mit dem Termin verknüpft).
+// Löschen (zweistufig) entfernt ihn im Google-/iCloud-Kalender – bei Serien nur dieses Vorkommen.
 export async function externOeffnen(externId: string, datum: string): Promise<void> {
   const z = await body.zeitraum({ von: datum, bis: datum });
   const x = z.tage[0]?.extern.find(e => e.id === externId);
@@ -246,7 +247,7 @@ export async function externOeffnen(externId: string, datum: string): Promise<vo
   aktuell = null;
   const s = el();
   const zeit = x.start === null ? 'ganztägig' : `${uhrzeit(x.start)}–${uhrzeit(x.ende!)}`;
-  s.innerHTML = `<div class="dh"><span class="lk gross" style="--kf:${x.farbe}" title="${esc(x.kalender)}">${I.tag}</span><div class="titel-input" style="flex:1">${esc(x.titel)}</div>${knopf('zu', ICON.zu, 'Schließen (Esc)')}</div>
+  s.innerHTML = `<div class="dh"><span class="lk gross" style="--kf:${x.farbe}" title="${esc(x.kalender)}">${I.tag}</span><div class="titel-input" style="flex:1">${esc(x.titel)}</div>${x.loeschbar ? muellKnopf('externLoeschen', x.serie ? `Nur diesen Termin der Serie in „${x.kalender}“ löschen` : `Termin in „${x.kalender}“ löschen`, externId) : ''}${knopf('zu', ICON.zu, 'Schließen (Esc)')}</div>
     <div class="db">
       <div class="fld-grid">
         ${feld('Wann', `<div>${WT[wochentag(x.datum)]} ${kurz(x.datum)} · ${zeit}</div>`)}
@@ -254,7 +255,7 @@ export async function externOeffnen(externId: string, datum: string): Promise<vo
       </div>
       ${x.ort ? feld('Ort', `<div>${esc(x.ort)}</div>`) : ''}
       ${x.notiz ? feld('Notiz', `<div style="white-space:pre-wrap">${esc(x.notiz)}</div>`) : ''}
-      <div class="muted" style="font-size:12px;line-height:1.5">Externer Termin – bearbeitet wird er in der Kalender-App. ${x.start === null ? 'Ganztägige Termine lassen sich nicht übernehmen.' : 'Wird eine Aufgabe daraus, bleibt ihre Buchung mit diesem Termin verknüpft (Änderungen gehen in beide Richtungen).'}</div>
+      <div class="muted" style="font-size:12px;line-height:1.5">Externer Termin – bearbeitet wird er in der Kalender-App${x.loeschbar ? `; der Mülleimer löscht ihn dort${x.serie ? ' (nur diesen Termin der Serie)' : ''}` : ' (Kalender ist schreibgeschützt)'}. ${x.start === null ? 'Ganztägige Termine lassen sich nicht übernehmen.' : 'Wird eine Aufgabe daraus, bleibt ihre Buchung mit diesem Termin verknüpft (Änderungen gehen in beide Richtungen).'}</div>
     </div>
     ${x.start === null ? '' : `<div class="df"><button class="btn primary" data-d="ausExtern">${I.zurAufgabe} Aufgabe daraus machen</button></div>`}`;
   s.onchange = null;

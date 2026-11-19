@@ -27,6 +27,7 @@ export type BeispielKalender = Kalenderquelle & {
 export function beispielKalender(zugriff: KalenderZugriff = 'erlaubt', jetzt: () => string = () => new Date().toISOString()): BeispielKalender {
   const abos = new Set<() => void>();
   const gespiegelt = new Map<string, ExternerTermin>();
+  const geloescht = new Set<string>();
   let n = 0;
   const als = (kalenderId: string, uid: string, t: TerminDaten, geaendert: string): ExternerTermin =>
     ({ id: `${uid}@${t.datum}`, kalenderId, titel: t.titel, datum: t.datum, start: t.start, dauer: t.dauer, ort: '', uid, notiz: t.notiz, geaendert });
@@ -40,7 +41,7 @@ export function beispielKalender(zugriff: KalenderZugriff = 'erlaubt', jetzt: ()
         const w = wt(d);
         const t = (kalenderId: string, titel: string, start: string | null, dauer: number) => {
           const id = `${kalenderId}-${titel}-${d}`;
-          r.push({ id, kalenderId, titel, datum: d, start, dauer, ort: '', uid: id, notiz: '', geaendert: null });
+          if (!geloescht.has(id)) r.push({ id, kalenderId, titel, datum: d, start, dauer, ort: '', uid: id, notiz: '', geaendert: null, serie: true });
         };
         if (w === 0) t('arbeit', 'Jour fixe', '09:30', 30);
         if (w === 2) t('arbeit', 'Weekly', '11:00', 60);
@@ -67,6 +68,13 @@ export function beispielKalender(zugriff: KalenderZugriff = 'erlaubt', jetzt: ()
       return e;
     },
     terminLoeschen: async uid => gespiegelt.delete(uid),
+    vorkommenLoeschen: async terminId => {
+      const g = [...gespiegelt.values()].find(e => e.id === terminId);
+      if (g) return gespiegelt.delete(g.uid!);
+      if (geloescht.has(terminId) || !/^(arbeit|privat|familie)-/.test(terminId)) return false;
+      geloescht.add(terminId);
+      return true;
+    },
     terminLesen: async uid => gespiegelt.get(uid) ?? null,
     extern: {
       aendern: (uid, x, geaendert) => { const alt = gespiegelt.get(uid); if (alt) gespiegelt.set(uid, als(alt.kalenderId, uid, { ...inhalt(alt), ...x }, geaendert)); },

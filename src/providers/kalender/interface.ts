@@ -17,6 +17,8 @@ export interface Kalenderquelle {
   terminAendern(uid: string, t: TerminDaten): Promise<ExternerTermin | null>;
   /** löscht den Termin; false = war nicht (mehr) da */
   terminLoeschen(uid: string): Promise<boolean>;
+  /** löscht genau dieses Vorkommen (Termin-id aus termine(); bei Serien nur diesen Termin); false = nicht (mehr) gefunden */
+  vorkommenLoeschen(terminId: string): Promise<boolean>;
   /** liest einen Termin per UID (auch außerhalb des zwischengespeicherten Zeitraums); null = gelöscht */
   terminLesen(uid: string): Promise<ExternerTermin | null>;
 }

@@ -42,6 +42,7 @@ export function zeitraum(x: ZeitraumEingabe): Zeitraum {
       return {
         id: t.id, kalender: k?.name ?? '?', konto: k?.konto ?? '', farbe: k?.farbe ?? '#888888', titel: t.titel,
         start: s, ende: s === null ? null : s + t.dauer, belegt: einst(t.kalenderId).belegt, ort: t.ort, notiz: t.notiz ?? '', datum: t.datum,
+        loeschbar: k?.schreibbar !== false, serie: t.serie === true,
       };
     }).sort((a, b) => (a.start ?? -1) - (b.start ?? -1));
     tage.push({

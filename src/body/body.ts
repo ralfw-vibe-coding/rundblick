@@ -240,6 +240,23 @@ export class RundblickBody implements Body {
     });
     return v.ok ? r : v;
   }
+  async externLoeschen(c: { externId: string }): Promise<CommandStatus> {
+    const st = this.x.cache.stand();
+    const e = st.von && st.bis ? this.x.cache.termine(st.von, st.bis).find(t => t.id === c.externId) : undefined;
+    if (!e) return { ok: false, fehler: ['Externer Termin nicht gefunden.'] };
+    const kalender = this.x.cache.kalender();
+    if (kalender.find(k => k.id === e.kalenderId)?.schreibbar === false) return { ok: false, fehler: ['Dieser Kalender ist schreibgeschützt.'] };
+    try {
+      if (!await this.x.kalender.vorkommenLoeschen(e.id)) return { ok: false, fehler: ['Der Termin ist im Kalender nicht mehr da.'] };
+    } catch (f) {
+      return { ok: false, fehler: [`Löschen im Kalender fehlgeschlagen: ${(f as Error).message}`] };
+    }
+    // sofort aus dem Zwischenspeicher nehmen, dann frisch laden
+    this.x.cache.ersetzen(st.von!, st.bis!, kalender, this.x.cache.termine(st.von!, st.bis!).filter(t => t.id !== e.id));
+    this.melde(['kalender']);
+    void this.laden(st.von!, st.bis!);
+    return { ok: true };
+  }
   async aufgabeAusBuchung(c: Parameters<Body['aufgabeAusBuchung']>[0]) {
     const aufgabeId = this.x.ids.neu();
     return status(this.x.domain.aufgabeAusBuchung({ ...c, aufgabeId }), { aufgabeId });

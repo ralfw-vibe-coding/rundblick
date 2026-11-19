@@ -7,6 +7,7 @@
 //   → {"id":5,"op":"aendern","uid":"…", titel, notiz, datum, start, dauer}   ← Termin oder null (nicht gefunden)
 //   → {"id":6,"op":"loeschen","uid":"…"}                                       ← true/false
 //   → {"id":7,"op":"lesen","uid":"…"}                                          ← Termin oder null
+//   → {"id":8,"op":"entfernen","termin":"<id aus termine>"}                     ← true/false (nur dieses Vorkommen, auch in Serien)
 //   ← {"ereignis":"geaendert"}   (wenn macOS Kalenderänderungen meldet)
 // Termine tragen „uid“ (Kennung beim Anbieter, geräteübergreifend gleich), „notiz“ und „geaendert“ (ISO-Zeit).
 import EventKit
@@ -53,7 +54,7 @@ func eintrag(_ e: EKEvent) -> [String: Any] {
   return ["id": "\(e.calendarItemIdentifier)@\(Int(s.timeIntervalSince1970))", "kalenderId": e.calendar.calendarIdentifier, "titel": e.title ?? "",
           "datum": tagFormat.string(from: s), "start": e.isAllDay ? NSNull() : zeitFormat.string(from: s) as Any,
           "dauer": e.isAllDay ? 0 : max(0, Int(en.timeIntervalSince(s) / 60)), "ort": e.location ?? "",
-          "uid": uid(e), "notiz": e.notes ?? "", "geaendert": e.lastModifiedDate.map { isoFormat.string(from: $0) } ?? NSNull()]
+          "uid": uid(e), "notiz": e.notes ?? "", "geaendert": e.lastModifiedDate.map { isoFormat.string(from: $0) } ?? NSNull(), "serie": e.hasRecurrenceRules]
 }
 
 /** Setzt Titel, Notiz, Beginn und Dauer (Termin mit Uhrzeit) */
@@ -98,14 +99,14 @@ func termine(von: String, bis: String) -> [[String: Any]] {
         // ganztägig: ein Eintrag pro Tag
         var t = Calendar.current.startOfDay(for: s)
         while t < en && t < ende {
-          if t >= start { ergebnis.append(["id": "\(id)#\(tagFormat.string(from: t))", "kalenderId": e.calendar.calendarIdentifier, "titel": e.title ?? "", "datum": tagFormat.string(from: t), "start": NSNull(), "dauer": 0, "ort": e.location ?? ""]) }
+          if t >= start { ergebnis.append(["id": "\(id)#\(tagFormat.string(from: t))", "kalenderId": e.calendar.calendarIdentifier, "titel": e.title ?? "", "datum": tagFormat.string(from: t), "start": NSNull(), "dauer": 0, "ort": e.location ?? "", "serie": e.hasRecurrenceRules]) }
           t = Calendar.current.date(byAdding: .day, value: 1, to: t)!
         }
       } else {
         let tagEnde = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: s))!
         let dauer = max(0, Int(min(en, tagEnde).timeIntervalSince(s) / 60))
         ergebnis.append(["id": id, "kalenderId": e.calendar.calendarIdentifier, "titel": e.title ?? "", "datum": tagFormat.string(from: s), "start": zeitFormat.string(from: s), "dauer": dauer, "ort": e.location ?? "",
-                         "uid": uid(e), "notiz": e.notes ?? "", "geaendert": e.lastModifiedDate.map { isoFormat.string(from: $0) } ?? NSNull()])
+                         "uid": uid(e), "notiz": e.notes ?? "", "geaendert": e.lastModifiedDate.map { isoFormat.string(from: $0) } ?? NSNull(), "serie": e.hasRecurrenceRules])
       }
     }
     a = b
@@ -150,6 +151,16 @@ func bearbeite(_ zeile: String) {
     catch { sende(["id": id, "ok": false, "fehler": error.localizedDescription]) }
   case "loeschen":
     guard let u = anfrage["uid"] as? String, let e = finde(u) else { sende(["id": id, "ok": true, "daten": false]); return }
+    do { try store.remove(e, span: .thisEvent, commit: true); sende(["id": id, "ok": true, "daten": true]) }
+    catch { sende(["id": id, "ok": false, "fehler": error.localizedDescription]) }
+  case "entfernen":
+    // Termin-Kennung aus „termine“: <calendarItemIdentifier>@<Beginn in Sekunden>[#Tag] – genau dieses Vorkommen löschen
+    guard let roh = (anfrage["termin"] as? String)?.split(separator: "#").first, let at = roh.lastIndex(of: "@"),
+          let sek = Double(roh[roh.index(after: at)...]) else { sende(["id": id, "ok": true, "daten": false]); return }
+    let kennung = String(roh[..<at]), beginn = Date(timeIntervalSince1970: sek)
+    let p = store.predicateForEvents(withStart: beginn.addingTimeInterval(-86400), end: beginn.addingTimeInterval(86400), calendars: nil)
+    guard let e = store.events(matching: p).first(where: { $0.calendarItemIdentifier == kennung && Int($0.startDate.timeIntervalSince1970) == Int(sek) })
+    else { sende(["id": id, "ok": true, "daten": false]); return }
     do { try store.remove(e, span: .thisEvent, commit: true); sende(["id": id, "ok": true, "daten": true]) }
     catch { sende(["id": id, "ok": false, "fehler": error.localizedDescription]) }
   case "lesen":
