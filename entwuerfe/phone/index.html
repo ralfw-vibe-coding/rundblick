@@ -366,6 +366,12 @@ function app(bs, start) {
     // „Neu“: frisch erfasste Aufgaben stehen oben (zusätzlich in ihrer Rubrik), bis man sie öffnet oder wegwischt
     neu: [], abmeldenFragen: false, neueVersion: start === 'logbuch' };
   z.neu = aufgaben.filter(a => a.titel.startsWith('Geschenk')).map(a => a.id);
+  // Klappzustand (Listengruppen, Board-Spalten, „Abgeschlossen“) bleibt über Sichtwechsel und Neustarts erhalten:
+  // lokaler UI-Zustand des Geräts (localStorage), kein Event. Im Entwurf je Telefon ein eigener Schlüssel.
+  const UI_SCHLUESSEL = 'rundblick-phone-ui-' + start;
+  try { const g = JSON.parse(localStorage.getItem(UI_SCHLUESSEL) || 'null');
+    if (g) { z.offen = new Set(g.offen); z.spalteZu = new Set(g.spalteZu); z.fertigOffen = new Set(g.fertigOffen); } } catch {}
+  const uiMerken = () => { try { localStorage.setItem(UI_SCHLUESSEL, JSON.stringify({ offen: [...z.offen], spalteZu: [...z.spalteZu], fertigOffen: [...z.fertigOffen] })); } catch {} };
   let ln = 0; const L = (tag, zeit, t, art, unter = '', aufgabe = null) => ({ id: 'l' + (++ln), tag, zeit, t, art, unter,
     aufgabe: aufgabe ?? (art === 'aufgabe' ? aufgaben.find(a => a.titel === t)?.id ?? null : null) });
   const log = [
@@ -510,6 +516,7 @@ function app(bs, start) {
     inh.addEventListener('wheel', e => { if (inh.scrollTop <= 0 && e.deltaY < -40) { z.suche = true; zeichnen(); haupt.querySelector('[data-suche]')?.focus(); } }, { passive: true });
   }
   function zeichnen() {
+    uiMerken();
     haupt.innerHTML = z.sicht === 'liste' ? liste() : z.sicht === 'board' ? board() : logbuch();
     bs.querySelectorAll('.reiter button').forEach(b => b.classList.toggle('an', b.dataset.sicht === z.sicht));
     lucide.createIcons({ root: bs });
@@ -697,7 +704,7 @@ function app(bs, start) {
       const text = inp.value.trim(); const tags = [...text.matchAll(/#(\S+)/g)].map(m => m[1]); const person = (text.match(/@(\S+)/) || [])[1] || '';
       const fr = /!heute/.test(text) ? tag(0) : /!morgen/.test(text) ? tag(1) : /!fr/.test(text) ? tag((5 - HEUTE.getDay() + 7) % 7) : null;
       const a = { id: 'n' + Date.now(), titel: text.replace(/[#@!]\S+/g, '').trim(), tags, person, ort: '', frist: fr, wv: null, status: null, done: false, notiz: '' };
-      aufgaben.unshift(a); z.neu.unshift(a.id); z.frisch = a.id; z.offen.add(gruppeVon(a)); inp.value = ''; toast('Erfasst – wird abgeglichen'); zeichnen();
+      aufgaben.unshift(a); z.neu.unshift(a.id); z.frisch = a.id; z.offen.add('neu'); inp.value = ''; toast('Erfasst – wird abgeglichen'); zeichnen();
     } else if (inp.closest('.notizfeld')) {
       log.unshift(L('Heute', new Date().toTimeString().slice(0, 5), inp.value.trim(), 'notiz')); inp.value = ''; zeichnen();
     }
