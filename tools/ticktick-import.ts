@@ -4,7 +4,8 @@
 // events/ticktick-import.jsonl – nichts Bestehendes wird verändert; Rückgängig = diese Datei löschen.
 // Abbildung: nur offene Aufgaben (Status 0); Fälligkeit → Frist (Datum in der Zeitzone der Aufgabe,
 // TickTick exportiert in UTC); Inhalt → Notiz, Checklisten (▫/▪) → „- [ ]“/„- [x]“; Tags; Wiederholung
-// (RRULE FREQ/INTERVAL) → Wiederholung ab Frist. Importierte Aufgaben stehen nicht unter „Neu“.
+// (RRULE FREQ/INTERVAL) → Wiederholung ab Frist. Importierte Aufgaben stehen nicht unter „Neu“
+// und tragen den Tag #ticktick (Nutzer 19.11.2026), damit man sie findet.
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -70,7 +71,7 @@ async function main(): Promise<void> {
     const hinweise = [Number(z.Priority) >= 3 ? 'TickTick: hohe Priorität' : '', w || !z.Repeat ? '' : `TickTick-Wiederholung: ${z.Repeat}`].filter(Boolean);
     return {
       titel: z.Title!.trim(), beschreibung: [notiz(z.Content ?? '', z.Kind === 'CHECKLIST'), ...hinweise].filter(Boolean).join('\n\n'),
-      tags: (z.Tags ?? '').split(',').map(t => t.trim()).filter(Boolean), frist,
+      tags: ['ticktick', ...(z.Tags ?? '').split(',').map(t => t.trim()).filter(Boolean)], frist,
       ...(w && frist ? { wiederholung: w } : {}), neu: false,
     };
   });
