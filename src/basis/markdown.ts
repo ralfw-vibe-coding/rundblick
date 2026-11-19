@@ -1,7 +1,13 @@
 // Kleiner, sicherer Markdown-Renderer für Notizen (pure). Unterstützt:
-//   **fett**, *kursiv* / _kursiv_, ~~durchgestrichen~~, `Code`, [Link](https://…), nackte URLs,
+//   **fett**, *kursiv* / _kursiv_, ~~durchgestrichen~~, `Code`, [Link](https://…), nackte URLs (Erkennungszeichen „://“,
+//   jedes Schema außer javascript/data/vbscript – z. B. obsidian://, things://),
 //   - Listen / * Listen, 1. nummerierte Listen, - [ ] / - [x] Checklisten (abhakbar), # Überschriften.
 // HTML im Text wird immer maskiert. Checklisten-Einträge tragen data-zeile = Zeilennummer im Quelltext.
+
+// Schema mit „://“; gefährliche Schemata ausgeschlossen
+const SCHEMA = String.raw`(?!(?:javascript|data|vbscript):)[a-zA-Z][a-zA-Z0-9+.-]*:\/\/`;
+const MD_LINK = new RegExp(String.raw`\[([^\]]+)\]\(((?:${SCHEMA}|mailto:)[^\s)]+)\)`, 'gi');
+const NACKT = new RegExp(String.raw`(^|[\s(])(${SCHEMA}[^\s<)]*[^\s<).,;:!?])`, 'gi');
 
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -10,8 +16,8 @@ export function inline(text: string): string {
   let s = esc(text).replace(/`([^`]+)`/g, (_m, c: string) => `\u0000${codes.push(c) - 1}\u0000`);
   const links: string[] = [];
   const merke = (html: string) => `\u0001${links.push(html) - 1}\u0001`;
-  s = s.replace(/\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)/g, (_m, t: string, u: string) => merke(`<a href="${u}" target="_blank" rel="noopener">${t}</a>`));
-  s = s.replace(/(^|[\s(])((?:https?:\/\/)[^\s<)]*[^\s<).,;:!?])/g, (_m, v: string, u: string) => v + merke(`<a href="${u}" target="_blank" rel="noopener">${u}</a>`));
+  s = s.replace(MD_LINK, (_m, t: string, u: string) => merke(`<a href="${u}" target="_blank" rel="noopener">${t}</a>`));
+  s = s.replace(NACKT, (_m, v: string, u: string) => v + merke(`<a href="${u}" target="_blank" rel="noopener">${u}</a>`));
   s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^*])\*(?!\s)(.+?)\*(?!\*)/g, '$1<em>$2</em>')
     .replace(/(^|[\s(])_(?!\s)(.+?)_(?=$|[\s.,;:!?)])/g, '$1<em>$2</em>')

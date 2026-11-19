@@ -12,6 +12,15 @@ describe('Markdown für Notizen', () => {
     expect(inline('[Mail](mailto:x@y.de)')).toContain('href="mailto:x@y.de"');
     expect(inline('[böse](javascript:alert(1))')).not.toContain('<a');
   });
+  it('Links: alles mit „://“ ist klickbar, auch eigene Schemata; gefährliche nicht', () => {
+    expect(inline('öffne obsidian://open?vault=X&file=Y jetzt')).toContain('<a href="obsidian://open?vault=X&amp;file=Y"');
+    expect(inline('[Aufgabe](things:///show?id=1)')).toContain('href="things:///show?id=1"');
+    expect(inline('ftp://srv.de/datei.zip')).toContain('href="ftp://srv.de/datei.zip"');
+    expect(inline('javascript://%0Aalert(1)')).not.toContain('<a');
+    expect(inline('[x](JavaScript://%0Aalert(1))')).not.toContain('<a');
+    expect(inline('data://text/html,x')).not.toContain('<a');
+    expect(inline('kein link: a:b oder www.x.de')).not.toContain('<a');
+  });
   it('maskiert HTML', () => {
     expect(markdownHtml('<script>alert(1)</script>')).toBe('<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>');
   });
