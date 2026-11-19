@@ -320,3 +320,5 @@
   .toast.zeigen { opacity: 1; }
   .geist .aktionen { display: none; }
   .blatt:not(.offen) { transform: translateY(calc(100% + 60px)); }
+  .zahnrad.update { background: var(--own); color: #fff; margin-left: 2px; }
+  .zahnrad.update svg.lucide { width: 20px; height: 20px; }

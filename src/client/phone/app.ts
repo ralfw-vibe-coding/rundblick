@@ -98,7 +98,9 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
             : ['', I.wolkeOk, 'abgeglichen'];
     return `<span class="wolke ${art}" data-wolke title="${esc(titel)}">${icon}</span>`;
   };
-  const kopf = (t: string) => `<div class="kopf"><span class="logo"></span><span class="titel">${t}</span>${wolke()}<span class="zahnrad" data-einst title="Einstellungen">${I.einstellungen}</span></div>`;
+  // Update-Knopf rechts neben dem Zahnrad – nur, wenn eine neue Version bereitliegt (hervorgehoben); Tipp = neu laden
+  const updateKnopf = () => (pwa.neueVersion() ? `<span class="zahnrad update" data-neu-laden title="Neue Version bereit – neu laden">${I.update}</span>` : '');
+  const kopf = (t: string) => `<div class="kopf"><span class="logo"></span><span class="titel">${t}</span>${wolke()}<span class="zahnrad" data-einst title="Einstellungen">${I.einstellungen}</span>${updateKnopf()}</div>`;
   const suche = () => `<div class="suche ${z.suche ? 'offen' : ''}"><div class="feld2">${I.suche}<input data-suche placeholder="Suchen … Titel, #tag, @person" value="${esc(z.filter)}"></div><button data-suche-zu>Abbrechen</button></div>`;
 
   // ---------------- Sichten ----------------
@@ -665,7 +667,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     };
     neuUhr = setTimeout(() => void verarbeiten(), 60);
   });
-  pwa.beiNeuerVersion(() => { if (einstOffen) void einstellungen(); });
+  pwa.beiNeuerVersion(() => { void zeichnen(); if (einstOffen) void einstellungen(); });
 
   // Tageswechsel (App bleibt im Hintergrund offen)
   let tag = new Date().toDateString();
