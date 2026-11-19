@@ -42,7 +42,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - Neue Aufgaben: 5 s hervorgehoben und in den Blick gerollt (`frisch.ts`).
 - Fälligkeit (Raute + Datum) steht **direkt hinter dem Titel**.
 - Mülleimer erscheint beim Überfahren einer Zeile.
-- Die in der Schublade geöffnete Aufgabe bleibt in Liste/Board **markiert und sichtbar**, auch wenn sie den Abschnitt wechselt.
+- Die in der Schublade geöffnete Aufgabe bleibt in Liste/Board **markiert und sichtbar**, auch wenn sie den Abschnitt wechselt – **außer beim Abschließen**: dann wird sie still weggeräumt, „Abgeschlossen“ klappt nicht auf (Liste und Board; Nutzer 19.11.2026).
 
 **Kanban-Board**
 - Ob alle Spalten (voll) oder eine Spalte je Kategorie (kompakt) gezeigt werden, hängt beim Kanban **nur von der Breite** ab (ab 640 px voll); die Höhe kürzt nur die Spalten (Nutzer 19.11.2026). In der Sichtauswahl heißt die Sicht nur „Kanban“.

@@ -57,9 +57,10 @@ export class ListenSicht implements Sicht {
       { k: 'fertig', name: 'Abgeschlossen', aufgaben: l.abgeschlossen },
       ...(this.z.archiv ? [{ k: 'archiv', name: 'Archiv', aufgaben: l.archiv }] : []),
     ];
-    // Ein frisch angelegter Eintrag in einem zugeklappten Abschnitt klappt diesen auf
+    // Ein frisch angelegter oder geöffneter Eintrag in einem zugeklappten Abschnitt klappt diesen auf –
+    // außer „Abgeschlossen“: Abhaken räumt still weg (Nutzer 19.11.2026)
     const gewaehlt = ausgewaehlt();
-    for (const a of abschnitte) if (a.aufgaben.some(x => istFrisch(x.id) || x.id === gewaehlt) && this.istZu(a.k)) this.umschalten(a.k);
+    for (const a of abschnitte) if (a.k !== 'fertig' && a.aufgaben.some(x => istFrisch(x.id) || x.id === gewaehlt) && this.istZu(a.k)) this.umschalten(a.k);
 
     let h = '';
     for (const a of abschnitte) {

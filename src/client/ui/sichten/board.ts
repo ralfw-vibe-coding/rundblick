@@ -42,14 +42,14 @@ export class BoardSicht implements Sicht {
     if (dichte === 'mini') { el.innerHTML = mini(b); return; }
     if (b.kategorien.every(k => !k.spalten.length)) { el.innerHTML = `<div class="leer">Keine Board-Spalten. ${I.einstellungen} Einstellungen → Board-Spalten.</div>`; return; }
 
-    // Die geöffnete Aufgabe muss sichtbar sein: ihre Kategorie, Spalte und ggf. „Abgeschlossen“ aufklappen
+    // Die geöffnete Aufgabe muss sichtbar sein: ihre Kategorie, Spalte und ggf. „Zurückgestellt“ aufklappen.
+    // Abgeschlossene werden still weggeräumt – nichts klappt auf (Nutzer 19.11.2026).
     for (const k of b.kategorien) for (const s of k.spalten) {
       const a = s.karten.find(x => x.id === gewaehlt);
-      if (!a) continue;
+      if (!a || a.abgeschlossen) continue;
       this.schalten('zu', k.id, false); this.schalten('zu', s.id, false);
       const schl = dichte === 'compact' ? k.id : s.id;
-      if (a.abgeschlossen) this.schalten('abgOffen', schl, true);
-      else if (a.zurueckgestellt) this.schalten('abgOffen', `zur:${schl}`, true);
+      if (a.zurueckgestellt) this.schalten('abgOffen', `zur:${schl}`, true);
     }
 
     const stapel = (schluessel: string, karten: AufgabeZeile[], voll: boolean, mitStatus: boolean) => {
