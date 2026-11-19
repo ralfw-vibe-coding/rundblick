@@ -10,6 +10,7 @@ import { dropbox } from '../providers/dropbox/dropbox';
 import { DropboxAnmeldung, DropboxOffline, type Dropbox } from '../providers/dropbox/interface';
 import { lokaleEinstellungen } from '../providers/einstellungen/lokal';
 import { FernEventStore, OfflineFehler, type Fernablage } from '../providers/eventstore/fern';
+import { zuNeueAnzahl } from '../providers/eventstore/format';
 import { ulidGenerator } from '../providers/ids/ulid';
 import { ohneKalender, speicherKalenderCache } from '../providers/kalender/ohne';
 import { systemUhr } from '../providers/uhr/system';
@@ -135,7 +136,7 @@ async function starten(): Promise<void> {
   const domain = new Domain(store);
   const body = new RundblickBody({
     domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender: ohneKalender(), cache: speicherKalenderCache(),
-    anhaenge, info: { datenordner: 'Dropbox · Apps/Rundblick', geraet }, abgleich,
+    anhaenge, info: { datenordner: 'Dropbox · Apps/Rundblick', geraet }, abgleich, zuNeueEvents: zuNeueAnzahl,
   });
 
   phoneStarten(body, wurzel, pwaAnbinden());

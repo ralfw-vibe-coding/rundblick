@@ -8,6 +8,8 @@ export type AufgabeZ = {
   id: Id; titel: string; beschreibung: string; ort: string; verantwortlich: string; tags: string[];
   frist: Datum | null; wiedervorlage: Datum | null; status: Id | null;
   abgeschlossen: boolean; verworfen: boolean; archiviert: boolean;
+  /** frisch erfasst und noch auf keinem Gerät gesehen (Rubrik „Neu“) */
+  neu: boolean;
   /** Bildanhänge der Notiz, in Reihenfolge des Hinzufügens */
   anhaenge: AnhangZ[];
   /** Rang für die manuelle Reihenfolge (kleiner = weiter oben); neue Aufgaben kommen nach oben */
@@ -53,11 +55,11 @@ export type SpalteZ = { id: Id; name: string; kategorie: KategorieId; rang: numb
 export type PlanungZ = { kapazitaet: Minuten[]; standarddauer: Minuten };
 export const PLANUNG_STANDARD: PlanungZ = { kapazitaet: [360, 360, 360, 360, 300, 0, 0], standarddauer: 60 };
 
-const NEU = { abgeschlossen: false, verworfen: false, archiviert: false, rang: 0, abgeschlossenAm: null, abgehakt: [] } as const;
+const NEU = { abgeschlossen: false, verworfen: false, archiviert: false, neu: false, rang: 0, abgeschlossenAm: null, abgehakt: [] } as const;
 
 export function aufgabeEntwickeln(z: AufgabeZ | null, e: ZeitEvent): AufgabeZ | null {
   switch (e.typ) {
-    case 'AufgabeErfasst': return { ...e.daten, ...NEU, id: e.daten.aufgabeId, tags: [...e.daten.tags], anhaenge: [], abgehakt: [] };
+    case 'AufgabeErfasst': { const { neu, ...d } = e.daten; return { ...d, ...NEU, neu: neu === true, id: e.daten.aufgabeId, tags: [...e.daten.tags], anhaenge: [], abgehakt: [] }; }
     case 'AufgabeAusBuchungErstellt': return {
       ...NEU, id: e.daten.aufgabeId, titel: e.daten.titel, beschreibung: e.daten.beschreibung, ort: '', verantwortlich: '', tags: [],
       frist: null, wiedervorlage: null, status: e.daten.status, anhaenge: [], abgehakt: [],
@@ -85,6 +87,7 @@ export function aufgabeEntwickeln(z: AufgabeZ | null, e: ZeitEvent): AufgabeZ | 
     case 'AufgabeWiedereroeffnet': return { ...z, abgeschlossen: false, abgeschlossenAm: null };
     case 'AufgabeVerworfen': return { ...z, verworfen: true };
     case 'AufgabeArchiviert': return { ...z, archiviert: true };
+    case 'AufgabeGesehen': return { ...z, neu: false };
     case 'AufgabeAusArchivGeholt': return { ...z, archiviert: false };
     case 'AnhangHinzugefuegt': return { ...z, anhaenge: [...z.anhaenge, { id: e.daten.anhangId, name: e.daten.name, typ: e.daten.typ, groesse: e.daten.groesse }] };
     case 'AufgabeEinsortiert': return { ...z, rang: e.daten.rang };

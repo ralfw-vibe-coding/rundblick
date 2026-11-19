@@ -20,6 +20,7 @@ export interface DomainInterface {
   aufgabeWiedereroeffnen(c: { aufgabeId: Id }): Ergebnis;
   aufgabeVerwerfen(c: { aufgabeId: Id }): Ergebnis;
   aufgabeArchivieren(c: { aufgabeId: Id }): Ergebnis;
+  aufgabeGesehen(c: { aufgabeId: Id }): Ergebnis;
   aufgabeAusArchivHolen(c: { aufgabeId: Id }): Ergebnis;
   anhangHinzufuegen(c: { aufgabeId: Id; anhangId: Id; name: string; typ: string; groesse: number }): Ergebnis;
   anhangEntfernen(c: { aufgabeId: Id; anhangId: Id }): Ergebnis;

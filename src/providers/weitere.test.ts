@@ -6,6 +6,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { dateiAnhaenge, speicherAnhaenge } from './anhaenge/datei';
 import { jsonEinstellungen, speicherEinstellungen } from './einstellungen/json';
 import { hlcFormat, stromVergleich } from './eventstore/hlc';
+import { zuNeueAnzahl } from './eventstore/format';
 import { JsonlEventStore } from './eventstore/jsonl';
 import { ulid, ulidGenerator, zaehlerIds } from './ids/ulid';
 import { datumLokal, festeUhr, systemUhr } from './uhr/system';
@@ -126,5 +127,8 @@ describe('JSONL-Store: Ordner beobachten', () => {
     expect(new JsonlEventStore(join(ordner, 'daten3'), '***', () => 'y', () => new Date()).pfad.endsWith('geraet.jsonl')).toBe(true);
     writeFileSync(join(o, 'events', 'zukunft.jsonl'), JSON.stringify({ typ: 'FristEntfernt', tags: [], daten: { aufgabeId: 'a' }, id: 'z', zeit: '', meta: { schema: 99, geraet: 'z', hlc: hlcFormat(1, 0) } }) + '\n');
     expect(new JsonlEventStore(o, 'Mac von Ralf', () => 'x', () => new Date()).lesen().events).toHaveLength(0);
+    // … aber gezählt, damit die App „bitte aktualisieren“ melden kann (je Event-ID einmal)
+    new JsonlEventStore(o, 'Mac von Ralf', () => 'x', () => new Date());
+    expect(zuNeueAnzahl()).toBe(1);
   });
 });

@@ -283,7 +283,7 @@ async function main(): Promise<void> {
   body.einrichten();
   const heute = systemUhr.heute();
   const neu = async (x: AufgabeEingabe) => {
-    const r = await body.aufgabeErfassen(x);
+    const r = await body.aufgabeErfassen({ neu: false, ...x }); // Testdaten fluten „Neu“ nicht
     if (!r.ok) throw new Error(`${x.titel}: ${r.fehler.join(' ')}`);
     return r.ids!.aufgabeId!;
   };

@@ -13,6 +13,7 @@ import { ipcAnbinden } from '../client/adapter/ipc';
 import { Domain } from '../domain/domain';
 import { dateiAnhaenge } from '../providers/anhaenge/datei';
 import { jsonEinstellungen } from '../providers/einstellungen/json';
+import { zuNeueAnzahl } from '../providers/eventstore/format';
 import { JsonlEventStore } from '../providers/eventstore/jsonl';
 import { ulidGenerator } from '../providers/ids/ulid';
 import { kalenderCache } from '../providers/kalender/cache';
@@ -68,7 +69,7 @@ async function starte(): Promise<void> {
   // ---- Domain & Body
   const domain = new Domain(store);
   const aktualisierer = aktualisiererErzeugen();
-  const body = new RundblickBody({ domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender, cache, anhaenge: dateiAnhaenge(datenordner), info: { datenordner, geraet }, aktualisierer });
+  const body = new RundblickBody({ domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender, cache, anhaenge: dateiAnhaenge(datenordner), info: { datenordner, geraet }, aktualisierer, zuNeueEvents: zuNeueAnzahl });
   body.einrichten();
   if (process.env.RB_DEMO === '1' && store.lesen().events.length <= 7) await demoDatenAnlegen(body, systemUhr.heute());
 

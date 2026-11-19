@@ -11,7 +11,10 @@ export type DomainEvent =
   | E<'AufgabeErfasst', {
       aufgabeId: Id; titel: string; beschreibung: string; ort: string; verantwortlich: string;
       tags: string[]; frist: Datum | null; wiedervorlage: Datum | null; status: Id | null;
+      /** frisch erfasst → steht unter „Neu“, bis sie gesehen wird; fehlt das Feld (ältere Events), gilt sie als gesehen */
+      neu?: boolean;
     }>
+  | E<'AufgabeGesehen', { aufgabeId: Id }>
   | E<'AufgabeUmbenannt', { aufgabeId: Id; titel: string }>
   | E<'BeschreibungGeaendert', { aufgabeId: Id; beschreibung: string }>
   | E<'OrtGeaendert', { aufgabeId: Id; ort: string }>

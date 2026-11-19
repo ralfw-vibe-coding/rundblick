@@ -6,3 +6,6 @@ helfer/bin/
 coverage/
 dist/
 .netlify/
+
+# private Exporte des Nutzers
+requirements/TickTick-*.csv

@@ -30,6 +30,8 @@ export class ListenSicht implements Sicht {
       inp.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { this.z.filter = inp.value; void this.render(el, dichte); }, 120); });
       el.querySelector<HTMLElement>('.archivbtn')!.onclick = () => { this.z.archiv = !this.z.archiv; void this.render(el, dichte); };
       el.addEventListener('click', e => {
+        const gs = (e.target as HTMLElement).closest<HTMLElement>('[data-gesehen]');
+        if (gs) { e.stopPropagation(); void body.aufgabeGesehen({ aufgabeId: gs.dataset.gesehen! }); return; }
         const g = (e.target as HTMLElement).closest<HTMLElement>('[data-grp]');
         if (g) { this.umschalten(g.dataset.grp!); void this.render(el, dichte); }
       });
@@ -37,10 +39,19 @@ export class ListenSicht implements Sicht {
     const voll = dichte === 'full';
     el.querySelector('.list')!.className = `list ${dichte}`;
     el.querySelector('.archivbtn')!.classList.toggle('on', !!this.z.archiv);
-    const l = await body.liste({ filter: this.z.filter ?? '' });
+    // Aufgaben mit Board-Status stehen auf dem Board, nicht hier (Nutzer 19.11.2026)
+    const l = await body.liste({ filter: this.z.filter ?? '', ohneStatus: true });
 
+    // Gruppen wie am Phone: Neu · Fällig (überfällig + heute) · Wird fällig · Ohne Frist · Zurückgestellt · Abgeschlossen
+    // „Neu“ ist der Eingang: dort stehende Aufgaben erscheinen erst nach „Gesehen“ in ihrer Gruppe
+    const istNeu = new Set(l.neu.map(a => a.id));
+    const g = (art: string) => (l.gruppen.find(x => x.art === art)?.aufgaben ?? []).filter(a => !istNeu.has(a.id));
+    const nachFrist = (xs: AufgabeZeile[]) => [...xs].sort((x, y) => (x.frist ?? '').localeCompare(y.frist ?? ''));
     const abschnitte: { k: string; name: string; aufgaben: AufgabeZeile[]; klasse?: string }[] = [
-      ...l.gruppen.map(g => ({ k: g.art, name: g.name, aufgaben: g.aufgaben, klasse: g.art })),
+      { k: 'neu', name: 'Neu', aufgaben: l.neu, klasse: 'neu' },
+      { k: 'faellig', name: 'Fällig', aufgaben: nachFrist([...g('ueberfaellig'), ...g('heute')]), klasse: 'faellig' },
+      { k: 'wird', name: 'Wird fällig', aufgaben: nachFrist([...g('woche'), ...g('spaeter')]), klasse: 'wird' },
+      { k: 'ohne', name: 'Ohne Frist', aufgaben: g('ohne') },
       { k: 'zurueck', name: 'Zurückgestellt', aufgaben: l.zurueckgestellt },
       { k: 'fertig', name: 'Abgeschlossen', aufgaben: l.abgeschlossen },
       ...(this.z.archiv ? [{ k: 'archiv', name: 'Archiv', aufgaben: l.archiv }] : []),
@@ -59,9 +70,16 @@ export class ListenSicht implements Sicht {
     if (!h) h = this.z.filter ? '<div class="leer">Nichts gefunden.</div>' : '<div class="leer">Noch keine Aufgaben.<br>Oben eintippen und ↵ – oder <kbd>N</kbd>.</div>';
     const b = el.querySelector<HTMLElement>('.list-b')!;
     b.innerHTML = h;
-    // jede Zeile kennt ihren Abschnitt – verschoben wird nur innerhalb desselben
+    // jede Zeile kennt ihren Abschnitt – verschoben wird nur innerhalb desselben, bei Fällig/Wird fällig nur unter gleicher Frist
+    const frist = new Map(abschnitte.flatMap(a => a.aufgaben).map(x => [x.id, x.frist ?? '']));
     let grp = '';
-    for (const k of [...b.children] as HTMLElement[]) { if (k.dataset.grp) grp = k.dataset.grp; else if (k.classList.contains('row')) k.dataset.abschnitt = grp; }
+    for (const k of [...b.children] as HTMLElement[]) {
+      if (k.dataset.grp) { grp = k.dataset.grp; continue; }
+      if (!k.classList.contains('row')) continue;
+      k.dataset.abschnitt = grp === 'faellig' || grp === 'wird' ? `${grp}:${frist.get(k.dataset.task!)}` : grp;
+      // unter „Neu“: Gesehen (nimmt die Aufgabe auf allen Geräten aus „Neu“; Öffnen tut das auch)
+      if (grp === 'neu') k.querySelector('.right')?.insertAdjacentHTML('afterbegin', `<button class="gesehen-btn" data-gesehen="${k.dataset.task}" title="Gesehen – aus „Neu“ nehmen">${I.gesehen}</button>`);
+    }
     if (!el.dataset.sortierbar) { el.dataset.sortierbar = '1'; sortierbarMachen(b); }
     el.querySelector('.cnt')!.textContent = `${l.offen} offen`;
 
@@ -74,14 +92,14 @@ export class ListenSicht implements Sicht {
   }
 
   private async mini(el: HTMLElement): Promise<void> {
-    const l = await body.liste({});
-    const n = (art: string) => l.gruppen.find(g => g.art === art)!.aufgaben.length;
-    const vorn = l.gruppen.slice(0, 3).flatMap(g => g.aufgaben).slice(0, 6);
+    const l = await body.liste({ ohneStatus: true });
+    const n = (...arten: string[]) => l.gruppen.filter(g => arten.includes(g.art)).reduce((s, g) => s + g.aufgaben.length, 0);
+    const vorn = [...l.neu, ...l.gruppen.filter(g => g.art === 'ueberfaellig' || g.art === 'heute').flatMap(g => g.aufgaben)].slice(0, 6);
     el.innerHTML = `<div class="mini">
       <div class="kpis">
-        <div class="kpi" style="color:var(--d-ueberfaellig)"><b>${n('ueberfaellig')}</b> überfällig</div>
-        <div class="kpi" style="color:var(--d-heute)"><b>${n('heute')}</b> heute</div>
-        <div class="kpi"><b>${n('woche')}</b> diese Woche</div>
+        ${l.neu.length ? `<div class="kpi" style="color:var(--own)"><b>${l.neu.length}</b> neu</div>` : ''}
+        <div class="kpi" style="color:var(--d-heute)"><b>${n('ueberfaellig', 'heute')}</b> fällig</div>
+        <div class="kpi"><b>${n('woche', 'spaeter')}</b> wird fällig</div>
         <div class="kpi"><b>${l.offen}</b> offen</div>
       </div>
       <div class="peek">${vorn.map(a => `<div data-task="${a.id}">${I.frist} ${esc(a.titel)}</div>`).join('')}</div>

@@ -33,6 +33,8 @@ export type AnhangInfo = { id: Id; nr: number; name: string; typ: string; groess
 export type ListenGruppe = { art: 'ueberfaellig' | 'heute' | 'woche' | 'spaeter' | 'ohne'; name: string; aufgaben: AufgabeZeile[] };
 export type Aufgabenliste = {
   heute: Datum; offen: number;
+  /** frisch erfasst, noch nicht gesehen – stehen zusätzlich in ihrer normalen Gruppe */
+  neu: AufgabeZeile[];
   gruppen: ListenGruppe[];
   zurueckgestellt: AufgabeZeile[];
   abgeschlossen: AufgabeZeile[];
@@ -127,6 +129,8 @@ export type AufgabeEingabe = {
   titel: string; beschreibung?: string; ort?: string; verantwortlich?: string; tags?: string[];
   frist?: Datum | null; wiedervorlage?: Datum | null; status?: Id | null;
   buchung?: { datum: Datum; start?: Uhrzeit | null; dauer?: Minuten };
+  /** steht unter „Neu“, bis sie gesehen wird (Standard: ja – frisch Erfasstes; Import: nein) */
+  neu?: boolean;
 };
 
 export interface Body {
@@ -139,6 +143,8 @@ export interface Body {
   aufgabeWiedereroeffnen(c: { aufgabeId: Id }): Promise<CommandStatus>;
   aufgabeVerwerfen(c: { aufgabeId: Id }): Promise<CommandStatus>;
   aufgabeArchivieren(c: { aufgabeId: Id }): Promise<CommandStatus>;
+  /** neue Aufgabe gesehen (geöffnet oder weggewischt) → verlässt „Neu“ auf allen Geräten */
+  aufgabeGesehen(c: { aufgabeId: Id }): Promise<CommandStatus>;
   aufgabeAusArchivHolen(c: { aufgabeId: Id }): Promise<CommandStatus>;
   /** Bild an die Notiz hängen; daten = Base64 */
   anhangHinzufuegen(c: { aufgabeId: Id; name: string; typ: string; daten: string }): Promise<CommandStatus>;
@@ -183,7 +189,10 @@ export interface Body {
   aufgabeAusNotiz(c: { notizId: Id }): Promise<CommandStatus>;
 
   // ---- Queries
-  liste(q: { filter?: string }): Promise<Aufgabenliste>;
+  /** ohneStatus: Aufgaben mit Board-Status ausblenden (Aufgabenliste); ohne den Schalter alle (z. B. Fristen im Kalender) */
+  liste(q: { filter?: string; ohneStatus?: boolean }): Promise<Aufgabenliste>;
+  /** Warnungen zum Datenstand – z. B. Events, die diese App nicht deuten kann, weil ein anderes Gerät neuer ist */
+  datenstand(): Promise<{ zuNeu: number }>;
   board(): Promise<Board>;
   zeitraum(q: { von: Datum; bis: Datum }): Promise<Zeitraum>;
   aufgabe(q: { aufgabeId: Id }): Promise<AufgabeDetails | null>;
@@ -221,10 +230,10 @@ export type BodyMethode = Exclude<keyof Body, 'beiAenderung'>;
 export const BODY_METHODEN: readonly BodyMethode[] = [
   'abgleich', 'abgleichen', 'abgleichVerbinden', 'abgleichTrennen',
   'aktualisierung', 'aktualisierungOrdnerWaehlen', 'aktualisierungOrdnerEntfernen', 'aktualisierungPruefen', 'aktualisierungInstallieren',
-  'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen', 'aufgabeVerschieben',
+  'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeGesehen', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen', 'aufgabeVerschieben',
   'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung', 'buchungSpiegeln', 'verknuepfungLoesen', 'aufgabeAusExtern',
   'spalteAnlegen', 'spalteUmbenennen', 'kategorieUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen', 'tageszeitFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',
   'notizErfassen', 'notizAendern', 'notizVerwerfen', 'notizAnhangHinzufuegen', 'notizAnhangEntfernen', 'aufgabeAusNotiz', 'logbuch', 'notiz',
-  'liste', 'board', 'zeitraum', 'aufgabe', 'buchung', 'einstellungen', 'erfassungVorschau', 'vorschlaege', 'layout', 'heute', 'anhang',
+  'liste', 'datenstand', 'board', 'zeitraum', 'aufgabe', 'buchung', 'einstellungen', 'erfassungVorschau', 'vorschlaege', 'layout', 'heute', 'anhang',
 ];

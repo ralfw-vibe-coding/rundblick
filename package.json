@@ -17,6 +17,7 @@
     "check": "npm run typecheck && npm run lint:deps && npm run test:cov",
     "postinstall": "node node_modules/electron/install.js && node tools/electron-kalenderrecht.mjs",
     "app": "node tools/paket.mjs",
+    "release": "npm run check && node tools/paket.mjs && npm run phone:veroeffentlichen",
     "demo": "electron-vite build && RB_DATEN=/tmp/rundblick-demo RB_DEMO=1 RB_KALENDER=beispiel electron .",
     "test:cov": "vitest run --coverage",
     "testdaten": "rolldown tools/testdaten.ts --platform node --format esm --file out/testdaten.mjs --log-level warn && node out/testdaten.mjs",

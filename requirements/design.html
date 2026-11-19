@@ -536,6 +536,14 @@
 
   <!-- ===================================================== -->
   <h2 id="offen">13 Entscheidungen, Backlog &amp; offene Fragen</h2>
+  <h3>Entschieden (19.11.2026)</h3>
+  <ul>
+    <li>Aufgabenliste auf Desktop wie am Phone: Neu · Fällig · Wird fällig · Ohne Frist · Zurückgestellt · Abgeschlossen.</li>
+    <li>„Neu“ ist geteilter Zustand: <code>AufgabeErfasst.neu</code> (optional) + Event <code>AufgabeGesehen</code>; Öffnen oder „Gesehen“ quittiert.</li>
+    <li>Aufgaben mit Board-Status stehen nur auf dem Board, nicht in der Liste (<code>liste({ ohneStatus: true })</code>).</li>
+    <li>Schema-Schutz: zu neue Events werden gezählt (<code>datenstand().zuNeu</code>) und lösen „bitte aktualisieren“ aus.</li>
+    <li>Release: <code>npm run release</code> bringt Desktop-Update und Phone aus demselben Commit heraus.</li>
+  </ul>
   <h3>Entschieden (16.11.2026)</h3>
   <table>
     <tr><th>Thema</th><th>Entscheidung</th><th>Folge im Design</th></tr>

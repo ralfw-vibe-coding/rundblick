@@ -11,21 +11,21 @@ export function dateiname(geraet: string): string {
   return geraet.toLowerCase().replace(/[^a-z0-9äöüß-]+/g, '-').replace(/^-|-$/g, '') || 'geraet';
 }
 
-/** Zeilen → Events; unvollständige Zeilen (Datei wird gerade geschrieben/synchronisiert) und zu neue werden übersprungen */
+/** IDs gelesener Events mit neuerem Schema – die App kann sie nicht deuten und warnt („bitte aktualisieren“) */
+const zuNeu = new Set<string>();
+export const zuNeueAnzahl = () => zuNeu.size;
+
+/** Zeilen → Events; unvollständige Zeilen (Datei wird gerade geschrieben/synchronisiert) und zu neue werden übersprungen – zu neue aber gezählt */
 export function zeilenLesen(text: string): Rohevent[] {
   const ergebnis: Rohevent[] = [];
   for (const zeile of text.split('\n')) {
     if (!zeile.trim()) continue;
-    // Events aus einer neueren Schema-Version werden übersprungen (diese App kann sie nicht deuten)
-    try { ergebnis.push(hochrechnen(JSON.parse(zeile) as Rohevent)); } catch { /* unvollständig oder zu neu */ }
+    let e: Rohevent;
+    try { e = JSON.parse(zeile) as Rohevent; } catch { continue; /* unvollständig */ }
+    if (e.meta?.schema > SCHEMA_VERSION) { zuNeu.add(e.id); continue; }
+    ergebnis.push(e);
   }
   return ergebnis;
 }
 
 export const zeilenSchreiben = (events: readonly Rohevent[]) => events.map(e => JSON.stringify(e)).join('\n') + (events.length ? '\n' : '');
-
-/** Upcaster: ältere Schema-Versionen beim Lesen anheben (bisher gibt es nur Version 1) */
-function hochrechnen(e: Rohevent): Rohevent {
-  if (e.meta.schema > SCHEMA_VERSION) throw new Error(`Event-Schema ${e.meta.schema} ist neuer als diese App (${SCHEMA_VERSION})`);
-  return e;
-}

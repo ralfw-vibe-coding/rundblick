@@ -74,6 +74,8 @@ const knopf = (d: string, icon: string, titel: string) => `<button class="kopfkn
 export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
   const [a, e, h] = await Promise.all([body.aufgabe({ aufgabeId: id }), body.einstellungen(), body.heute()]);
   if (!a) { schliessen(); return; }
+  // Öffnen = gesehen: verlässt „Neu“ auf allen Geräten (ohne Wirkung, wenn sie nicht neu war)
+  void body.aufgabeGesehen({ aufgabeId: id });
   aktuell = { art: 'aufgabe', id };
   const s = el();
   const gesperrt = a.abgeschlossen || a.archiviert;

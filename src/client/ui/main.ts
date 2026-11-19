@@ -103,3 +103,13 @@ updBtn.onclick = async () => {
   }
 };
 void updateMarke();
+
+// Schema-Schutz: ein anderes Gerät schreibt Events eines neueren Schemas → diese App ist veraltet
+const veraltet = document.createElement('div');
+veraltet.className = 'veraltet'; veraltet.hidden = true;
+veraltet.innerHTML = `${I.appUpdate}<span>Ein anderes Gerät nutzt eine neuere Rundblick-Version. Bitte aktualisieren – sonst fehlen hier Änderungen.</span>`;
+veraltet.onclick = () => updBtn.click();
+document.body.append(veraltet);
+const datenstandPruefen = async () => { veraltet.hidden = (await body.datenstand()).zuNeu === 0; };
+void datenstandPruefen();
+setInterval(() => void datenstandPruefen(), 30_000);

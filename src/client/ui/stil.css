@@ -1027,3 +1027,14 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .einst-reiter button { white-space: nowrap; }
 /* Kalender aktualisieren · Einstellungen · Update: immer ganz rechts in der Titelleiste */
 #syncBtn { margin-left: auto; }
+/* Liste wie am Phone: Neu · Fällig · Wird fällig */
+.grp-h.neu { color: var(--own); }
+.grp-h.faellig { color: var(--d-heute); }
+.grp-h.wird { color: var(--d-woche); }
+.gesehen-btn { border: 0; background: none; color: var(--mute); width: 22px; height: 22px; border-radius: 5px; padding: 0; display: grid; place-items: center; flex: none; visibility: hidden; cursor: pointer; }
+.gesehen-btn svg.lu { width: 15px; height: 15px; }
+.row:hover .gesehen-btn { visibility: visible; }
+.gesehen-btn:hover { color: var(--own); background: var(--own-soft); }
+.veraltet { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 8px; background: var(--d-heute); color: #fff; font-size: 12.5px; box-shadow: 0 4px 16px rgba(0,0,0,.18); cursor: pointer; }
+.veraltet[hidden] { display: none; }
+.veraltet svg.lu { width: 16px; height: 16px; }

@@ -14,6 +14,8 @@ const ctx = (es: EventStore, tags: string[], regel: (b: Bestand) => Entscheidung
 export type AufgabeFelder = {
   titel: string; beschreibung?: string; ort?: string; verantwortlich?: string; tags?: string[];
   frist?: Datum | null; wiedervorlage?: Datum | null; status?: Id | null;
+  /** frisch erfasst → Rubrik „Neu“ (Standard: nein, z. B. beim Import) */
+  neu?: boolean;
 };
 
 function pruefeFelder(f: Partial<AufgabeFelder>, b: Bestand): string[] {
@@ -49,7 +51,7 @@ export function aufgabeErfassen(es: EventStore, c: { aufgabeId: Id; felder: Aufg
       daten: {
         aufgabeId: c.aufgabeId, titel, beschreibung: f.beschreibung ?? '', ort: f.ort?.trim() ?? '',
         verantwortlich: f.verantwortlich?.trim() ?? '', tags: normTags(f.tags), frist: f.frist ?? null,
-        wiedervorlage: f.wiedervorlage ?? null, status: f.status ?? null,
+        wiedervorlage: f.wiedervorlage ?? null, status: f.status ?? null, ...(f.neu ? { neu: true } : {}),
       },
     }];
     if (c.buchung) ev.push({
@@ -151,6 +153,16 @@ export function aufgabeArchivieren(es: EventStore, c: { aufgabeId: Id }): Ergebn
     if (a.verworfen) return { ok: false, fehler: ['Aufgabe wurde verworfen.'] };
     if (a.archiviert) return [];
     return [{ typ: 'AufgabeArchiviert', tags: [tag.aufgabe(a.id)], daten: { aufgabeId: a.id } }];
+  });
+}
+
+/** Eine neue Aufgabe wurde gesehen (geöffnet oder weggewischt) – verlässt die Rubrik „Neu“ auf allen Geräten */
+export function aufgabeGesehen(es: EventStore, c: { aufgabeId: Id }): Ergebnis {
+  return ctx(es, [tag.aufgabe(c.aufgabeId)], b => {
+    const a = b.aufgaben.get(c.aufgabeId);
+    if (!a || a.verworfen) return { ok: false, fehler: ['Aufgabe unbekannt.'] };
+    if (!a.neu) return [];
+    return [{ typ: 'AufgabeGesehen', tags: [tag.aufgabe(a.id)], daten: { aufgabeId: a.id } }];
   });
 }
 

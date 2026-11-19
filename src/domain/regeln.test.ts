@@ -250,3 +250,17 @@ describe('Projektion und Ablauf', () => {
     expect(d.buchung('fehlt')).toBeNull();
   });
 });
+
+describe('Neu und gesehen', () => {
+  it('AufgabeErfasst ohne neu-Feld (ältere Events) gilt als gesehen; mit neu: true bis AufgabeGesehen', () => {
+    d.aufgabeErfassen({ aufgabeId: 'alt', felder: { titel: 'Alt' } });
+    d.aufgabeErfassen({ aufgabeId: 'neu', felder: { titel: 'Neu', neu: true } });
+    expect([d.aufgabe('alt')!.neu, d.aufgabe('neu')!.neu]).toEqual([false, true]);
+    expect(d.aufgabeGesehen({ aufgabeId: 'neu' })).toEqual({ ok: true });
+    expect(d.aufgabe('neu')!.neu).toBe(false);
+    expect(neu().filter(t => t === 'AufgabeGesehen')).toHaveLength(1);
+    expect(d.aufgabeGesehen({ aufgabeId: 'neu' })).toEqual({ ok: true });
+    expect(neu().filter(t => t === 'AufgabeGesehen')).toHaveLength(1);
+    expect(d.aufgabeGesehen({ aufgabeId: 'fehlt' })).toMatchObject({ ok: false });
+  });
+});

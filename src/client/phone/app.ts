@@ -16,7 +16,7 @@ export type Pwa = {
 };
 
 type Sicht = 'liste' | 'board' | 'logbuch';
-type UiZustand = { sicht: Sicht; offen: string[]; spalteZu: string[]; fertigOffen: string[]; neu: string[] };
+type UiZustand = { sicht: Sicht; offen: string[]; spalteZu: string[]; fertigOffen: string[] };
 
 const UI_SCHLUESSEL = 'rundblick.phone.ui';
 const GRUPPEN: [string, string][] = [['faellig', 'Fällig'], ['wird', 'Wird fällig'], ['ohne', 'Ohne Frist'], ['zurueck', 'Zurückgestellt'], ['fertig', 'Abgeschlossen']];
@@ -33,7 +33,6 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     offen: new Set(gespeichert.offen ?? ['neu', 'faellig', 'wird', 'ohne']),
     spalteZu: new Set(gespeichert.spalteZu ?? []),
     fertigOffen: new Set(gespeichert.fertigOffen ?? []),
-    neu: gespeichert.neu ?? [] as string[],
     suche: false, filter: '',
     detail: null as null | { art: 'aufgabe' | 'notiz'; id: string },
     notizBearbeiten: false,
@@ -43,8 +42,9 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     spalten: [] as StatusInfo[],
     board: null as Board | null,
   };
-  const merken = () => localStorage.setItem(UI_SCHLUESSEL, JSON.stringify({ sicht: z.sicht, offen: [...z.offen], spalteZu: [...z.spalteZu], fertigOffen: [...z.fertigOffen], neu: z.neu.slice(0, 50) }));
-  const ausNeu = (id: string) => { if (z.neu.includes(id)) { z.neu = z.neu.filter(x => x !== id); merken(); } };
+  const merken = () => localStorage.setItem(UI_SCHLUESSEL, JSON.stringify({ sicht: z.sicht, offen: [...z.offen], spalteZu: [...z.spalteZu], fertigOffen: [...z.fertigOffen] }));
+  // „Neu“ ist geteilter Zustand (AufgabeGesehen) – gilt auf allen Geräten
+  const ausNeu = (id: string) => body.aufgabeGesehen({ aufgabeId: id });
 
   wurzel.innerHTML = `<div class="bildschirm"><div class="haupt"></div>
     <nav class="reiter"><button data-sicht="liste">${I.liste}Liste</button><button data-sicht="board">${I.board}Board</button><button data-sicht="logbuch">${I.logbuch}Logbuch</button></nav>
@@ -105,17 +105,18 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
 
   // ---------------- Sichten ----------------
   async function liste(): Promise<string> {
-    const l = await body.liste({ filter: z.filter });
+    const l = await body.liste({ filter: z.filter, ohneStatus: true });
     z.heute = l.heute;
-    const g = (art: string) => l.gruppen.find(x => x.art === art)?.aufgaben ?? [];
+    // „Neu“ ist der Eingang: dort stehende Aufgaben erscheinen erst nach „Gesehen“ in ihrer Gruppe
+    const istNeu = new Set(l.neu.map(a => a.id));
+    const g = (art: string) => (l.gruppen.find(x => x.art === art)?.aufgaben ?? []).filter(a => !istNeu.has(a.id));
     const nachFrist = (as: AufgabeZeile[]) => as.map((a, i) => ({ a, i })).sort((x, y) => (x.a.frist! < y.a.frist! ? -1 : x.a.frist! > y.a.frist! ? 1 : x.i - y.i)).map(x => x.a);
     const gruppen: Record<string, AufgabeZeile[]> = {
       faellig: nachFrist([...g('ueberfaellig'), ...g('heute')]), wird: nachFrist([...g('woche'), ...g('spaeter')]),
       ohne: g('ohne'), zurueck: l.zurueckgestellt, fertig: l.abgeschlossen,
     };
-    const alle = new Map(Object.values(gruppen).flat().map(a => [a.id, a]));
     let h = kopf('Aufgaben') + suche() + `<div class="erfassen">${I.plus}<input data-erfassen placeholder="Neue Aufgabe … #tag @person !frist" enterkeyhint="done" autocomplete="off"></div><div class="inhalt" data-ziehbar>`;
-    const neue = z.neu.map(id => alle.get(id)).filter((a): a is AufgabeZeile => !!a);
+    const neue = l.neu;
     if (neue.length) {
       h += `<div class="abschnitt neu ${z.offen.has('neu') ? 'offen' : ''}" data-abschnitt="neu">${I.rechts}Neu <span class="n">${neue.length}</span></div>`;
       if (z.offen.has('neu')) h += `<div class="gruppe" data-neu-gruppe>${neue.map(a => zeileHtml(a, true)).join('')}</div>`;
@@ -126,7 +127,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
       h += `<div class="abschnitt ${k} ${z.offen.has(k) ? 'offen' : ''}" data-abschnitt="${k}">${I.rechts}${name} <span class="n">${as.length}</span></div>`;
       if (z.offen.has(k)) h += `<div class="gruppe" data-gruppe="${k}">${as.map(a => zeileHtml(a)).join('')}</div>`;
     }
-    if (!alle.size) h += `<div class="laden">${z.filter ? 'Nichts gefunden.' : 'Noch keine Aufgaben.'}</div>`;
+    if (!neue.length && !Object.values(gruppen).some(x => x.length)) h += `<div class="laden">${z.filter ? 'Nichts gefunden.' : 'Noch keine Aufgaben.'}</div>`;
     return h + '</div>';
   }
 
@@ -179,7 +180,10 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     const fokusSel = fokus?.matches?.('[data-suche],[data-erfassen],[data-notizfeld]') ? [fokus.dataset.suche !== undefined ? '[data-suche]' : fokus.dataset.erfassen !== undefined ? '[data-erfassen]' : '[data-notizfeld]', fokus.value, fokus.selectionStart] as const : null;
     const html = z.sicht === 'liste' ? await liste() : z.sicht === 'board' ? await board() : await logbuch();
     if (nr !== lauf) return; // inzwischen neuer Auftrag
-    haupt.innerHTML = html;
+    const zuNeu = (await body.datenstand()).zuNeu;
+    if (nr !== lauf) return;
+    // Schema-Schutz: ein anderes Gerät ist neuer → Hinweis statt stillem Weglassen
+    haupt.innerHTML = (zuNeu ? `<div class="veraltet" data-neu-laden>Ein anderes Gerät nutzt eine neuere Rundblick-Version. Tippen zum Neuladen.</div>` : '') + html;
     const inh = haupt.querySelector('.inhalt'); if (inh) inh.scrollTop = scroll;
     const sp = haupt.querySelector('.spalten'); if (sp) sp.scrollLeft = links;
     if (fokusSel) { const f = haupt.querySelector<HTMLInputElement>(fokusSel[0]); if (f) { f.value = fokusSel[1]; f.focus(); if (fokusSel[2] !== null) f.setSelectionRange(fokusSel[2], fokusSel[2]); } }
@@ -361,8 +365,8 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     }
     fragenZurueck();
     const [art, rest] = el.dataset.zweistufig!.split(/:(.*)/s) as [string, string];
-    if (art === 'loeschen' || art === 'log-aufgabe') { ausNeu(rest); pruefe(await body.aufgabeVerwerfen({ aufgabeId: rest }), 'Gelöscht'); }
-    else if (art === 'detail-loeschen') { ausNeu(rest); if (pruefe(await body.aufgabeVerwerfen({ aufgabeId: rest }), 'Gelöscht')) detailSchliessen(); }
+    if (art === 'loeschen' || art === 'log-aufgabe') { pruefe(await body.aufgabeVerwerfen({ aufgabeId: rest }), 'Gelöscht'); }
+    else if (art === 'detail-loeschen') { if (pruefe(await body.aufgabeVerwerfen({ aufgabeId: rest }), 'Gelöscht')) detailSchliessen(); }
     else if (art === 'log-notiz') pruefe(await body.notizVerwerfen({ notizId: rest }), 'Notiz gelöscht');
     else if (art === 'notiz-loeschen') { if (pruefe(await body.notizVerwerfen({ notizId: rest }), 'Notiz gelöscht')) detailSchliessen(); }
     else if (art === 'log-punkt') {
@@ -572,14 +576,15 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
       return;
     }
     if (q('[data-suche-zu]')) { z.suche = false; z.filter = ''; void zeichnen(); return; }
-    if (q('[data-gesehen]')) { ausNeu(q('[data-gesehen]')!.dataset.gesehen!); void zeichnen(); return; }
+    if (q('[data-neu-laden]')) { location.reload(); return; }
+    if (q('[data-gesehen]')) { await ausNeu(q('[data-gesehen]')!.dataset.gesehen!); void zeichnen(); return; }
     if (q('[data-kreis]')) {
       const k = q('[data-kreis]')!, id = k.dataset.kreis!;
       const r = k.dataset.fertig === '1' ? await body.aufgabeWiedereroeffnen({ aufgabeId: id }) : await body.aufgabeAbschliessen({ aufgabeId: id });
       pruefe(r, k.dataset.fertig === '1' ? 'Wieder offen' : 'Abgeschlossen');
       return;
     }
-    if (q('[data-arch]')) { const id = q('[data-arch]')!.dataset.arch!; ausNeu(id); if (pruefe(await body.aufgabeArchivieren({ aufgabeId: id }), 'Archiviert') && z.detail?.id === id) detailSchliessen(); return; }
+    if (q('[data-arch]')) { const id = q('[data-arch]')!.dataset.arch!; if (pruefe(await body.aufgabeArchivieren({ aufgabeId: id }), 'Archiviert') && z.detail?.id === id) detailSchliessen(); return; }
     // ---- in der Aufgabe
     if (q('[data-zurueck]')) { (document.activeElement as HTMLElement | null)?.blur(); setTimeout(detailSchliessen, 0); return; }
     if (q('[data-angaben]')) { void angabenBlatt(); return; }
@@ -599,9 +604,9 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
       if (zl.dataset.gewischt) { zl.dataset.gewischt = ''; return; }
       if (zl.dataset.wisch) { zl.style.transform = ''; zl.dataset.wisch = ''; return; }
       if (zl.dataset.oeffnen) { const [art, id] = zl.dataset.oeffnen.split(':') as ['aufgabe' | 'notiz', string]; z.detail = { art, id }; void detailZeigen(); return; }
-      ausNeu(zl.dataset.id!); z.detail = { art: 'aufgabe', id: zl.dataset.id! }; void detailZeigen(); void zeichnen(); return;
+      void ausNeu(zl.dataset.id!); z.detail = { art: 'aufgabe', id: zl.dataset.id! }; void detailZeigen(); void zeichnen(); return;
     }
-    const k = q('.karte'); if (k) { ausNeu(k.dataset.id!); z.detail = { art: 'aufgabe', id: k.dataset.id! }; void detailZeigen(); }
+    const k = q('.karte'); if (k) { void ausNeu(k.dataset.id!); z.detail = { art: 'aufgabe', id: k.dataset.id! }; void detailZeigen(); }
   });
 
   // Eingaben: Erfassen, Notiz, Suche, Angaben
@@ -610,7 +615,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     if (e.key !== 'Enter' || !t.value?.trim()) return;
     if (t.matches('[data-erfassen]')) {
       const r = await body.schnellErfassen({ text: t.value.trim() });
-      if (pruefe(r, 'Erfasst')) { t.value = ''; const id = r.ok ? r.ids?.aufgabeId : undefined; if (id) { z.neu.unshift(id); z.offen.add('neu'); merken(); } void zeichnen(); }
+      if (pruefe(r, 'Erfasst')) { t.value = ''; z.offen.add('neu'); merken(); void zeichnen(); }
     } else if (t.matches('[data-notizfeld]')) {
       if (pruefe(await body.notizErfassen({ text: t.value.trim() }), 'Notiz gespeichert')) { t.value = ''; void zeichnen(); }
     } else if (t.matches('[data-angabe]')) t.blur();

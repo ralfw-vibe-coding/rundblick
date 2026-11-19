@@ -41,8 +41,9 @@ export function passtZuFilter(a: AufgabeZ, filter: string): boolean {
 
 
 /** Liste: in jedem Abschnitt nach manuellem Rang – neue Aufgaben bekommen den obersten Rang */
-export function liste(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: Map<Id, SpalteZ>, heute: Datum, filter = ''): Aufgabenliste {
-  const neuesteZuerst = [...aufgaben].sort((x, y) => x.rang - y.rang).filter(a => passtZuFilter(a, filter));
+export function liste(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: Map<Id, SpalteZ>, heute: Datum, filter = '', ohneStatus = false): Aufgabenliste {
+  // Aufgabenliste: Aufgaben mit Board-Status stehen auf dem Board, nicht in der Liste (Nutzer 19.11.2026)
+  const neuesteZuerst = [...aufgaben].sort((x, y) => x.rang - y.rang).filter(a => passtZuFilter(a, filter) && !(ohneStatus && a.status && spalten.has(a.status)));
   const z = (a: AufgabeZ) => zeile(a, buchungen, spalten, heute);
   const sichtbar = neuesteZuerst.filter(a => !a.archiviert);
   const offen = sichtbar.filter(a => !a.abgeschlossen && !istZurueckgestellt(a, heute)).map(z);
@@ -52,6 +53,7 @@ export function liste(aufgaben: AufgabeZ[], buchungen: BuchungZ[], spalten: Map<
   const namen: Record<ListenGruppe['art'], string> = { ueberfaellig: 'Überfällig', heute: 'Heute fällig', woche: 'Diese Woche', spaeter: 'Später', ohne: 'Ohne Frist' };
   return {
     heute, offen: offen.length,
+    neu: sichtbar.filter(a => a.neu && !a.abgeschlossen).map(z),
     gruppen: (Object.keys(g) as ListenGruppe['art'][]).map(art => ({ art, name: namen[art], aufgaben: g[art] })),
     zurueckgestellt: sichtbar.filter(a => !a.abgeschlossen && istZurueckgestellt(a, heute)).map(z),
     abgeschlossen: sichtbar.filter(a => a.abgeschlossen).map(z),

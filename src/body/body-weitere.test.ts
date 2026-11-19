@@ -114,7 +114,7 @@ describe('Queries über den Body', () => {
   it('Dringlichkeit und Filter als pure Funktionen', () => {
     expect(dringlichkeit(null, '2026-11-16')).toBeNull();
     expect(['2026-11-15', '2026-11-16', '2026-11-18', '2026-11-30'].map(f => dringlichkeit(f, '2026-11-16'))).toEqual(['ueberfaellig', 'heute', 'woche', 'spaeter']);
-    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, archiviert: false, anhaenge: [], rang: 0, abgeschlossenAm: null, abgehakt: [] };
+    const a = { id: 'a', titel: 'Angebot', beschreibung: '', ort: '', verantwortlich: '', tags: ['kunde'], frist: null, wiedervorlage: null, status: null, abgeschlossen: false, verworfen: false, neu: false, archiviert: false, anhaenge: [], rang: 0, abgeschlossenAm: null, abgehakt: [] };
     expect(passtZuFilter(a, '  ')).toBe(true);
     expect(passtZuFilter(a, 'angebot #kunde')).toBe(true);
     expect(passtZuFilter(a, 'angebot #büro')).toBe(false);
@@ -352,5 +352,44 @@ describe('Selbst-Aktualisierung über den Body', () => {
     expect(await body.aktualisierungOrdnerEntfernen()).toEqual({ ok: true });
     melden!(stand);
     expect(gemeldet).toContainEqual(['aktualisierung']);
+  });
+});
+
+describe('Rubrik „Neu“ (geräteübergreifend) und Liste ohne Board-Aufgaben', () => {
+  it('frisch Erfasstes steht unter „Neu“, bis es gesehen wird – Import (neu: false) nicht', async () => {
+    const { body } = aufbau();
+    const a = id(await body.aufgabeErfassen({ titel: 'Frisch' }), 'aufgabeId');
+    await body.aufgabeErfassen({ titel: 'Importiert', neu: false });
+    await body.schnellErfassen({ text: 'Schnell #x' });
+    expect((await body.liste({})).neu.map(x => x.titel)).toEqual(['Schnell', 'Frisch']);
+    expect(await body.aufgabeGesehen({ aufgabeId: a })).toEqual({ ok: true });
+    expect(await body.aufgabeGesehen({ aufgabeId: a })).toEqual({ ok: true });
+    expect((await body.liste({})).neu.map(x => x.titel)).toEqual(['Schnell']);
+    expect(await body.aufgabeGesehen({ aufgabeId: 'gibtsnicht' })).toMatchObject({ ok: false });
+  });
+
+  it('abgeschlossene Aufgaben stehen nicht unter „Neu“', async () => {
+    const { body } = aufbau();
+    const a = id(await body.aufgabeErfassen({ titel: 'Erledigt' }), 'aufgabeId');
+    await body.aufgabeAbschliessen({ aufgabeId: a });
+    expect((await body.liste({})).neu).toEqual([]);
+  });
+
+  it('ohneStatus blendet Aufgaben mit Board-Status aus – „ohne Status“ holt sie zurück', async () => {
+    const { body } = aufbau();
+    const b = id(await body.aufgabeErfassen({ titel: 'Auf dem Board', status: 'inarbeit', frist: '2026-11-16' }), 'aufgabeId');
+    await body.aufgabeErfassen({ titel: 'Nur Liste' });
+    const titel = (l: Awaited<ReturnType<typeof body.liste>>) => [...l.neu, ...l.gruppen.flatMap(g => g.aufgaben)].map(x => x.titel);
+    expect(titel(await body.liste({ ohneStatus: true }))).toEqual(['Nur Liste', 'Nur Liste']);
+    expect(titel(await body.liste({}))).toContain('Auf dem Board');
+    await body.statusSetzen({ aufgabeId: b, status: null });
+    expect(titel(await body.liste({ ohneStatus: true }))).toContain('Auf dem Board');
+  });
+
+  it('Datenstand meldet zu neue Events (sonst 0)', async () => {
+    expect(await aufbau().body.datenstand()).toEqual({ zuNeu: 0 });
+    const es = new SpeicherEventStore('t', zaehlerIds('e').neu, () => uhr.jetzt());
+    const body = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: beispielKalender(), cache: kalenderCache(), anhaenge: speicherAnhaenge(), info: { datenordner: '', geraet: '' }, zuNeueEvents: () => 3 });
+    expect(await body.datenstand()).toEqual({ zuNeu: 3 });
   });
 });

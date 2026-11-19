@@ -31,6 +31,8 @@ export type BodyAbhaengigkeiten = {
   aktualisierer?: Aktualisierer;
   /** Abgleich mit der Dropbox (Phone App); fehlt er, ist er „nicht verfügbar“ */
   abgleich?: Abgleich;
+  /** Anzahl gelesener Events mit neuerem Schema (vom Event-Format gezählt); fehlt = 0 */
+  zuNeueEvents?: () => number;
 };
 
 const NICHT_VERFUEGBAR: AktualisierungsStand = { stand: 'nichtVerfuegbar' };
@@ -92,7 +94,8 @@ export class RundblickBody implements Body {
   async aufgabeErfassen(c: Parameters<Body['aufgabeErfassen']>[0]): Promise<CommandStatus> {
     const aufgabeId = this.x.ids.neu();
     const buchungId = c.buchung ? this.x.ids.neu() : undefined;
-    const { buchung, ...felder } = c;
+    const { buchung, neu, ...rest } = c;
+    const felder = { ...rest, neu: neu ?? true };
     const e = this.x.domain.aufgabeErfassen({ aufgabeId, felder, buchung: buchung && { ...buchung, buchungId: buchungId! } });
     return status(e, buchungId ? { aufgabeId, buchungId } : { aufgabeId });
   }
@@ -114,6 +117,7 @@ export class RundblickBody implements Body {
   async aufgabeWiedereroeffnen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeWiedereroeffnen(c)); }
   async aufgabeVerwerfen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeVerwerfen(c)); }
   async aufgabeArchivieren(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeArchivieren(c)); }
+  async aufgabeGesehen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeGesehen(c)); }
   async aufgabeAusArchivHolen(c: { aufgabeId: string }) { return status(this.x.domain.aufgabeAusArchivHolen(c)); }
 
   async aufgabeVerschieben(c: { aufgabeId: string; oben: string | null; unten: string | null }): Promise<CommandStatus> {
@@ -289,10 +293,12 @@ export class RundblickBody implements Body {
   }
 
   // ---------------- Queries ----------------
-  async liste(q: { filter?: string }) {
+  async liste(q: { filter?: string; ohneStatus?: boolean }) {
     const d = this.x.domain;
-    return liste(d.aufgaben(), d.buchungen(), new Map(d.spalten().map(s => [s.id, s])), this.x.uhr.heute(), q.filter ?? '');
+    return liste(d.aufgaben(), d.buchungen(), new Map(d.spalten().map(s => [s.id, s])), this.x.uhr.heute(), q.filter ?? '', q.ohneStatus ?? false);
   }
+
+  async datenstand() { return { zuNeu: this.x.zuNeueEvents?.() ?? 0 }; }
 
   async board() {
     const d = this.x.domain;
