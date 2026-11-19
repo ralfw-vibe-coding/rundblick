@@ -297,6 +297,33 @@ describe('Herkunft einer Buchung', () => {
 });
 
 describe('Selbst-Aktualisierung über den Body', () => {
+  it('ohne Abgleich (Desktop): nicht verfügbar, Commands ohne Wirkung', async () => {
+    const { body } = aufbau();
+    expect(await body.abgleich()).toMatchObject({ verfuegbar: false, verbunden: false });
+    for (const f of [body.abgleichen, body.abgleichVerbinden, body.abgleichTrennen]) expect(await f.call(body)).toEqual({ ok: true });
+  });
+
+  it('Abgleich (Phone App): Stand, Fehler und Meldungen als Bereich „abgleich“', async () => {
+    let melden: (() => void) | null = null;
+    let fehler: string | null = null;
+    const stand = () => ({ verfuegbar: true, verbunden: true, konto: 'Ralf', geraet: 'iphone-ralf', online: true, laeuft: false, wartend: 2, zuletzt: null, fehler, speicherDauerhaft: true });
+    const ab = {
+      stand, abgleichen: async () => { fehler = 'Anmeldung abgelaufen'; },
+      verbinden: async () => { throw new Error('Popup blockiert'); }, trennen: async () => {},
+      beiAenderung: (cb: () => void) => { melden = cb; return () => {}; },
+    };
+    const es = new SpeicherEventStore('t', zaehlerIds('e').neu, () => uhr.jetzt());
+    const body = new RundblickBody({ domain: new Domain(es), uhr, ids: zaehlerIds('x'), einstellungen: speicherEinstellungen(), kalender: beispielKalender(), cache: kalenderCache(), anhaenge: speicherAnhaenge(), info: { datenordner: '', geraet: '' }, abgleich: ab });
+    const gemeldet: Bereich[][] = [];
+    body.beiAenderung(b => gemeldet.push(b));
+    expect(await body.abgleich()).toMatchObject({ konto: 'Ralf', wartend: 2 });
+    expect(await body.abgleichen()).toEqual({ ok: false, fehler: ['Anmeldung abgelaufen'] });
+    expect(await body.abgleichVerbinden()).toEqual({ ok: false, fehler: ['Popup blockiert'] });
+    expect(await body.abgleichTrennen()).toEqual({ ok: true });
+    melden!();
+    expect(gemeldet).toContainEqual(['abgleich']);
+  });
+
   it('ohne Aktualisierer: nicht verfügbar, Commands ohne Wirkung', async () => {
     const { body } = aufbau();
     expect(await body.aktualisierung()).toEqual({ laufend: null, stand: { stand: 'nichtVerfuegbar' } });

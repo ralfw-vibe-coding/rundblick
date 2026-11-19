@@ -3,6 +3,7 @@
 import { abgleich, ausBuchung, ausExtern, fingerabdruck } from './spiegel/abgleich';
 import { plusTage } from '../basis/datum';
 import type { DomainInterface, Ergebnis } from '../domain/interface';
+import type { Abgleich, AbgleichStand } from '../providers/abgleich/interface';
 import type { Aktualisierer, AktualisierungsStand } from '../providers/aktualisierung/interface';
 import type { Anhangspeicher } from '../providers/anhaenge/interface';
 import type { Einstellungen } from '../providers/einstellungen/interface';
@@ -28,12 +29,19 @@ export type BodyAbhaengigkeiten = {
   info: { datenordner: string; geraet: string };
   /** Selbst-Aktualisierung; fehlt sie (Tests, Entwicklung), ist sie „nicht verfügbar“ */
   aktualisierer?: Aktualisierer;
+  /** Abgleich mit der Dropbox (Phone App); fehlt er, ist er „nicht verfügbar“ */
+  abgleich?: Abgleich;
 };
 
 const NICHT_VERFUEGBAR: AktualisierungsStand = { stand: 'nichtVerfuegbar' };
 const OHNE_AKTUALISIERUNG: Aktualisierer = {
   laufend: () => null, stand: () => NICHT_VERFUEGBAR, ordnerWaehlen: async () => NICHT_VERFUEGBAR, ordnerEntfernen: () => NICHT_VERFUEGBAR,
   pruefen: async () => NICHT_VERFUEGBAR, installieren: async () => NICHT_VERFUEGBAR, beiAenderung: () => () => {},
+};
+
+const OHNE_ABGLEICH: Abgleich = {
+  stand: (): AbgleichStand => ({ verfuegbar: false, verbunden: false, konto: null, geraet: '', online: true, laeuft: false, wartend: 0, zuletzt: null, fehler: null, speicherDauerhaft: null }),
+  abgleichen: async () => {}, verbinden: async () => {}, trennen: async () => {}, beiAenderung: () => () => {},
 };
 
 const status = (e: Ergebnis, ids?: Record<string, string>): CommandStatus => (e.ok ? (ids ? { ok: true, ids } : { ok: true }) : e);
@@ -50,7 +58,19 @@ export class RundblickBody implements Body {
     x.domain.beiAenderung(() => this.melde(['aufgaben', 'board', 'kalender']));
     x.kalender.beiAenderung(() => { void this.synchronisieren(); });
     this.aktualisierer.beiAenderung(() => this.melde(['aktualisierung']));
+    this.abgleicher.beiAenderung(() => this.melde(['abgleich']));
   }
+
+  private get abgleicher(): Abgleich { return this.x.abgleich ?? OHNE_ABGLEICH; }
+
+  // ---------------- Abgleich (Phone App) ----------------
+  async abgleich() { return this.abgleicher.stand(); }
+  async abgleichen() { await this.abgleicher.abgleichen(); return this.abgleichStatus(); }
+  async abgleichVerbinden(): Promise<CommandStatus> {
+    try { await this.abgleicher.verbinden(); return { ok: true }; } catch (e) { return { ok: false, fehler: [(e as Error).message] }; }
+  }
+  async abgleichTrennen() { await this.abgleicher.trennen(); return { ok: true } as CommandStatus; }
+  private abgleichStatus(): CommandStatus { const f = this.abgleicher.stand().fehler; return f ? { ok: false, fehler: [f] } : { ok: true }; }
 
   private get aktualisierer(): Aktualisierer { return this.x.aktualisierer ?? OHNE_AKTUALISIERUNG; }
 

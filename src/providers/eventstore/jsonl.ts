@@ -2,7 +2,7 @@
 // Jedes Gerät schreibt nur in seine eigene Datei (keine Dropbox-Konfliktkopien) und liest alle.
 import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readdirSync, readFileSync, watch, writeSync } from 'node:fs';
 import { join } from 'node:path';
-import { SCHEMA_VERSION } from '../../schema/events';
+import { dateiname, istEventDatei, zeilenLesen, zeilenSchreiben } from './format';
 import { SpeicherEventStore, type Rohevent } from './speicher';
 
 export class JsonlEventStore extends SpeicherEventStore {
@@ -19,7 +19,7 @@ export class JsonlEventStore extends SpeicherEventStore {
   }
 
   protected override persistieren(events: Rohevent[]): void {
-    const zeilen = events.map(e => JSON.stringify(e)).join('\n') + '\n';
+    const zeilen = zeilenSchreiben(events);
     const fd = openSync(this.eigeneDatei, 'a');
     try { writeSync(fd, zeilen); fsyncSync(fd); } finally { closeSync(fd); }
   }
@@ -44,24 +44,6 @@ export class JsonlEventStore extends SpeicherEventStore {
   get pfad(): string { return this.eigeneDatei; }
 }
 
-const istEventDatei = (d: string) => d.endsWith('.jsonl') && !d.includes('conflicted') && !d.includes('Konflikt');
-
-function dateiname(geraet: string): string {
-  return geraet.toLowerCase().replace(/[^a-z0-9äöüß-]+/g, '-').replace(/^-|-$/g, '') || 'geraet';
-}
-
 function leseDatei(pfad: string): Rohevent[] {
-  const ergebnis: Rohevent[] = [];
-  for (const zeile of readFileSync(pfad, 'utf8').split('\n')) {
-    if (!zeile.trim()) continue;
-    try { ergebnis.push(hochrechnen(JSON.parse(zeile) as Rohevent)); }
-    catch { /* unvollständige Zeile (Datei wird gerade geschrieben/synchronisiert): beim nächsten Einlesen */ }
-  }
-  return ergebnis;
-}
-
-/** Upcaster: ältere Schema-Versionen beim Lesen anheben (bisher gibt es nur Version 1) */
-function hochrechnen(e: Rohevent): Rohevent {
-  if (e.meta.schema > SCHEMA_VERSION) throw new Error(`Event-Schema ${e.meta.schema} ist neuer als diese App (${SCHEMA_VERSION})`);
-  return e;
+  return zeilenLesen(readFileSync(pfad, 'utf8'));
 }

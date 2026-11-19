@@ -14,7 +14,7 @@ export class SpeicherEventStore implements EventStore {
   constructor(
     protected readonly geraet: string,
     private readonly neueId: () => string,
-    private readonly jetzt: () => Date,
+    protected readonly jetzt: () => Date,
   ) {
     this.hlc = new Hlc(() => this.jetzt().getTime());
   }
