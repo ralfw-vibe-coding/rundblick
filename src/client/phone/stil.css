@@ -319,3 +319,4 @@
   .bild { position: relative; }
   .toast.zeigen { opacity: 1; }
   .geist .aktionen { display: none; }
+  .blatt:not(.offen) { transform: translateY(calc(100% + 60px)); }

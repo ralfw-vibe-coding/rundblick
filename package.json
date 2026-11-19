@@ -24,7 +24,7 @@
     "phone": "vite --config vite.phone.config.ts",
     "phone:bauen": "vite build --config vite.phone.config.ts",
     "phone:vorschau": "vite build --config vite.phone.config.ts && vite preview --config vite.phone.config.ts",
-    "phone:veroeffentlichen": "vite build --config vite.phone.config.ts && npx -y netlify-cli deploy --prod --dir out/phone --site wwe-rundblick"
+    "phone:veroeffentlichen": "vite build --config vite.phone.config.ts && npx -y netlify-cli deploy --prod --dir out/phone --site a8d34519-a3ad-4b0e-b3c7-935d950c60ac"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

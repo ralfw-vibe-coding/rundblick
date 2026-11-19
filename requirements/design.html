@@ -615,7 +615,7 @@
   <h3>Schritte</h3>
   <ol>
     <li>Dropbox-App „Rundblick“ anlegen (Nutzer, App Console) – <b>erledigt</b>: App-Key <code>npwte2lly4p0gdj</code> (öffentlich, PKCE ohne Secret), Zugriff „App folder“, Rechte <code>files.metadata.read</code>, <code>files.content.read</code>, <code>files.content.write</code>, Redirect zunächst <code>http://localhost:5174/</code>; Netlify-Adresse folgt.</li>
-    <li>UI-Entwurf der Phone App (<code>entwuerfe/phone/index.html</code>, in Arbeit). Entschieden bisher:
+    <li>UI-Entwurf der Phone App (<code>entwuerfe/phone/index.html</code>) – <b>erledigt</b>. Entschieden:
       <ul>
         <li><b>Die Desktop-App ist führend</b> (Nutzer 18.11.2026): Gemeinsames wird nur am Mac eingerichtet (Board-Spalten, Standards, Kapazitäten, Kalender …). Das Handy hat nur, was das Gerät selbst betrifft, und muss nicht alles genauso können.</li>
         <li>Liste: Rubrik <b>„Neu“</b> ganz oben – frisch erfasste Aufgaben stehen dort <i>zusätzlich</i> zu ihrer normalen Rubrik, bis man sie öffnet oder per Wischen „Gesehen“ wegräumt. Merkmal ist lokaler Zustand des Geräts, auf dem erfasst wurde (kein Event; Nutzer 18.11.2026).</li>
@@ -623,6 +623,7 @@
         <li>Board am Handy: unten in jeder Spalte ein zuklappbarer Abschnitt „Abgeschlossen“ (anfangs zu) mit den erledigten Karten dieser Spalte; Haken antippen = wieder offen.</li>
         <li>Klappzustand (Listengruppen „Fällig“ usw., zugeklappte Board-Spalten, „Abgeschlossen“) bleibt über Sichtwechsel und Neustarts erhalten – lokaler UI-Zustand des Geräts (localStorage), kein Event (Nutzer 19.11.2026). Erfassen klappt keine Gruppe ungefragt auf.</li>
         <li>Notiz mit Markdown wie am Desktop (gleiche Logik wie <code>src/basis/markdown.ts</code>): Ansicht, Tipp auf freie Fläche = Bearbeiten, Verlassen = speichern; Checklisten abhakbar. <b>Links: alles mit „://“</b> ist klickbar (jedes Schema außer javascript/data/vbscript, z. B. obsidian://), dazu [Text](url) und mailto – gilt auch am Desktop (Nutzer 19.11.2026).</li>
+        <li>Keine Bilder bei Logbuch-Notizen am Handy (Nutzer 19.11.2026).</li>
         <li>Bilder an Aufgaben: „+“ öffnet das übliche iOS-Menü (Fotomediathek · Foto aufnehmen · Datei auswählen; <code>&lt;input type="file" accept="image/*" multiple&gt;</code>). Vor dem Hochladen auf längste Seite 2000 px verkleinern (JPEG 0,85). Ablage wie am Desktop: Datei <code>anhaenge/&lt;id&gt;</code> + Event <code>AnhangHinzugefuegt</code>/<code>AnhangEntfernt</code>; offline in der Warteschlange. Bild antippen = Großansicht mit Mülleimer (zweistufig).</li>
         <li>Wischen nach links: Liste = Archiv / Mülleimer, unter „Neu“ = Gesehen / Mülleimer, Logbuch = Mülleimer (immer zweistufig). Eine gelöschte Aufgabe verschwindet auch aus dem Logbuch; Mülleimer im Logbuch löscht je nach Eintrag die Notiz, den Checklisten-Punkt oder die ganze Aufgabe.</li>
         <li>Lange drücken und ziehen: Liste innerhalb eines Abschnitts umsortieren; Board umsortieren und über Spalten ziehen (Rand rollt weiter); ohne Bewegung loslassen = Auswahlblatt „Verschieben nach“.</li>
@@ -630,8 +631,16 @@
         <li>Einstellungen: Zahnrad oben rechts neben der Wolke (alle Tabs) öffnet eine Schublade mit Dropbox (Konto, Ordner, Abmelden zweistufig), Gerät (Name, fest nach erstem Schreiben), Abgleich (zuletzt, wartend, Speicher dauerhaft, jetzt abgleichen), Version (neu laden). Board-Spalten werden am Mac eingerichtet; Kalender-Einstellungen erst mit dem Kalender.</li>
         <li>Suche erst nach Herunterziehen; Wolke nur als Symbol; Board-Spalten zuklappbar, Kategorie-Knopf fährt die erste Spalte der Gruppe an.</li>
       </ul></li>
-    <li>Browser-Provider + Abgleich (mit Tests), Web-Composition-Root, PWA-Hülle.</li>
-    <li>Netlify-Site, erste Anmeldung, Umzug in den App-Ordner (s. u.).</li>
+    <li>Browser-Provider + Abgleich (mit Tests), Web-Composition-Root, PWA-Hülle – <b>gebaut 19.11.2026</b>:
+      <ul>
+        <li><code>src/providers/eventstore/fern.ts</code> – <code>FernEventStore</code>: alle Events lokal (IndexedDB über <code>LokalerEventSpeicher</code>), eigene Datei <code>events/&lt;gerät&gt;.jsonl</code> komplett hochladen mit Revisionsprüfung (Konflikt = frühere Installation gleichen Namens → zusammenführen), fremde Dateien nur ab bekanntem Byte (Range), Dateiliste per Cursor, Longpoll; Format gemeinsam mit dem Desktop (<code>format.ts</code>).</li>
+        <li><code>src/providers/dropbox/</code> – HTTP-API über übergebenes <code>fetch</code>: PKCE, Token erneuern (401 → einmal neu), auflisten/laden(Range)/hochladen(add/update/overwrite)/löschen/Longpoll.</li>
+        <li><code>src/providers/anhaenge/fern.ts</code> – Bilder lokal + <code>anhaenge/&lt;id&gt;</code>, Warteschlange offline; <code>einstellungen/lokal.ts</code>, <code>kalender/ohne.ts</code>.</li>
+        <li>Body: <code>abgleich()</code>, <code>abgleichen()</code>, <code>abgleichVerbinden()</code>, <code>abgleichTrennen()</code>, Bereich <code>abgleich</code> (Provider-Interface <code>providers/abgleich</code>; am Desktop „nicht verfügbar“).</li>
+        <li>Oberfläche <code>src/client/phone/</code> (kennt nur das Body interface), Composition Root <code>src/phone/main.ts</code> (IndexedDB <code>idb.ts</code>, Anmeldung, Abgleich-Schleife). Am Handy wird <b>nichts eingerichtet</b> (keine Standardspalten) – der Desktop ist führend.</li>
+        <li>Befehle: <code>npm run phone</code> (Entwicklung, http://localhost:5174), <code>npm run phone:bauen</code> (→ <code>out/phone</code>, mit Service Worker), <code>npm run phone:veroeffentlichen</code> (Netlify). Test-Bank mit Dropbox-Attrappe: <code>tools/phone-test/</code>.</li>
+      </ul></li>
+    <li>Netlify-Site <b>wwe-rundblick</b> – angelegt: <a href="https://wwe-rundblick.netlify.app">https://wwe-rundblick.netlify.app</a> (nur Programmcode; Kopfzeilen in <code>public/_headers</code>, u. a. CSP nur für die Dropbox-Endpunkte). Offen: Redirect-URI <code>https://wwe-rundblick.netlify.app/</code> in der Dropbox App Console eintragen; erste Anmeldung mit Umzug in den App-Ordner (s. u.).</li>
   </ol>
   <p class="muted"><b>Achtung App-Ordner:</b> Dropbox legt den Ordner beim ersten Verbinden selbst an. Existiert <code>Apps/Rundblick</code> schon (Desktop-App), kann Dropbox einen anderen Namen wählen. Darum vor dem ersten Verbinden den vorhandenen Ordner kurz umbenennen, verbinden, Inhalt zurückschieben.</p>
   <p><b>Verworfen:</b> A (Mac als Server – nur bei laufendem Mac) und C (zentraler Server mit Datenbank – Datendopplung).</p>

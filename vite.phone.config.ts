@@ -40,6 +40,8 @@ export default defineConfig({
   root: resolve('src/client/phone'),
   publicDir: PUBLIC,
   define: { __VERSION__: JSON.stringify(VERSION) },
+  // Einstieg liegt außerhalb der Wurzel (Composition Root src/phone): im Entwicklungsserver per Alias auflösen
+  resolve: { alias: [{ find: /^\/phone\/main\.ts$/, replacement: resolve('src/phone/main.ts') }] },
   server: { port: 5174, strictPort: true, fs: { allow: [resolve('src')] } },
   preview: { port: 5174, strictPort: true },
   build: { outDir: resolve('out/phone'), emptyOutDir: true },
