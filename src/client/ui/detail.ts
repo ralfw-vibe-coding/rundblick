@@ -1,7 +1,7 @@
 // Detail-Schublade: Aufgabe oder Buchung ansehen und direkt bearbeiten.
 // Jede Feldänderung wird sofort als Command an den Body geschickt.
 // Kopf: [Abschließen-Kreis] Titel … [Archiv] [Mülleimer] [×]
-import { wiederholungFelder, wiederholungLesen } from '../wiederholung';
+import { wiederholungFelder, wiederholungFreigeben, wiederholungLesen } from '../wiederholung';
 import { dauerText, kurz, plusTage, uhrzeit, WT, wochentag } from '../../basis/datum';
 import type { AufgabeDetails } from '../../body/interface';
 import { body } from './body';
@@ -127,7 +127,7 @@ export async function aufgabeOeffnen(id: string, fokus = false): Promise<void> {
     const f = t.dataset.f;
     if (!f) return;
     const wert = f === 'tags' ? t.value.split(/[,\s]+/).filter(Boolean) : (f === 'frist' || f === 'wiedervorlage') ? (t.value || null) : t.value;
-    pruefe(await body.aufgabeAendern({ aufgabeId: id, aenderungen: { [f]: wert } }));
+    if (pruefe(await body.aufgabeAendern({ aufgabeId: id, aenderungen: { [f]: wert } })) && f === 'frist' && !gesperrt) wiederholungFreigeben(s, !!wert);
   };
   s.onclick = async ev => {
     const t = ev.target as HTMLElement;

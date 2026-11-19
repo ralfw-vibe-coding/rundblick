@@ -5,7 +5,7 @@
 import { differenz, kurz, WT, wochentag } from '../../basis/datum';
 import { checkboxUmschalten, markdownHtml } from '../../basis/markdown';
 import type { AbgleichStand, AufgabeDetails, AufgabeZeile, Board, Body, CommandStatus, LogbuchTag, StatusInfo } from '../../body/interface';
-import { wiederholungFelder, wiederholungLesen } from '../wiederholung';
+import { wiederholungFelder, wiederholungFreigeben, wiederholungLesen } from '../wiederholung';
 import { I } from './icons';
 
 /** Was die PWA-Hülle (Service Worker) beisteuert */
@@ -650,7 +650,10 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
       const aenderungen = feld === 'frist' || feld === 'wiedervorlage' ? { [feld]: wert || null }
         : feld === 'tags' ? { tags: [...new Set(wert.split(/[\s,]+/).map(x => x.replace(/^#/, '')).filter(Boolean))] }
           : { [feld]: wert };
-      if (pruefe(await body.aufgabeAendern({ aufgabeId: a.id, aenderungen }))) await detailZeigen();
+      if (pruefe(await body.aufgabeAendern({ aufgabeId: a.id, aenderungen }))) {
+        if (feld === 'frist') wiederholungFreigeben(t.closest('.angaben') ?? document, !!wert);
+        await detailZeigen();
+      }
     }
   });
 

@@ -15,3 +15,10 @@ export function wiederholungLesen(huelle: ParentNode): Wiederholung | null {
   const alle = Math.max(1, Math.min(999, Math.round(Number(huelle.querySelector<HTMLInputElement>('[data-wh="alle"]')?.value) || 1)));
   return einheit ? { einheit, alle } : null;
 }
+
+/** Frist gesetzt/entfernt, ohne dass neu gezeichnet wird (Cursor im Datumsfeld): Wiederholungsfelder sofort frei-/sperren */
+export function wiederholungFreigeben(huelle: ParentNode, mitFrist: boolean): void {
+  huelle.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-wh]').forEach(f => { f.disabled = !mitFrist; });
+  const h = huelle.querySelector<HTMLElement>('.wh');
+  if (h) h.title = mitFrist ? '' : 'Wiederholung braucht eine Frist';
+}
