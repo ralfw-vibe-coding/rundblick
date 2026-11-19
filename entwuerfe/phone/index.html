@@ -131,6 +131,12 @@
   /* Ziehen nach langem Drücken */
   .geist { position: absolute; z-index: 20; pointer-events: none; background: #fff; border-radius: 12px; box-shadow: 0 14px 30px rgba(0,0,0,.2); transform: rotate(1.5deg) scale(1.03); opacity: .96; overflow: hidden; }
   .platzhalter { opacity: .25; }
+  .abgeschlossen { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; color: var(--mute); padding: 8px 2px 2px; cursor: pointer; user-select: none; }
+  .abgeschlossen svg.lucide { width: 13px; height: 13px; transition: transform .15s; }
+  .abgeschlossen.offen svg.lucide { transform: rotate(90deg); }
+  .karte.fertig { background: transparent; }
+  .karte.fertig .kreis { color: var(--st-fertig); }
+  .karte.fertig .t { text-decoration: line-through; color: var(--mute); }
   .karten .leer { color: var(--mute); font-size: 13px; padding: 8px 4px; }
   .karte.gedrueckt { transform: scale(.97); box-shadow: 0 8px 20px rgba(0,0,0,.12); transition: transform .15s; }
   .karte .t { font-size: 15px; line-height: 1.3; }
@@ -342,6 +348,8 @@ function daten() {
     A('Fahrradkette ölen', { tags: ['privat'] }),
     A('Winterreifen wechseln', { wv: tag(5), tags: ['auto'] }),
     A('Workshop-Feedback auswerten', { status: 'erledigt', done: true, tags: ['workshop'] }),
+    A('Logo-Varianten an Markus schicken', { status: 'inarbeit', done: true, person: 'Ralf' }),
+    A('Briefpapier nachbestellen', { status: 'bereit', done: true, tags: ['büro'] }),
   ];
 }
 
@@ -354,7 +362,7 @@ function telefon(start, titel, unter) {
 
 function app(bs, start) {
   const aufgaben = daten();
-  const z = { sicht: start === 'detail' ? 'liste' : start, offen: new Set(['neu','faellig','wird','ohne']), wolke: 0, frisch: null, suche: false, filter: '', spalteZu: new Set(['erledigt']), angaben: false,
+  const z = { sicht: start === 'detail' ? 'liste' : start, offen: new Set(['neu','faellig','wird','ohne']), wolke: 0, frisch: null, suche: false, filter: '', spalteZu: new Set(['erledigt']), fertigOffen: new Set(), angaben: false,
     // „Neu“: frisch erfasste Aufgaben stehen oben (zusätzlich in ihrer Rubrik), bis man sie öffnet oder wegwischt
     neu: [], abmeldenFragen: false, neueVersion: start === 'logbuch' };
   z.neu = aufgaben.filter(a => a.titel.startsWith('Geschenk')).map(a => a.id);
@@ -408,12 +416,15 @@ function app(bs, start) {
   }
 
   function board() {
-    const sp = SPALTEN.map(s => ({ ...s, karten: aufgaben.filter(a => a.status === s.id && !a.done) }));
+    const sp = SPALTEN.map(s => ({ ...s, karten: aufgaben.filter(a => a.status === s.id && !a.done), fertig: aufgaben.filter(a => a.status === s.id && a.done) }));
+    // unten in jeder Spalte: „Abgeschlossen“ (zuklappbar, anfangs zu)
+    const fertigTeil = s => !s.fertig.length ? '' : `<div class="abgeschlossen ${z.fertigOffen.has(s.id) ? 'offen' : ''}" data-fertig="${s.id}">${ICON('chevron-right')}Abgeschlossen <span class="n">${s.fertig.length}</span></div>` +
+      (z.fertigOffen.has(s.id) ? s.fertig.map(a => `<div class="karte fertig" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON('circle-check')}</button><div class="mitte"><div class="t">${a.titel}</div></div></div>`).join('') : '');
     return kopf('Board') + `<div class="kats">${KATS.map(([k, v]) => `<button data-kat="${k}" style="border-bottom-color:var(${v})"><b>${sp.filter(s => s.kat === k).reduce((n, s) => n + s.karten.length, 0)}</b> ${k}</button>`).join('')}</div>
       <div class="spalten">${sp.map(s => z.spalteZu.has(s.id)
         ? `<div class="spalte zu" data-spalte="${s.id}"><div class="spalte-h" data-spalte-zu="${s.id}"><span class="chev">${ICON('chevron-right')}</span><span class="sdot" style="background:${s.farbe}"></span><span class="n">${s.karten.length}</span><span class="nm">${s.name}</span></div></div>`
         : `<div class="spalte" data-spalte="${s.id}"><div class="spalte-h" data-spalte-zu="${s.id}"><span class="chev">${ICON('chevron-right')}</span><span class="sdot" style="background:${s.farbe}"></span><span class="nm">${s.name}</span> <span class="n">${s.karten.length}</span><span class="kat">${s.kat}</span></div>
-        <div class="karten">${s.karten.map(a => `<div class="karte" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON('circle')}</button><div class="mitte"><div class="t">${a.titel}</div>${meta(a, false)}</div></div>`).join('') || '<div class="leer">leer</div>'}</div></div>`).join('')}</div>
+        <div class="karten">${s.karten.map(a => `<div class="karte" data-id="${a.id}"><button class="kreis" data-kreis="${a.id}">${ICON('circle')}</button><div class="mitte"><div class="t">${a.titel}</div>${meta(a, false)}</div></div>`).join('') || (s.fertig.length ? '' : '<div class="leer">leer</div>')}${fertigTeil(s)}</div></div>`).join('')}</div>
       <div class="punkte">${sp.map((s, i) => `<i class="${i === 0 ? 'an' : ''}"></i>`).join('')}</div>`;
   }
 
@@ -524,7 +535,7 @@ function app(bs, start) {
   // Auf dem Board: lange drücken und ohne Bewegung loslassen → Auswahlblatt „Verschieben nach“.
   let druck = null, zug = null;
   bs.addEventListener('pointerdown', e => {
-    const el = e.target.closest('.karte, .zeile'); if (!el || e.target.closest('.kreis, .aktionen, [data-neu-gruppe]') || el.dataset.wisch === '1') return;
+    const el = e.target.closest('.karte, .zeile'); if (!el || e.target.closest('.kreis, .aktionen, [data-neu-gruppe], .karte.fertig') || el.dataset.wisch === '1') return;
     const x0 = e.clientX, y0 = e.clientY;
     druck = setTimeout(() => { druck = 'lang'; zugStart(el, x0, y0); }, 420);
     const ab = ev => { if (druck !== 'lang' && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 8) { clearTimeout(druck); druck = null; } };
@@ -623,6 +634,7 @@ function app(bs, start) {
     if (druck === 'lang') { druck = null; if (!q('.blatt')) return; }
     if (q('[data-sicht]')) { z.sicht = q('[data-sicht]').dataset.sicht; zeichnen(); return; }
     if (q('[data-wolke]')) { z.wolke = (z.wolke + 1) % 3; zeichnen(); toast(['Abgeglichen mit der Dropbox', '2 Änderungen warten auf Netz', 'Offline – alles wird lokal gespeichert'][z.wolke]); return; }
+    if (q('[data-fertig]')) { const id = q('[data-fertig]').dataset.fertig; z.fertigOffen.has(id) ? z.fertigOffen.delete(id) : z.fertigOffen.add(id); const sl = haupt.querySelector('.spalten')?.scrollLeft; zeichnen(); const sp = haupt.querySelector('.spalten'); if (sp) sp.scrollLeft = sl; return; }
     if (q('[data-abschnitt]')) { const k = q('[data-abschnitt]').dataset.abschnitt; z.offen.has(k) ? z.offen.delete(k) : z.offen.add(k); zeichnen(); return; }
     if (q('[data-kreis]')) { const a = aufgaben.find(x => x.id === q('[data-kreis]').dataset.kreis); a.done = !a.done; toast(a.done ? 'Abgeschlossen' : 'Wieder offen'); zeichnen(); if (detail.classList.contains('offen')) detailZeigen(a.id); return; }
     if (q('[data-arch]')) { const id = q('[data-arch]').dataset.arch; aufgaben.splice(aufgaben.findIndex(x => x.id === id), 1); detail.classList.remove('offen'); toast('Archiviert'); zeichnen(); return; }
@@ -696,7 +708,7 @@ function app(bs, start) {
 
 telefon('liste', 'Liste', '„Neu“ oben, dann „Fällig“ und „Wird fällig“ (je dringendste oben, Farbe der Frist bleibt), ohne Frist, zurückgestellt, abgeschlossen · Wischen nach links = Archiv / Mülleimer (zweistufig) · lange drücken und ziehen = im Abschnitt umsortieren · oben Schnellerfassung · herunterziehen = Suche');
 telefon('detail', 'Aufgabe', 'Vollbild statt Schublade · Status als Chips · Notiz zuerst (mit abhakbarer Checkliste) · Bilder · Kurzinfo unter der Notiz öffnet die Angaben als Schublade · „‹“ zurück');
-telefon('board', 'Board', 'Eine Spalte pro Breite, waagerecht wischen · Kategorien oben als Sprungmarken · Karte lange drücken und ziehen = umsortieren, auch über Spalten (am Rand rollt das Board weiter) · lange drücken und loslassen = Auswahlblatt');
+telefon('board', 'Board', 'Eine Spalte pro Breite, waagerecht wischen · Kategorien oben als Sprungmarken · unten in jeder Spalte „Abgeschlossen“ (zuklappbar) · Karte lange drücken und ziehen = umsortieren, auch über Spalten (am Rand rollt das Board weiter) · lange drücken und loslassen = Auswahlblatt');
 telefon('logbuch', 'Logbuch', 'Notiz-Eingabe oben · nach links wischen = Mülleimer (zweistufig) · Tage, neuester oben · runder Haken = Aufgabe, eckiger = Punkt, Notiz-Symbol');
 </script>
 </body>
