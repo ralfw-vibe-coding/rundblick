@@ -42,7 +42,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - In jedem Abschnitt gilt eine **manuelle Reihenfolge** (Priorisierung): neue Aufgaben kommen oben hinein; per Drag & Drop (nur innerhalb des Abschnitts) oder ⌥↑/⌥↓ für die geöffnete Aufgabe verschieben. Technisch: Rang je Aufgabe, Event `AufgabeEinsortiert`, Body-Command `aufgabeVerschieben(oben, unten)`.
 - Neue Aufgaben: 5 s hervorgehoben und in den Blick gerollt (`frisch.ts`).
 - Fälligkeit (Raute + Datum) steht **direkt hinter dem Titel**.
-- Tags, @Verantwortlich und Ort stehen **immer** unter dem Titel, auch in schmalen Listen (Nutzer 20.11.2026).
+- Tags, @Verantwortlich und Ort stehen **immer** in der Zeile hinter der Frist (keine eigene Zeile); wird es schmal, brechen sie um – Titel und Frist bleiben zusammen (Nutzer 20.11.2026).
 - Mülleimer erscheint beim Überfahren einer Zeile.
 - Die in der Schublade geöffnete Aufgabe bleibt in Liste/Board **markiert und sichtbar**, auch wenn sie den Abschnitt wechselt – **außer beim Abschließen**: dann wird sie still weggeräumt, „Abgeschlossen“ klappt nicht auf (Liste und Board; Nutzer 19.11.2026).
 
