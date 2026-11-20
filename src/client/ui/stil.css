@@ -1050,4 +1050,4 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 
 /* Monatsansicht: Wasserzeichen mit dem Monatsnamen über den Wochen des Monats (liegt oben, lässt Klicks durch) */
 .mo-wz { position: absolute; inset: 0; grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2;
-  font-size: min(13cqw, 26cqh); font-weight: 800; letter-spacing: .02em; color: rgba(60, 50, 40, .055); white-space: nowrap; overflow: hidden; }
+  font-size: min(6.5cqw, 13cqh); font-weight: 800; letter-spacing: .02em; color: rgba(60, 50, 40, .04); white-space: nowrap; overflow: hidden; }
