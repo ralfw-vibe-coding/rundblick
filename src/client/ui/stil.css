@@ -206,7 +206,7 @@ kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ff
 .mo { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .mo-h { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--line); font-size: 11px; color: var(--mute); }
 .mo-h div { padding: 4px 6px; }
-.mo-g { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); }
+.mo-g { position: relative; container-type: size; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); }
 .mc { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .mc.other { background: #f7f6f3; color: var(--mute); }
 .mc.we:not(.other) { background: #fbfaf8; }
@@ -1047,3 +1047,7 @@ button.fr:hover { background: color-mix(in srgb, currentColor 12%, transparent);
 .wh-zeichen svg.lu { width: 11px; height: 11px; }
 .wh { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--mute); }
 .wh input[type=number] { width: 52px; }
+
+/* Monatsansicht: Wasserzeichen mit dem Monatsnamen über den Wochen des Monats (liegt oben, lässt Klicks durch) */
+.mo-wz { position: absolute; inset: 0; grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 2;
+  font-size: min(13cqw, 26cqh); font-weight: 800; letter-spacing: .02em; color: rgba(60, 50, 40, .055); white-space: nowrap; overflow: hidden; }

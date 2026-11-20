@@ -98,7 +98,7 @@ export class KalenderSicht implements Sicht {
         break;
       }
       case 'tage3': case 'woche': inhalt = woche(z, z.tage, dichte); break;
-      case 'monat': inhalt = monatsRaster(z, z.tage, this.monatsBezug(anker), dichte); break;
+      case 'monat': inhalt = monatsRaster(z, z.tage, this.monatsBezug(anker), dichte, true); break;
       case 'monate3': inhalt = `<div class="months">${[0, 1, 2].map(i => { const m = plusMonate(anker, i); const s = montag(monatsErster(m)); const t = z.tage.filter(x => x.datum >= s && x.datum <= plusTage(s, 41)); return `<div class="mm"><div class="mm-h">${MON_LANG[monat(m)]} ${jahr(m)}</div>${monatsRaster(z, t, m, 'compact')}</div>`; }).join('')}</div>`; break;
       case 'timeline': this.tlZeitraum = z; inhalt = timelineZeichnen(z, this.z.pph, H0, H1, MARKIERT); break;
     }
@@ -233,7 +233,7 @@ export class KalenderSicht implements Sicht {
   private monatsBezug(anker: string): string { return this.z.ansicht === 'monat' && this.z.frei ? plusTage(montag(anker), 17) : anker; }
 
   // ---------- Scrollen statt Blättern (Nutzer 20.11.2026) ----------
-  // Zeitansichten: waagerecht wischen (oder ⇧ + Mausrad) verschiebt tageweise; Monat: senkrecht wochenweise; 3 Monate: monatsweise.
+  // 3 Tage/Woche: waagerecht wischen (oder ⇧ + Mausrad) verschiebt tageweise; Monat: senkrecht wochenweise; 3 Monate: monatsweise.
   private behalteY: number | null = null;
   private wischRest = 0;
   private zeichnet = false;
@@ -241,7 +241,8 @@ export class KalenderSicht implements Sicht {
 
   private scrollenEinrichten(el: HTMLElement, anker: string): void {
     const a = this.z.ansicht;
-    if (a === 'timeline') return;
+    // Tagesansicht: kein Scrollen zum nächsten Tag (Nutzer 20.11.2026) – dort nur Pfeile
+    if (a === 'timeline' || a === 'tag') return;
     const b = el.querySelector<HTMLElement>('.cal-b');
     if (!b) return;
     b.onwheel = ev => {
@@ -251,7 +252,7 @@ export class KalenderSicht implements Sicht {
         // senkrecht bleibt das Scrollen durch die Stunden
         d = ev.shiftKey && !ev.deltaX ? ev.deltaY : ev.deltaX;
         if (!ev.shiftKey && Math.abs(ev.deltaX) <= Math.abs(ev.deltaY)) return;
-        const tage = a === 'tag' ? 1 : a === 'tage3' ? 3 : 7;
+        const tage = a === 'tage3' ? 3 : 7;
         const raster = b.querySelector<HTMLElement>('.wk-grid') ?? b;
         schritt = Math.max(40, (raster.clientWidth - 50) / tage);
       } else {
@@ -407,7 +408,7 @@ function tagSeite(t: Tag, l: Aufgabenliste, heute: string): string {
 /** Monatsansicht: je Tag alle Einträge untereinander über die volle Breite (ganztägig, Reservierungen,
  *  Termine nach Uhrzeit); links ein schmaler Streifen mit Punkten, wo im Tagesverlauf Termine liegen;
  *  unten die Auslastung. */
-function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte): string {
+function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte, wasserzeichen = false): string {
   const m = monat(anker);
   const zellen = tage.slice(0, 42).map(t => {
     const ev = ereignisse(t).sort((a, b) => a.s - b.s);
@@ -427,7 +428,20 @@ function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte): 
       <div class="mh" title="Doppelklick: Tag öffnen"><span class="dn">${tagImMonat(t.datum)}</span>${fristMarke(t)}</div>
       <div class="mb"><div class="mpunkte" title="Termine im Tagesverlauf (${H0}–${H1} Uhr)">${punkte}</div><div class="mliste">${liste}</div></div>${kapazitaetsBalken(t.auslastung)}</div>`;
   }).join('');
-  return `<div class="mo ${dichte}"><div class="mo-h">${WT.map(w => `<div>${w}</div>`).join('')}</div><div class="mo-g">${zellen}</div></div>`;
+  // Wasserzeichen: Monatsname groß und blass über den Wochen, die zu diesem Monat gehören (Nutzer 20.11.2026)
+  const wz = wasserzeichen ? monatsBereiche(tage.slice(0, 42)).map(b => `<div class="mo-wz" style="grid-row:${b.von + 1} / ${b.bis + 2}" aria-hidden="true">${MON_LANG[b.monat]}</div>`).join('') : '';
+  return `<div class="mo ${dichte}"><div class="mo-h">${WT.map(w => `<div>${w}</div>`).join('')}</div><div class="mo-g">${zellen}${wz}</div></div>`;
+}
+
+/** Monate im Raster mit ihren Wochenzeilen – jede Woche gehört dem Monat, der die meisten ihrer Tage hat */
+function monatsBereiche(tage: Tag[]): { monat: number; von: number; bis: number }[] {
+  const b: { monat: number; von: number; bis: number }[] = [];
+  for (let zeile = 0; zeile * 7 < tage.length; zeile++) {
+    const m = monat(tage[Math.min(zeile * 7 + 3, tage.length - 1)]!.datum); // Donnerstag = Mehrheit der Woche
+    const letzt = b[b.length - 1];
+    if (letzt && letzt.monat === m) letzt.bis = zeile; else b.push({ monat: m, von: zeile, bis: zeile });
+  }
+  return b;
 }
 
 /**
