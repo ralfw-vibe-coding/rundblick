@@ -42,6 +42,7 @@ export const ICON = { muell: I.muell, archiv: I.archiv, ausArchiv: I.ausArchiv, 
 /** Mülleimer nach dem Zwei-Klick-Muster: 1. Klick → „?“, 2. Klick → Aktion; sonst nach 5 s zurück */
 export const muellKnopf = (act: string, titel: string, id?: string) => `<button class="muell" data-zweistufig="${act}"${id ? ` data-id="${esc(id)}"` : ''} title="${esc(titel)}">${ICON.muell}</button>`;
 
+/** Listenzeile; Tags, @Person und Ort stehen immer darunter (auch in schmalen Zellen) – „voll“ steuert nur die Chips rechts */
 export function zeile(a: AufgabeZeile, heute: string, voll: boolean, frisch = false, gewaehlt = false): string {
   const cls = ['row', a.abgeschlossen ? 'done' : '', a.zurueckgestellt ? 'deferred' : '', frisch ? 'frisch' : '', gewaehlt ? 'gewaehlt' : ''].join(' ');
   const rechts = voll
@@ -49,7 +50,7 @@ export function zeile(a: AufgabeZeile, heute: string, voll: boolean, frisch = fa
     : `${anhangSymbol(a)}${buchungsSymbole(a)}${a.status ? `<span title="${esc(a.status.name)}">${statusPunkt(a.status.id)}</span>` : ''}`;
   return `<div class="${cls}" draggable="true" data-task="${a.id}">
     <button class="chk" data-act="${a.abgeschlossen ? 'wiederoeffnen' : 'abschliessen'}" title="${a.abgeschlossen ? 'Wieder öffnen' : 'Abschließen'}">${a.abgeschlossen ? I.erledigt : I.offen}</button>
-    <div class="main"><div class="t"><span class="tt">${esc(a.titel)}</span>${frist(a, heute)}</div>${voll && (a.tags.length || a.verantwortlich || a.ort) ? `<div class="meta">${tagsChips(a)}${personChip(a)}${ortChip(a)}</div>` : ''}</div>
+    <div class="main"><div class="t"><span class="tt">${esc(a.titel)}</span>${frist(a, heute)}</div>${a.tags.length || a.verantwortlich || a.ort ? `<div class="meta">${tagsChips(a)}${personChip(a)}${ortChip(a)}</div>` : ''}</div>
     <div class="right">${rechts}${a.archiviert ? '' : muellKnopf('verwerfen', 'Aufgabe verwerfen')}</div></div>`;
 }
 

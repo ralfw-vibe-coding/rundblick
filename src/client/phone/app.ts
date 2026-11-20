@@ -277,14 +277,17 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
   const blattZu = () => { blattEl.className = 'blatt'; blattHg.classList.remove('offen'); einstOffen = false; };
   const blattAuf = (html: string, klasse = 'angaben-blatt') => {
     blattEl.className = `blatt ${klasse} offen`; blattEl.innerHTML = html; blattHg.classList.add('offen');
+    // Datumsfelder bekommen ihren Wert erst hier: iOS setzt mit „Zurücksetzen“ auf den Ausgangswert (value-Attribut) zurück –
+    // ohne Attribut ist der Ausgangswert leer, „Zurücksetzen“ leert also wirklich
+    blattEl.querySelectorAll<HTMLInputElement>('input[type=date][data-wert]').forEach(f => { f.value = f.dataset.wert!; });
   };
 
   async function angabenBlatt(): Promise<void> {
     const a = detailDaten; if (!a) return;
     if (!z.spalten.length) z.spalten = (await body.einstellungen()).spalten;
     blattAuf(`<div class="griff"></div><div class="bk">Angaben<button data-blatt-zu>Fertig</button></div><div class="angaben">
-      <div class="zwei"><div class="feld"><label>Frist</label><div class="wert">${I.frist}<input type="date" data-angabe="frist" value="${a.frist ?? ''}"></div></div>
-        <div class="feld"><label>Wiedervorlage</label><div class="wert">${I.wiedervorlage}<input type="date" data-angabe="wiedervorlage" value="${a.wiedervorlage ?? ''}"></div></div></div>
+      <div class="zwei"><div class="feld"><label>Frist</label><div class="wert">${I.frist}<input type="date" data-angabe="frist" data-wert="${a.frist ?? ''}"></div></div>
+        <div class="feld"><label>Wiedervorlage</label><div class="wert">${I.wiedervorlage}<input type="date" data-angabe="wiedervorlage" data-wert="${a.wiedervorlage ?? ''}"></div></div></div>
       <div class="feld"><label>Wiederholung (ab Frist)</label><div class="wert" data-wh-feld>${I.wiederholung}${wiederholungFelder(a.wiederholung, false, !a.frist)}</div></div>
       <div class="feld"><label>Status</label><div class="status-chips"><button class="${!a.status ? 'an' : ''}" data-status="">ohne</button>${z.spalten.map(s => `<button class="${a.status?.id === s.id ? 'an' : ''}" data-status="${s.id}"><span class="sdot" style="background:${KAT_FARBE[s.kategorie]}"></span>${esc(s.name)}</button>`).join('')}</div></div>
       <div class="zwei"><div class="feld"><label>Verantwortlich</label><div class="wert"><input data-angabe="verantwortlich" value="${esc(a.verantwortlich)}" autocomplete="off"></div></div>
@@ -625,6 +628,8 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
   let sucheUhr: ReturnType<typeof setTimeout> | undefined;
   bs.addEventListener('input', e => {
     const t = e.target as HTMLInputElement;
+    // iOS meldet „Zurücksetzen“ eines Datumsfelds nur als input – wie eine Änderung behandeln
+    if (t.matches('input[type=date][data-angabe]') && !t.value) { t.dispatchEvent(new Event('change', { bubbles: true })); return; }
     if (t.matches('[data-suche]')) { z.filter = t.value; clearTimeout(sucheUhr); sucheUhr = setTimeout(() => void zeichnen(), 150); }
   });
   bs.addEventListener('change', async e => {

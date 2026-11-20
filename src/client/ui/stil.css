@@ -106,7 +106,7 @@ kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: #ff
 .row .right { display: flex; gap: 8px; align-items: center; flex: none; }
 .row.deferred .t { color: var(--ink2); }
 .list.compact .row { padding: 3px 10px; }
-.list.compact .row .meta { display: none; }
+/* Tags, @Person, Ort stehen auch in schmalen Listen (Nutzer 20.11.2026) */
 
 /* Mini-Zusammenfassungen (eingeklappte Seiten) */
 .mini { padding: 12px; display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: hidden; cursor: pointer; }
