@@ -12,7 +12,12 @@ import type { Dichte, Sicht } from './sicht';
 import { timelineBinden, timelineZeichnen } from './timeline';
 
 export type KalAnsicht = 'tag' | 'tage3' | 'woche' | 'monat' | 'monate3' | 'timeline';
-export type KalZustand = { ansicht: KalAnsicht; anker: string | null; pph: number; ganzerTag?: boolean; /** markierter Tag – bleibt beim Wechsel der Ansicht im Blick */ markiert?: string | null };
+export type KalZustand = {
+  ansicht: KalAnsicht; anker: string | null; pph: number; ganzerTag?: boolean;
+  /** markierter Tag – bleibt beim Wechsel der Ansicht im Blick */ markiert?: string | null;
+  /** gescrollt: Woche beginnt am Anker (statt am Montag), Monat an der Anker-Woche (statt am Monatsersten) */
+  frei?: boolean;
+};
 
 /** markierter Tag der gerade gezeichneten Sicht (für die Zeichenfunktionen) */
 let MARKIERT: string | null = null;
@@ -62,8 +67,8 @@ export class KalenderSicht implements Sicht {
     switch (this.z.ansicht) {
       case 'tag': return [anker, anker];
       case 'tage3': return [anker, plusTage(anker, 2)];
-      case 'woche': { const m = montag(anker); return [m, plusTage(m, 6)]; }
-      case 'monat': { const s = montag(monatsErster(anker)); return [s, plusTage(s, 41)]; }
+      case 'woche': { const m = this.z.frei ? anker : montag(anker); return [m, plusTage(m, 6)]; }
+      case 'monat': { const s = this.z.frei ? montag(anker) : montag(monatsErster(anker)); return [s, plusTage(s, 41)]; }
       case 'monate3': { const s = montag(monatsErster(anker)); return [s, plusTage(montag(plusMonate(anker, 2)), 41)]; }
       case 'timeline': { const s = plusTage(montag(anker), -7); return [s, plusTage(s, 55)]; }
     }
@@ -93,7 +98,7 @@ export class KalenderSicht implements Sicht {
         break;
       }
       case 'tage3': case 'woche': inhalt = woche(z, z.tage, dichte); break;
-      case 'monat': inhalt = monatsRaster(z, z.tage, anker, dichte); break;
+      case 'monat': inhalt = monatsRaster(z, z.tage, this.monatsBezug(anker), dichte); break;
       case 'monate3': inhalt = `<div class="months">${[0, 1, 2].map(i => { const m = plusMonate(anker, i); const s = montag(monatsErster(m)); const t = z.tage.filter(x => x.datum >= s && x.datum <= plusTage(s, 41)); return `<div class="mm"><div class="mm-h">${MON_LANG[monat(m)]} ${jahr(m)}</div>${monatsRaster(z, t, m, 'compact')}</div>`; }).join('')}</div>`; break;
       case 'timeline': this.tlZeitraum = z; inhalt = timelineZeichnen(z, this.z.pph, H0, H1, MARKIERT); break;
     }
@@ -102,7 +107,7 @@ export class KalenderSicht implements Sicht {
         ${this.ansichten.length > 1 ? `<div class="seg">${this.ansichten.map(v => `<button data-cal-view="${v}" class="${this.z.ansicht === v ? 'on' : ''}">${NAMEN[v]}</button>`).join('')}</div>` : ''}
         ${zeitansicht ? `<button class="ganztag ${this.z.ganzerTag ? 'on' : ''}" data-cal-ganz="1" title="${this.z.ganzerTag ? 'Nur Tageszeit zeigen (davor/danach nur, wenn dort Termine sind)' : `Ganzen Tag zeigen (0–24 Uhr) – sonst ${e.tageszeit.von}–${e.tageszeit.bis} Uhr`}">${this.z.ganzerTag ? I.einklappen : I.ausklappen}</button>` : ''}
         <div class="nav"><button data-cal-nav="-1" title="zurück">${I.links}</button><button data-cal-nav="0">Heute</button><button data-cal-nav="1" title="vor">${I.rechts}</button></div>
-        ${this.z.ansicht !== 'timeline' ? `<span class="title">${titel(this.z.ansicht, anker)}</span>`
+        ${this.z.ansicht !== 'timeline' ? `<span class="title">${titel(this.z.ansicht, this.z.ansicht === 'monat' ? this.monatsBezug(anker) : this.z.ansicht === 'woche' ? this.bereich(anker)[0] : anker)}</span>`
           : `<span class="zoom">Zoom <input type="range" min="2" max="48" value="${this.z.pph}" data-cal-zoom /> <span class="zoom-stufe">${zoomStufe(this.z.pph)}</span></span>`}
         <span class="spacer"></span>
         ${dichte === 'full' ? `<span class="legend"><span><i style="background:var(--own)"></i>Termin</span><span><i style="border:1.5px dashed var(--own)"></i>Reservierung</span><span><i style="background:var(--free)"></i>ohne Aufgabe</span><span><i style="background:#9ca3af"></i>extern</span></span>` : ''}
@@ -147,13 +152,16 @@ export class KalenderSicht implements Sicht {
       const v = t.closest<HTMLElement>('[data-cal-view]'), n = t.closest<HTMLElement>('[data-cal-nav]');
       if (t.closest('[data-cal-ganz]')) { this.z.ganzerTag = !this.z.ganzerTag; void this.neu(); return; }
       if (v) {
-        this.z.ansicht = v.dataset.calView as KalAnsicht; this.scrollX = null;
+        this.z.ansicht = v.dataset.calView as KalAnsicht; this.scrollX = null; this.z.frei = false;
         // ein markierter Tag bestimmt den Ausschnitt der neuen Ansicht und wird in den Blick geholt
         if (this.z.markiert) { this.z.anker = this.z.markiert; this.fokussieren = true; }
         void this.neu();
       }
       if (n) {
         const k = Number(n.dataset.calNav);
+        // Pfeile/Heute rasten wieder ein (Woche ab Montag, Monat ab dem Ersten)
+        if (this.z.ansicht === 'monat' && this.z.frei) anker = this.monatsBezug(anker);
+        this.z.frei = false;
         if (k === 0) { this.z.anker = null; this.scrollX = null; }
         else {
           const a = this.z.ansicht;
@@ -175,8 +183,11 @@ export class KalenderSicht implements Sicht {
     };
     if (this.z.ansicht === 'woche' || this.z.ansicht === 'tag' || this.z.ansicht === 'tage3') {
       const sc = el.querySelector<HTMLElement>('.wk-scroll');
-      if (sc && this.dichte === 'full') sc.scrollTop = Math.max(0, ((KERN.von - H0) / SPAN) * sc.scrollHeight - 10);
+      if (sc && this.behalteY !== null) sc.scrollTop = this.behalteY;
+      else if (sc && this.dichte === 'full') sc.scrollTop = Math.max(0, ((KERN.von - H0) / SPAN) * sc.scrollHeight - 10);
+      this.behalteY = null;
     }
+    this.scrollenEinrichten(el, anker);
     if (this.z.ansicht === 'timeline') {
       // Regler: nur einmal je Zeichnung binden – beim Ziehen wird nur der Inhalt neu gezeichnet
       const r = el.querySelector<HTMLInputElement>('[data-cal-zoom]')!;
@@ -217,13 +228,75 @@ export class KalenderSicht implements Sicht {
   }
 
   private async neu(): Promise<void> { if (this.el) await this.render(this.el, this.dichte); }
+
+  /** Monat im gescrollten Zustand: der Monat, der den Ausschnitt dominiert (Mitte der 6 Wochen) */
+  private monatsBezug(anker: string): string { return this.z.ansicht === 'monat' && this.z.frei ? plusTage(montag(anker), 17) : anker; }
+
+  // ---------- Scrollen statt Blättern (Nutzer 20.11.2026) ----------
+  // Zeitansichten: waagerecht wischen (oder ⇧ + Mausrad) verschiebt tageweise; Monat: senkrecht wochenweise; 3 Monate: monatsweise.
+  private behalteY: number | null = null;
+  private wischRest = 0;
+  private zeichnet = false;
+  private ausstehend = 0;
+
+  private scrollenEinrichten(el: HTMLElement, anker: string): void {
+    const a = this.z.ansicht;
+    if (a === 'timeline') return;
+    const b = el.querySelector<HTMLElement>('.cal-b');
+    if (!b) return;
+    b.onwheel = ev => {
+      const zeit = ZEITANSICHTEN.includes(a);
+      let d: number, schritt: number;
+      if (zeit) {
+        // senkrecht bleibt das Scrollen durch die Stunden
+        d = ev.shiftKey && !ev.deltaX ? ev.deltaY : ev.deltaX;
+        if (!ev.shiftKey && Math.abs(ev.deltaX) <= Math.abs(ev.deltaY)) return;
+        const tage = a === 'tag' ? 1 : a === 'tage3' ? 3 : 7;
+        const raster = b.querySelector<HTMLElement>('.wk-grid') ?? b;
+        schritt = Math.max(40, (raster.clientWidth - 50) / tage);
+      } else {
+        const box = b.querySelector<HTMLElement>('.months');
+        if (box && box.scrollHeight > box.clientHeight + 2) return; // 3 Monate scrollt selbst, wenn es nicht passt
+        if (Math.abs(ev.deltaY) < Math.abs(ev.deltaX)) return;
+        d = ev.deltaY;
+        schritt = a === 'monat' ? Math.max(40, b.clientHeight / 6) : Math.max(80, b.clientHeight / 2);
+      }
+      ev.preventDefault();
+      this.wischRest += d;
+      const n = Math.trunc(this.wischRest / schritt);
+      if (!n) return;
+      this.wischRest -= n * schritt;
+      this.verschieben(el, anker, n);
+    };
+  }
+
+  /** n Schritte vor/zurück: Tage (Zeitansichten), Wochen (Monat) oder Monate (3 Monate) */
+  private verschieben(el: HTMLElement, anker: string, n: number): void {
+    this.ausstehend += n;
+    if (this.zeichnet) return;
+    const a = this.z.ansicht;
+    const start = this.bereich(this.z.anker ?? anker)[0];
+    const k = this.ausstehend; this.ausstehend = 0;
+    if (a === 'monate3') { this.z.anker = plusMonate(this.z.anker ?? anker, k); }
+    else {
+      this.z.frei = a === 'woche' || a === 'monat';
+      this.z.anker = plusTage(a === 'monat' ? montag(start) : start, a === 'monat' ? 7 * k : k);
+    }
+    this.behalteY = el.querySelector<HTMLElement>('.wk-scroll')?.scrollTop ?? null;
+    this.zeichnet = true;
+    void this.neu().finally(() => {
+      this.zeichnet = false;
+      if (this.ausstehend) this.verschieben(el, this.z.anker!, 0);
+    });
+  }
 }
 
 const zoomStufe = (pph: number) => (pph < 6 ? 'Wochen' : pph < 20 ? 'Tage' : 'Stunden');
 
 function titel(a: KalAnsicht, anker: string): string {
   if (a === 'tag') return `${WT_LANG[wochentag(anker)]}, ${tagImMonat(anker)}. ${MON_LANG[monat(anker)]}`;
-  if (a === 'woche') { const m = montag(anker); return `KW ${kw(m)} · ${kurz(m)}–${kurz(plusTage(m, 6))}`; }
+  // Woche: anker = erster Tag; gescrollt beginnt sie nicht am Montag → nur Zeitraum
+  if (a === 'woche') { const m = anker; return wochentag(m) === 0 ? `KW ${kw(m)} · ${kurz(m)}–${kurz(plusTage(m, 6))}` : `${WT[wochentag(m)]} ${kurz(m)} – ${WT[wochentag(plusTage(m, 6))]} ${kurz(plusTage(m, 6))}`; }
   if (a === 'tage3') return `${WT[wochentag(anker)]} ${kurz(anker)} – ${WT[wochentag(plusTage(anker, 2))]} ${kurz(plusTage(anker, 2))}`;
   if (a === 'monate3') { const b = plusMonate(anker, 2); return `${MON[monat(anker)]} – ${MON[monat(b)]} ${jahr(b)}`; }
   return `${MON_LANG[monat(anker)]} ${jahr(anker)}`;
