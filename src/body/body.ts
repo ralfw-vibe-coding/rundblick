@@ -51,6 +51,9 @@ const status = (e: Ergebnis, ids?: Record<string, string>): CommandStatus => (e.
 export const TAGESZEIT_STANDARD = { von: 7, bis: 21 };
 const VORLAUF = 35, NACHLAUF = 200;
 
+/** so lange muss ein verknüpfter Termin fehlen, bevor er als extern gelöscht gilt */
+const KARENZ_GELOESCHT_MS = 15 * 60 * 1000;
+
 export class RundblickBody implements Body {
   private abos = new Set<(b: Bereich[]) => void>();
   private zugriffStand: KalenderZugriff = 'unbestimmt';
@@ -456,17 +459,41 @@ export class RundblickBody implements Body {
     if (!b?.verknuepfung || !b.start) return;
     try {
       const e = await this.x.kalender.terminAendern(b.verknuepfung.externeUid, ausBuchung(b));
-      if (!e) this.x.domain.verknuepfungLoesen({ buchungId, grund: 'externGeloescht' });
-      else this.x.domain.buchungAbgleichen({ buchungId, stand: fingerabdruck(ausBuchung(b)) });
+      // nicht gefunden: nicht sofort lösen – ob er wirklich gelöscht ist, entscheidet der Abgleich (mit Karenzzeit)
+      if (e) this.x.domain.buchungAbgleichen({ buchungId, stand: fingerabdruck(ausBuchung(b)) });
     } catch { /* nicht erreichbar: der nächste Abgleich holt es nach */ }
   }
 
+  /** seit wann ein verknüpfter Termin auf diesem Gerät fehlt (UID → ms) – „gelöscht“ erst nach einer Karenzzeit */
+  private fehltSeit = new Map<string, number>();
+
   /** Abgleich aller gespiegelten Buchungen mit den externen Terminen (jüngere Änderung gewinnt) */
   private async spiegelAbgleichen(termine: ExternerTermin[]): Promise<void> {
+    const kalender = new Set(this.x.cache.kalender().map(k => k.id));
+    const jetzt = this.x.uhr.jetzt().getTime();
+    const suchen = async (uid: string): Promise<ExternerTermin | null | undefined> => {
+      const t = termine.find(x => x.uid === uid);
+      if (t) return t;
+      try { return await this.x.kalender.terminLesen(uid); } catch { return undefined; }
+    };
+    // wegen „extern gelöscht“ gelöst, der Termin ist aber (wieder) da → Verknüpfung wiederherstellen
+    for (const b of this.x.domain.buchungen().filter(x => !x.verknuepfung && x.frueher && x.start && !x.storniert)) {
+      const extern = await suchen(b.frueher!.externeUid);
+      if (extern) this.x.domain.buchungVerknuepfen({ buchungId: b.id, ...b.frueher! });
+    }
     for (const b of this.x.domain.buchungen().filter(x => x.verknuepfung)) {
-      const uid = b.verknuepfung!.externeUid;
-      let extern: ExternerTermin | null | undefined = termine.find(t => t.uid === uid);
-      if (extern === undefined) { try { extern = await this.x.kalender.terminLesen(uid); } catch { continue; } }
+      const v = b.verknuepfung!, uid = v.externeUid;
+      const extern = await suchen(uid);
+      if (extern === undefined) continue;
+      if (extern === null) {
+        // Nicht gefunden heißt noch nicht gelöscht: Nur ein Gerät, das den Zielkalender hat, darf das feststellen,
+        // und erst, wenn der Termin über mehrere Abgleiche mindestens 15 Minuten fehlt (Kalender-Sync nach Start/Aufwachen).
+        if (!kalender.has(v.kalenderId)) continue;
+        const seit = this.fehltSeit.get(uid);
+        if (seit === undefined) { this.fehltSeit.set(uid, jetzt); continue; }
+        if (jetzt - seit < KARENZ_GELOESCHT_MS) continue;
+      }
+      this.fehltSeit.delete(uid);
       const a = abgleich(b, extern);
       if (a.art === 'geloest') this.x.domain.verknuepfungLoesen({ buchungId: b.id, grund: 'externGeloescht' });
       if (a.art === 'stand') this.x.domain.buchungAbgleichen({ buchungId: b.id, stand: a.stand });

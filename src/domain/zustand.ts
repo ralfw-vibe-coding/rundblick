@@ -48,6 +48,8 @@ export type BuchungZ = {
   verknuepfung: VerknuepfungZ | null;
   /** Hinweis an der Buchung, z. B. „extern gelöscht – Verknüpfung gelöst“ */
   hinweis: string | null;
+  /** Verknüpfung, die wegen „extern gelöscht“ gelöst wurde – taucht der Termin wieder auf, wird sie wiederhergestellt */
+  frueher: VerknuepfungZ | null;
   /** Zeitpunkt der letzten inhaltlichen Änderung (für „jüngere Änderung gewinnt“) */
   zuletzt: string;
 };
@@ -129,7 +131,7 @@ export function notizEntwickeln(z: NotizZ | null, e: ZeitEvent): NotizZ | null {
 }
 
 export function buchungEntwickeln(z: BuchungZ | null, e: DomainEvent): BuchungZ | null {
-  if (e.typ === 'BuchungAngelegt') return { ...e.daten, id: e.daten.buchungId, storniert: false, verknuepfung: null, hinweis: null, zuletzt: '' };
+  if (e.typ === 'BuchungAngelegt') return { ...e.daten, id: e.daten.buchungId, storniert: false, verknuepfung: null, hinweis: null, frueher: null, zuletzt: '' };
   if (!z) return z;
   switch (e.typ) {
     case 'BuchungUmbenannt': return { ...z, titel: e.daten.titel };
@@ -139,9 +141,9 @@ export function buchungEntwickeln(z: BuchungZ | null, e: DomainEvent): BuchungZ 
     case 'BuchungsdauerGeaendert': return { ...z, dauer: e.daten.dauer };
     case 'BuchungStorniert': return { ...z, storniert: true };
     case 'AufgabeAusBuchungErstellt': return { ...z, aufgabeId: e.daten.aufgabeId };
-    case 'BuchungVerknuepft': { const { buchungId: _b, ...v } = e.daten; return { ...z, verknuepfung: { ...v, ursprung: v.ursprung ?? 'rundblick' }, hinweis: null }; }
+    case 'BuchungVerknuepft': { const { buchungId: _b, ...v } = e.daten; return { ...z, verknuepfung: { ...v, ursprung: v.ursprung ?? 'rundblick' }, hinweis: null, frueher: null }; }
     case 'BuchungAbgeglichen': return z.verknuepfung ? { ...z, verknuepfung: { ...z.verknuepfung, stand: e.daten.stand } } : z;
-    case 'VerknuepfungGeloest': return { ...z, verknuepfung: null, hinweis: e.daten.grund === 'externGeloescht' ? HINWEIS_EXTERN_GELOESCHT : null };
+    case 'VerknuepfungGeloest': return { ...z, verknuepfung: null, hinweis: e.daten.grund === 'externGeloescht' ? HINWEIS_EXTERN_GELOESCHT : null, frueher: e.daten.grund === 'externGeloescht' ? z.verknuepfung : null };
     default: return z;
   }
 }

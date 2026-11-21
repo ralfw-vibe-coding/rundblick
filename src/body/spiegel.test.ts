@@ -17,7 +17,7 @@ import { abgleich, ausBuchung, fingerabdruck } from './spiegel/abgleich';
 // ---------------- pure Regeln ----------------
 const buchung = (x: Partial<BuchungZ> = {}): BuchungZ => ({
   id: 'b', aufgabeId: null, titel: 'Call', beschreibung: '', datum: '2026-11-19', dauer: 60, start: '10:00', belegt: true, storniert: false,
-  verknuepfung: null, hinweis: null, zuletzt: '2026-11-18T10:00:00Z', ...x,
+  verknuepfung: null, hinweis: null, frueher: null, zuletzt: '2026-11-18T10:00:00Z', ...x,
 });
 const STAND = fingerabdruck(ausBuchung(buchung()));
 const verknuepft = (x: Partial<BuchungZ> = {}) => buchung({ verknuepfung: { kalenderId: 'k', kalender: 'K', konto: 'G', farbe: '#000', externeUid: 'u', stand: STAND, ursprung: 'rundblick' }, ...x });
@@ -120,19 +120,48 @@ describe('Spiegelung im Body', () => {
     expect(domain.buchung(bid)!.titel).toBe('Extern');
   });
 
-  it('extern gelöscht → Verknüpfung gelöst, Buchung bleibt mit Hinweis', async () => {
+  it('extern gelöscht → nach Karenzzeit Verknüpfung gelöst, Buchung bleibt mit Hinweis', async () => {
     const { body, quelle, bid, uid, domain } = await gespiegelterTermin();
     quelle.extern.loeschen(uid);
     await body.synchronisieren();
+    expect(domain.buchung(bid)!.verknuepfung).not.toBeNull(); // einmal nicht gefunden reicht nicht
+    zeit += 10 * 60_000; await body.synchronisieren();
+    expect(domain.buchung(bid)!.verknuepfung).not.toBeNull(); // nach 10 min noch nicht
+    zeit += 6 * 60_000; await body.synchronisieren();
     expect(domain.buchung(bid)).toMatchObject({ verknuepfung: null, storniert: false });
     expect((await tag(body)).termine.find(b => b.id === bid)!.hinweis).toContain('gelöscht');
   });
 
-  it('extern gelöscht und Rundblick ändert → Verknüpfung gelöst', async () => {
+  it('extern nicht gefunden und Rundblick ändert → Verknüpfung bleibt (entscheidet der Abgleich)', async () => {
     const { body, quelle, bid, uid, domain } = await gespiegelterTermin();
     quelle.extern.loeschen(uid);
     await body.buchungAendern({ buchungId: bid, titel: 'Neu' });
+    expect(domain.buchung(bid)!.verknuepfung).not.toBeNull();
+  });
+
+  it('Gerät ohne den Zielkalender löst nie – und kurz fehlende Termine (Sync nach Start) auch nicht', async () => {
+    const { body, quelle, bid, uid, domain } = await gespiegelterTermin();
+    const echt = quelle.kalender;
+    quelle.kalender = async () => (await echt()).filter(k => k.id !== 'arbeit');
+    quelle.extern.loeschen(uid);
+    for (let i = 0; i < 3; i++) { zeit += 20 * 60_000; await body.synchronisieren(); }
+    expect(domain.buchung(bid)!.verknuepfung).not.toBeNull();
+  });
+
+  it('als gelöscht gelöst, Termin taucht wieder auf → Verknüpfung wiederhergestellt', async () => {
+    const { body, quelle, bid, uid, domain } = await gespiegelterTermin();
+    const v = domain.buchung(bid)!.verknuepfung!;
+    domain.verknuepfungLoesen({ buchungId: bid, grund: 'externGeloescht' }); // so wie es ein anderes Gerät getan hat
+    expect(domain.buchung(bid)!.frueher).toEqual(v);
+    await body.synchronisieren();
+    expect(domain.buchung(bid)).toMatchObject({ verknuepfung: { externeUid: uid }, hinweis: null, frueher: null });
+    // wirklich gelöscht: bleibt gelöst
+    quelle.extern.loeschen(uid);
+    domain.verknuepfungLoesen({ buchungId: bid, grund: 'externGeloescht' });
+    await body.synchronisieren();
     expect(domain.buchung(bid)!.verknuepfung).toBeNull();
+    // von Hand gelöst: kein Wiederherstellen
+    expect((await tag(body)).termine.find(b => b.id === bid)!.hinweis).toContain('gelöscht');
   });
 
   it('außerhalb des geladenen Zeitraums wird per UID nachgelesen', async () => {
