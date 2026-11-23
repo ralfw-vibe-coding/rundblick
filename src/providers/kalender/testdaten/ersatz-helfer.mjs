@@ -12,6 +12,7 @@ createInterface({ input: process.stdin }).on('line', zeile => {
   const termin = (uid, x) => ({ id: `${uid}@${x.datum}`, kalenderId: x.kalenderId ?? 'k1', titel: x.titel, datum: x.datum, start: x.start, dauer: x.dauer, ort: '', uid, notiz: x.notiz, geaendert: '2026-11-18T10:00:00Z' });
   if (a.op === 'anlegen') return sende({ id: a.id, ok: true, daten: termin('u1', a) });
   if (a.op === 'aendern') return sende({ id: a.id, ok: true, daten: a.uid === 'fehlt' ? null : termin(a.uid, a) });
+  if (a.op === 'verschieben') return sende({ id: a.id, ok: true, daten: a.termin === 'fehlt' ? null : { id: `${a.termin}>`, datum: a.datum, start: a.start, dauer: a.dauer } });
   if (a.op === 'entfernen') return sende({ id: a.id, ok: true, daten: a.termin !== 'fehlt' });
   if (a.op === 'loeschen') return sende({ id: a.id, ok: true, daten: a.uid !== 'fehlt' });
   if (a.op === 'lesen') return sende({ id: a.id, ok: true, daten: a.uid === 'fehlt' ? null : termin(a.uid, { titel: 'X', notiz: '', datum: '2026-11-19', start: '10:00', dauer: 60 }) });

@@ -33,6 +33,8 @@ describe('EventKit-Kalenderquelle (gegen Ersatz-Helfer)', () => {
     expect(await q.terminLoeschen('fehlt')).toBe(false);
     expect(await q.vorkommenLoeschen('k@123')).toBe(true);
     expect(await q.vorkommenLoeschen('fehlt')).toBe(false);
+    expect(await q.vorkommenVerschieben('k@123', { datum: '2026-11-20', start: '14:00', dauer: 30 })).toMatchObject({ datum: '2026-11-20', start: '14:00', dauer: 30 });
+    expect(await q.vorkommenVerschieben('fehlt', { datum: '2026-11-20', start: '14:00', dauer: 30 })).toBeNull();
     expect(await q.terminLesen('u1')).toMatchObject({ uid: 'u1' });
     expect(await q.terminLesen('fehlt')).toBeNull();
     q.beenden();

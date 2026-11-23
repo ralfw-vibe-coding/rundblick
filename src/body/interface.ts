@@ -174,6 +174,8 @@ export interface Body {
   aufgabeAusExtern(c: { externId: string }): Promise<CommandStatus>;
   /** externen Termin in Google/iCloud löschen (bei Serien nur dieses Vorkommen) */
   externLoeschen(c: { externId: string }): Promise<CommandStatus>;
+  /** externen Termin verschieben (Tag, Beginn, Dauer; bei Serien nur dieses Vorkommen) – ids.externId = neue Kennung */
+  externVerschieben(c: { externId: string; datum: Datum; start: Uhrzeit | null; dauer?: Minuten }): Promise<CommandStatus>;
   // ---- Commands: Board & Planung
   spalteAnlegen(c: { name: string; kategorie: KategorieId }): Promise<CommandStatus>;
   spalteUmbenennen(c: { statusId: Id; name: string }): Promise<CommandStatus>;
@@ -242,7 +244,7 @@ export const BODY_METHODEN: readonly BodyMethode[] = [
   'abgleich', 'abgleichen', 'abgleichVerbinden', 'abgleichTrennen',
   'aktualisierung', 'aktualisierungOrdnerWaehlen', 'aktualisierungOrdnerEntfernen', 'aktualisierungPruefen', 'aktualisierungInstallieren',
   'aufgabeErfassen', 'schnellErfassen', 'aufgabeAendern', 'statusSetzen', 'aufgabeAbschliessen', 'aufgabeWiedereroeffnen', 'aufgabeVerwerfen', 'aufgabeArchivieren', 'aufgabeGesehen', 'aufgabeAusArchivHolen', 'anhangHinzufuegen', 'anhangEntfernen', 'aufgabeVerschieben',
-  'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung', 'buchungSpiegeln', 'verknuepfungLoesen', 'aufgabeAusExtern', 'externLoeschen',
+  'buchungAnlegen', 'buchungEintragen', 'buchungAendern', 'buchungStornieren', 'aufgabeAusBuchung', 'buchungSpiegeln', 'verknuepfungLoesen', 'aufgabeAusExtern', 'externLoeschen', 'externVerschieben',
   'spalteAnlegen', 'spalteUmbenennen', 'kategorieUmbenennen', 'spaltenSortieren', 'spalteEntfernen', 'tageskapazitaetFestlegen', 'standarddauerFestlegen', 'tageszeitFestlegen',
   'kalenderEinstellen', 'kalenderZugriffAnfragen', 'synchronisieren', 'layoutSpeichern',
   'notizErfassen', 'notizAendern', 'notizVerwerfen', 'notizAnhangHinzufuegen', 'notizAnhangEntfernen', 'aufgabeAusNotiz', 'logbuch', 'notiz',

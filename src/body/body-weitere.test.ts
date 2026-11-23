@@ -442,3 +442,48 @@ describe('Externe Termine löschen', () => {
     expect(await q.vorkommenLoeschen('anderes-x')).toBe(false);
   });
 });
+
+describe('Externe Termine verschieben', () => {
+  it('verschiebt ein Vorkommen (Tag, Beginn, Dauer); ohne Uhrzeit bleibt der Beginn; neue Kennung', async () => {
+    const quelle = beispielKalender();
+    const { body } = aufbau(quelle);
+    await body.synchronisieren();
+    const tag = async (d: string) => (await body.zeitraum({ von: d, bis: d })).tage[0]!.extern;
+    const jf = (await tag('2026-11-16')).find(e => e.titel === 'Jour fixe')!;
+    const r = await body.externVerschieben({ externId: jf.id, datum: '2026-11-17', start: '14:00' });
+    expect(r).toMatchObject({ ok: true, ids: { externId: expect.any(String) } });
+    expect((await tag('2026-11-16')).some(e => e.titel === 'Jour fixe')).toBe(false);
+    expect((await tag('2026-11-17')).find(e => e.titel === 'Jour fixe')).toMatchObject({ start: 14 * 60, ende: 14 * 60 + 30 });
+    expect((await tag('2026-11-23')).some(e => e.titel === 'Jour fixe')).toBe(true); // nur dieses Vorkommen
+    const neu = r.ok ? r.ids!.externId! : '';
+    // auf einen Monatstag gezogen (ohne Uhrzeit): Beginn bleibt; Dauer ändern
+    expect(await body.externVerschieben({ externId: neu, datum: '2026-11-18', start: null, dauer: 90 })).toMatchObject({ ok: true });
+    expect((await tag('2026-11-18')).find(e => e.titel === 'Jour fixe')).toMatchObject({ start: 14 * 60, ende: 15 * 60 + 30 });
+  });
+  it('lehnt ab: unbekannt, ganztägig, schreibgeschützt, ungültig; unverändert = ok; Fehler der Quelle', async () => {
+    const quelle = beispielKalender();
+    const { body } = aufbau(quelle);
+    expect(await body.externVerschieben({ externId: 'x', datum: '2026-11-17', start: '10:00' })).toMatchObject({ ok: false });
+    await body.synchronisieren();
+    const tag = async (d: string) => (await body.zeitraum({ von: d, bis: d })).tage[0]!.extern;
+    const ganz = (await tag('2026-12-01')).find(e => e.start === null)!;
+    expect(await body.externVerschieben({ externId: ganz.id, datum: '2026-12-02', start: '10:00' })).toMatchObject({ ok: false, fehler: [expect.stringContaining('Ganztägige')] });
+    expect(await body.externVerschieben({ externId: 'familie-Familienessen-2026-11-28', datum: '2026-11-29', start: '10:00' })).toMatchObject({ ok: false, fehler: ['Dieser Kalender ist schreibgeschützt.'] });
+    const yoga = (await tag('2026-11-17')).find(e => e.titel === 'Yoga')!;
+    expect(await body.externVerschieben({ externId: yoga.id, datum: '2026-11-17', start: '25:00' })).toMatchObject({ ok: false });
+    expect(await body.externVerschieben({ externId: yoga.id, datum: '2026-11-17', start: '18:30', dauer: 0 })).toMatchObject({ ok: false });
+    expect(await body.externVerschieben({ externId: yoga.id, datum: '2026-11-17', start: '18:30', dauer: 75 })).toEqual({ ok: true, ids: { externId: yoga.id } });
+    quelle.vorkommenVerschieben = async () => null;
+    expect(await body.externVerschieben({ externId: yoga.id, datum: '2026-11-18', start: '18:30' })).toMatchObject({ ok: false, fehler: ['Der Termin ist im Kalender nicht mehr da.'] });
+    quelle.vorkommenVerschieben = async () => { throw new Error('kaputt'); };
+    expect(await body.externVerschieben({ externId: yoga.id, datum: '2026-11-18', start: '18:30' })).toMatchObject({ ok: false, fehler: [expect.stringContaining('kaputt')] });
+  });
+  it('Beispielkalender verschiebt gespiegelte und schon verschobene Termine; Unbekanntes → null', async () => {
+    const q = beispielKalender();
+    const e = await q.terminAnlegen('arbeit', { titel: 'T', notiz: '', datum: '2026-11-20', start: '10:00', dauer: 30 });
+    expect(await q.vorkommenVerschieben(e.id, { datum: '2026-11-21', start: '11:00', dauer: 30 })).toMatchObject({ datum: '2026-11-21', uid: e.uid });
+    const v = (await q.vorkommenVerschieben('privat-Yoga-2026-11-17', { datum: '2026-11-18', start: '19:00', dauer: 60 }))!;
+    expect(await q.vorkommenVerschieben(v.id, { datum: '2026-11-19', start: '19:00', dauer: 60 })).toMatchObject({ datum: '2026-11-19', titel: 'Yoga' });
+    expect(await q.vorkommenVerschieben('gibts-nicht', { datum: '2026-11-19', start: '19:00', dauer: 60 })).toBeNull();
+  });
+});

@@ -1,7 +1,7 @@
 // Body: koordiniert jede Anfrage. Holt Zeit und IDs von Providern, ruft die Domain auf,
 // führt eigene und externe Kalenderdaten zusammen und meldet Änderungen an die Clients.
 import { abgleich, ausBuchung, ausExtern, fingerabdruck } from './spiegel/abgleich';
-import { plusTage } from '../basis/datum';
+import { istDatum, istUhrzeit, plusTage } from '../basis/datum';
 import type { DomainInterface, Ergebnis } from '../domain/interface';
 import type { Abgleich, AbgleichStand } from '../providers/abgleich/interface';
 import type { Aktualisierer, AktualisierungsStand } from '../providers/aktualisierung/interface';
@@ -11,7 +11,7 @@ import type { IdGenerator } from '../providers/ids/interface';
 import type { KalenderCache, Kalenderquelle } from '../providers/kalender/interface';
 import type { Uhr } from '../providers/uhr/interface';
 import type { ExternerTermin, KalenderEinstellung, KalenderZugriff } from '../schema/extern';
-import type { Datum } from '../schema/werte';
+import type { Datum, Minuten, Uhrzeit } from '../schema/werte';
 import { board, liste, zeile } from './abfragen/aufgaben';
 import { logbuch, tagsAusText } from './abfragen/logbuch';
 import { buchungDto, KALENDER_STANDARD, zeitraum } from './abfragen/zeitraum';
@@ -259,6 +259,27 @@ export class RundblickBody implements Body {
     this.melde(['kalender']);
     void this.laden(st.von!, st.bis!);
     return { ok: true };
+  }
+  async externVerschieben(c: { externId: string; datum: Datum; start: Uhrzeit | null; dauer?: Minuten }): Promise<CommandStatus> {
+    const st = this.x.cache.stand();
+    const e = st.von && st.bis ? this.x.cache.termine(st.von, st.bis).find(t => t.id === c.externId) : undefined;
+    if (!e) return { ok: false, fehler: ['Externer Termin nicht gefunden.'] };
+    if (!e.start) return { ok: false, fehler: ['Ganztägige Termine lassen sich hier nicht verschieben.'] };
+    const kalender = this.x.cache.kalender();
+    if (kalender.find(k => k.id === e.kalenderId)?.schreibbar === false) return { ok: false, fehler: ['Dieser Kalender ist schreibgeschützt.'] };
+    // ohne Uhrzeit (z. B. auf einen Monatstag gezogen): Beginn bleibt
+    const ziel = { datum: c.datum, start: c.start ?? e.start, dauer: c.dauer ?? e.dauer };
+    if (!istDatum(ziel.datum) || !istUhrzeit(ziel.start) || !(Number.isInteger(ziel.dauer) && ziel.dauer > 0 && ziel.dauer <= 24 * 60)) return { ok: false, fehler: ['Datum, Uhrzeit oder Dauer ist ungültig.'] };
+    if (ziel.datum === e.datum && ziel.start === e.start && ziel.dauer === e.dauer) return { ok: true, ids: { externId: e.id } };
+    let neu: ExternerTermin | null;
+    try { neu = await this.x.kalender.vorkommenVerschieben(e.id, ziel); }
+    catch (f) { return { ok: false, fehler: [`Verschieben im Kalender fehlgeschlagen: ${(f as Error).message}`] }; }
+    if (!neu) return { ok: false, fehler: ['Der Termin ist im Kalender nicht mehr da.'] };
+    // sofort im Zwischenspeicher umsetzen, dann frisch laden
+    this.x.cache.ersetzen(st.von!, st.bis!, kalender, [...this.x.cache.termine(st.von!, st.bis!).filter(t => t.id !== e.id), neu]);
+    this.melde(['kalender']);
+    void this.laden(st.von!, st.bis!);
+    return { ok: true, ids: { externId: neu.id } };
   }
   async aufgabeAusBuchung(c: Parameters<Body['aufgabeAusBuchung']>[0]) {
     const aufgabeId = this.x.ids.neu();

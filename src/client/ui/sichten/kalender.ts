@@ -335,7 +335,7 @@ function evHtml(e: Ev, dichte: Dichte): string {
     return `<div class="ev own ${b.aufgabeId ? '' : 'frei'} ${b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${b.id}"${b.aufgabeId ? ` data-task="${b.aufgabeId}"` : ''} style="${pos}" title="${esc(tip)}">${herkunft(b)}${esc(b.titel)}${zeit}<span class="zieh" data-zieh="${b.id}" data-dauer="${b.dauer}" title="Ziehen: Dauer ändern"></span></div>`;
   }
   const x = e.x!;
-  return `<div class="ev extern ${x.belegt ? 'belegt' : ''}" data-extern="${esc(x.id)}" data-datum="${x.datum}" style="${pos};--kf:${x.farbe}" title="${esc(`${x.titel} · ${uhrzeit(e.s)}–${uhrzeit(e.e)} · ${x.konto} / ${x.kalender}${x.belegt ? ' · belegt Kapazität' : ''}${x.ort ? ' · ' + x.ort : ''}`)}">${esc(x.titel)}${zeit}</div>`;
+  return `<div class="ev extern ${x.belegt ? 'belegt' : ''}" data-extern="${esc(x.id)}" data-datum="${x.datum}"${externZiehbar(x)} style="${pos};--kf:${x.farbe}" title="${esc(`${x.titel} · ${uhrzeit(e.s)}–${uhrzeit(e.e)} · ${x.konto} / ${x.kalender}${x.belegt ? ' · belegt Kapazität' : ''}${x.ort ? ' · ' + x.ort : ''}`)}">${esc(x.titel)}${zeit}</div>`;
 }
 
 /** kleines Symbol: Aufgabe steht auf dem Board (hat Status) oder nur in der Aufgabenliste; freie Buchungen ohne */
@@ -419,7 +419,7 @@ function monatsRaster(z: Zeitraum, tage: Tag[], anker: string, dichte: Dichte, w
       ...t.reservierungen.map(r => `<div class="me res ${r.aufgabeId ? '' : 'frei'} ${r.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${r.id}"${r.aufgabeId ? ` data-task="${r.aufgabeId}"` : ''} title="${esc(`Reservierung ${dauerText(r.dauer)}: ${r.titel}`)}"><span class="zt">${dauerText(r.dauer).replace(' ', '')}</span>${herkunft(r)}<span class="tt">${esc(r.titel)}</span></div>`),
       ...ev.map(e => e.b
         ? `<div class="me term ${e.b.aufgabeId ? 'own' : 'frei'} ${e.b.abgeschlossen ? 'done' : ''}" draggable="true" data-booking="${e.b.id}"${e.b.aufgabeId ? ` data-task="${e.b.aufgabeId}"` : ''} style="--kf:${farbe(e)}" title="${esc(`${uhrzeit(e.s)}–${uhrzeit(e.e)} ${e.titel}`)}"><span class="zt">${uhrzeit(e.s)}</span>${herkunft(e.b)}<span class="tt">${esc(e.titel)}</span></div>`
-        : `<div class="me term extern" data-extern="${esc(e.x!.id)}" data-datum="${e.x!.datum}" style="--kf:${e.x!.farbe}" title="${esc(`${uhrzeit(e.s)}–${uhrzeit(e.e)} ${e.titel} · ${e.x!.kalender}`)}"><span class="zt">${uhrzeit(e.s)}</span><span class="tt">${esc(e.titel)}</span></div>`),
+        : `<div class="me term extern" data-extern="${esc(e.x!.id)}" data-datum="${e.x!.datum}"${externZiehbar(e.x!)} style="--kf:${e.x!.farbe}" title="${esc(`${uhrzeit(e.s)}–${uhrzeit(e.e)} ${e.titel} · ${e.x!.kalender}`)}"><span class="zt">${uhrzeit(e.s)}</span><span class="tt">${esc(e.titel)}</span></div>`),
     ];
     // alle Einträge – wie viele in die Zelle passen, misst monatEinpassen() nach dem Zeichnen
     const liste = eintraege.join('');
@@ -482,3 +482,6 @@ function agendaMini(z: Zeitraum): string {
     ${kapazitaetsBalken(t.auslastung)}
   </div>`;
 }
+
+/** externe Termine mit Uhrzeit in beschreibbaren Kalendern lassen sich ziehen (verschieben in Google/iCloud) */
+const externZiehbar = (x: ExternDto) => (x.loeschbar && x.start !== null ? ` draggable="true" data-extern-zug="${esc(x.id)}" data-dauer="${x.ende! - x.start}"` : '');

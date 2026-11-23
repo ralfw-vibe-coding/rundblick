@@ -97,7 +97,7 @@ export function interaktionAnbinden(): void {
   // ---- Drag & Drop
   // dauer: Länge des künftigen Termins (Standarddauer bzw. Dauer der Buchung); versatz: Minuten zwischen
   // Oberkante des gezogenen Termins und Mauszeiger – so folgt die Einfügemarke dem Terminbeginn.
-  type Zug = { aufgabe: string | null; buchung: string | null; frei: boolean; dauer: number; versatz: number };
+  type Zug = { aufgabe: string | null; buchung: string | null; frei: boolean; dauer: number; versatz: number; /** externer Termin (Google/iCloud) */ extern?: string };
   let zug: Zug | null = null;
   let standarddauer = 60;
   const standarddauerLaden = async () => { standarddauer = (await body.einstellungen()).standarddauer; };
@@ -106,6 +106,16 @@ export function interaktionAnbinden(): void {
   const ZIELE = '[data-drop-status],[data-drop-res],[data-drop-day],[data-drop-tl],[data-drop-list]';
   document.addEventListener('dragstart', e => {
     const t = e.target as HTMLElement;
+    const x = t.closest<HTMLElement>('[data-extern-zug]');
+    if (x) {
+      // externer Termin: verschieben in Google/iCloud (nur Tag/Uhrzeit, Dauer bleibt)
+      zug = { aufgabe: null, buchung: null, frei: false, dauer: Number(x.dataset.dauer) || 60, versatz: 0, extern: x.dataset.externZug! };
+      const spalte = x.closest<HTMLElement>('.dcol');
+      if (spalte && x.classList.contains('ev')) zug.versatz = ((e.clientY - x.getBoundingClientRect().top) / spalte.getBoundingClientRect().height) * fensterVon(spalte).min;
+      e.dataTransfer!.setData('text/plain', JSON.stringify(zug));
+      e.dataTransfer!.effectAllowed = 'move';
+      return;
+    }
     const b = t.closest<HTMLElement>('[data-booking]'), a = t.closest<HTMLElement>('[data-task]');
     if (!a && !b) return;
     zug = { aufgabe: a?.dataset.task ?? null, buchung: b?.dataset.booking ?? null, frei: !!b && !b.dataset.task, dauer: standarddauer, versatz: 0 };
@@ -125,7 +135,7 @@ export function interaktionAnbinden(): void {
     const z = (e.target as HTMLElement).closest<HTMLElement>(ZIELE);
     if (!z || !zug) return;
     const zuAufgabe = z.dataset.dropStatus !== undefined || z.dataset.dropList !== undefined;
-    if (zuAufgabe && !(zug.buchung ? zug.frei : zug.aufgabe)) return;
+    if (zuAufgabe && (zug.extern || !(zug.buchung ? zug.frei : zug.aufgabe))) return;
     if (z.dataset.dropList !== undefined && !zug.frei) return;
     e.preventDefault();
     document.querySelectorAll('.over').forEach(x => x !== z && x.classList.remove('over'));
@@ -142,9 +152,10 @@ export function interaktionAnbinden(): void {
     e.preventDefault();
     z.classList.remove('over');
     markeWeg();
-    const { aufgabe, buchung, frei } = zug;
+    const { aufgabe, buchung, frei, extern } = zug;
     const platzieren = async (datum: string, start: string | null) => {
       const ort = `${relativ(datum, heute || datum)}${start ? ' ' + start : ''}`;
+      if (extern) { pruefe(await body.externVerschieben({ externId: extern, datum, start }), `Termin verschoben: ${ort}`); return; }
       if (buchung) { pruefe(await body.buchungAendern({ buchungId: buchung, datum, start }), `${start ? 'Termin' : 'Reservierung'} verschoben: ${ort}`); return; }
       if (aufgabe) pruefe(await body.buchungAnlegen({ aufgabeId: aufgabe, datum, start }), `${start ? 'Termin' : 'Reservierung'} angelegt: ${ort} (Dauer änderbar)`);
     };

@@ -247,18 +247,32 @@ export async function externOeffnen(externId: string, datum: string): Promise<vo
   aktuell = null;
   const s = el();
   const zeit = x.start === null ? 'ganztägig' : `${uhrzeit(x.start)}–${uhrzeit(x.ende!)}`;
+  // verschieben: nur Termine mit Uhrzeit in beschreibbaren Kalendern (bei Serien nur dieses Vorkommen)
+  const verschiebbar = x.loeschbar && x.start !== null, dauer = x.start === null ? 0 : x.ende! - x.start;
   s.innerHTML = `<div class="dh"><span class="lk gross" style="--kf:${x.farbe}" title="${esc(x.kalender)}">${I.tag}</span><div class="titel-input" style="flex:1">${esc(x.titel)}</div>${x.loeschbar ? muellKnopf('externLoeschen', x.serie ? `Nur diesen Termin der Serie in „${x.kalender}“ löschen` : `Termin in „${x.kalender}“ löschen`, externId) : ''}${knopf('zu', ICON.zu, 'Schließen (Esc)')}</div>
     <div class="db">
       <div class="fld-grid">
-        ${feld('Wann', `<div>${WT[wochentag(x.datum)]} ${kurz(x.datum)} · ${zeit}</div>`)}
+        ${verschiebbar ? `${feld('Datum', `<input type="date" data-x="datum" value="${x.datum}">`)}${feld('Uhrzeit', uhrzeitFeld('data-x="start"', uhrzeit(x.start!)))}` : feld('Wann', `<div>${WT[wochentag(x.datum)]} ${kurz(x.datum)} · ${zeit}</div>`)}
         ${feld('Kalender', `<div><span class="sdot" style="background:${x.farbe}"></span> ${esc(x.kalender)}${x.konto ? ` · ${esc(x.konto)}` : ''}</div>`)}
       </div>
+      ${verschiebbar ? feld('Dauer', `<select data-x="dauer">${[...new Set([15, 30, 45, 60, 90, 120, 180, 240, 300, 360, 480, dauer])].sort((a, b) => a - b).map(m => `<option value="${m}" ${m === dauer ? 'selected' : ''}>${dauerText(m)}</option>`).join('')}</select>`) : ''}
       ${x.ort ? feld('Ort', `<div>${esc(x.ort)}</div>`) : ''}
       ${x.notiz ? feld('Notiz', `<div style="white-space:pre-wrap">${esc(x.notiz)}</div>`) : ''}
-      <div class="muted" style="font-size:12px;line-height:1.5">Externer Termin – bearbeitet wird er in der Kalender-App${x.loeschbar ? `; der Mülleimer löscht ihn dort${x.serie ? ' (nur diesen Termin der Serie)' : ''}` : ' (Kalender ist schreibgeschützt)'}. ${x.start === null ? 'Ganztägige Termine lassen sich nicht übernehmen.' : 'Wird eine Aufgabe daraus, bleibt ihre Buchung mit diesem Termin verknüpft (Änderungen gehen in beide Richtungen).'}</div>
+      <div class="muted" style="font-size:12px;line-height:1.5">Externer Termin – ${verschiebbar ? `Datum, Uhrzeit und Dauer ändern ihn direkt im Kalender (auch per Ziehen im Kalender)${x.serie ? ', bei einer Serie nur diesen Termin' : ''}; Titel und Notiz bearbeitest du in der Kalender-App` : 'bearbeitet wird er in der Kalender-App'}${x.loeschbar ? `; der Mülleimer löscht ihn dort${x.serie ? ' (nur diesen Termin der Serie)' : ''}` : ' (Kalender ist schreibgeschützt)'}. ${x.start === null ? 'Ganztägige Termine lassen sich nicht übernehmen.' : 'Wird eine Aufgabe daraus, bleibt ihre Buchung mit diesem Termin verknüpft (Änderungen gehen in beide Richtungen).'}</div>
     </div>
     ${x.start === null ? '' : `<div class="df"><button class="btn primary" data-d="ausExtern">${I.zurAufgabe} Aufgabe daraus machen</button></div>`}`;
-  s.onchange = null;
+  s.onchange = async ev => {
+    const t = ev.target as HTMLInputElement;
+    const f = t.dataset.x;
+    if (!f || !verschiebbar) return;
+    const ziel = { datum: x.datum, start: uhrzeit(x.start!), dauer };
+    if (f === 'datum') { if (!t.value) return; ziel.datum = t.value; }
+    if (f === 'start') { if (!t.value) return; ziel.start = t.value; }
+    if (f === 'dauer') ziel.dauer = Number(t.value);
+    const r = await body.externVerschieben({ externId, ...ziel });
+    // die Kennung ändert sich mit dem Beginn – mit der neuen weiter anzeigen
+    if (pruefe(r, 'Termin verschoben') && r.ok) void externOeffnen(r.ids!.externId!, ziel.datum);
+  };
   s.onclick = async ev => {
     const d = (ev.target as HTMLElement).closest<HTMLElement>('[data-d]')?.dataset.d;
     if (d === 'zu') schliessen();
