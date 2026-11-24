@@ -165,11 +165,18 @@ async function starten(): Promise<void> {
   store.abonnieren(a => { if (!a.fremd) { clearTimeout(buendel); buendel = setTimeout(() => void abgleich.abgleichen(), 400); } });
   window.addEventListener('online', () => void abgleich.abgleichen());
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void abgleich.abgleichen(); });
-  // Kalender-Stand der Macs: beim Start, beim Zurückkehren und alle 5 Minuten
-  const kalenderLesen = () => { if (db.angemeldet() && document.visibilityState === 'visible') void body.synchronisieren(); };
-  kalenderLesen();
-  document.addEventListener('visibilitychange', kalenderLesen);
-  setInterval(kalenderLesen, 5 * 60_000);
+  // Kalender-Stand der Macs: nur im Vordergrund – beim Start, beim Zurückkehren und dann alle 5 Minuten.
+  // Im Hintergrund läuft kein Wecker (Akku); er startet erst wieder, wenn die App sichtbar wird.
+  let kalenderUhr: ReturnType<typeof setInterval> | undefined;
+  const kalenderLesen = () => { if (db.angemeldet()) void body.synchronisieren(); };
+  const kalenderWecker = () => {
+    clearInterval(kalenderUhr); kalenderUhr = undefined;
+    if (document.visibilityState !== 'visible') return;
+    kalenderLesen();
+    kalenderUhr = setInterval(kalenderLesen, 5 * 60_000);
+  };
+  kalenderWecker();
+  document.addEventListener('visibilitychange', kalenderWecker);
 
   while (db.angemeldet()) {
     await abgleich.abgleichen();
