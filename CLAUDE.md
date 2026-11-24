@@ -44,7 +44,7 @@ Architektur und Entscheidungen: `requirements/design.html` (Abschnitte 13–15).
 - Fälligkeit (Raute + Datum) steht **direkt hinter dem Titel**.
 - Tags, @Verantwortlich und Ort stehen **immer** in der Zeile hinter der Frist (keine eigene Zeile); wird es schmal, brechen sie um – Titel und Frist bleiben zusammen (Nutzer 20.11.2026).
 - Mülleimer erscheint beim Überfahren einer Zeile.
-- Die in der Schublade geöffnete Aufgabe bleibt in Liste/Board **markiert und sichtbar**, auch wenn sie den Abschnitt wechselt – **außer beim Abschließen**: dann wird sie still weggeräumt, „Abgeschlossen“ klappt nicht auf (Liste und Board; Nutzer 19.11.2026).
+- Die in der Schublade geöffnete Aufgabe bleibt in Liste/Board **markiert und sichtbar**, auch wenn sie den Abschnitt wechselt – aber **keine Rubrik klappt dafür auf**: Abhaken, Frist oder Wiedervorlage setzen sortieren sie still weg, auf-/zugeklappt bleibt unverändert (Liste und Board; Nutzer 19./24.11.2026). Nur frisch Erfasstes klappt seinen Abschnitt auf.
 
 **Kanban-Board**
 - Ob alle Spalten (voll) oder eine Spalte je Kategorie (kompakt) gezeigt werden, hängt beim Kanban **nur von der Breite** ab (ab 640 px voll); die Höhe kürzt nur die Spalten (Nutzer 19.11.2026). In der Sichtauswahl heißt die Sicht nur „Kanban“.
