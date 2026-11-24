@@ -543,6 +543,7 @@
     <li>Aufgaben mit Board-Status stehen nur auf dem Board, nicht in der Liste (<code>liste({ ohneStatus: true })</code>).</li>
     <li>Schema-Schutz: zu neue Events werden gezählt (<code>datenstand().zuNeu</code>) und lösen „bitte aktualisieren“ aus.</li>
     <li>Release: <code>npm run release</code> bringt Desktop-Update und Phone aus demselben Commit heraus.</li>
+    <li>Kalender am Phone (24.11.2026): Weg A – Macs legen ihren Kalender-Stand in <code>kalender/&lt;gerät&gt;.json</code> ab, das Phone liest ihn (<code>Kalenderquelle.art = 'ablage'</code>) und schreibt über Kalender-Aufträge (<code>KalenderauftragErteilt/Erledigt</code>), die der alphabetisch erste Mac mit frischem Stand ausführt. Weg B (Google direkt per OAuth) später nur durch Austausch des Providers (<code>art = 'direkt'</code>).</li>
     <li>Wiederkehrende Aufgaben: „alle n Tage/Wochen/Monate/Jahre“ ab Frist; Abhaken → <code>WiederholungErledigt</code>, Frist springt auf den nächsten Termin nach heute, Aufgabe steht unter „Wird fällig“ (Abschnitt jetzt unter „Ohne Frist“). Events <code>WiederholungGesetzt/Aufgehoben/Erledigt</code> mit Schema 2 (Schema-Version je Event-Typ).</li>
   </ul>
   <h3>Entschieden (16.11.2026)</h3>

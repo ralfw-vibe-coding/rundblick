@@ -7,6 +7,7 @@ import { checkboxUmschalten, markdownHtml } from '../../basis/markdown';
 import type { AbgleichStand, AufgabeDetails, AufgabeZeile, Board, Body, CommandStatus, LogbuchTag, StatusInfo } from '../../body/interface';
 import { wiederholungFelder, wiederholungFreigeben, wiederholungLesen } from '../wiederholung';
 import { I } from './icons';
+import { phoneKalender } from './kalender';
 
 /** Was die PWA-Hülle (Service Worker) beisteuert */
 export type Pwa = {
@@ -16,7 +17,7 @@ export type Pwa = {
   beiNeuerVersion(cb: () => void): void;
 };
 
-type Sicht = 'liste' | 'board' | 'logbuch';
+type Sicht = 'liste' | 'board' | 'kalender' | 'logbuch';
 type UiZustand = { sicht: Sicht; offen: string[]; spalteZu: string[]; fertigOffen: string[] };
 
 const UI_SCHLUESSEL = 'rundblick.phone.ui';
@@ -48,7 +49,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
   const ausNeu = (id: string) => body.aufgabeGesehen({ aufgabeId: id });
 
   wurzel.innerHTML = `<div class="bildschirm"><div class="haupt"></div>
-    <nav class="reiter"><button data-sicht="liste">${I.liste}Liste</button><button data-sicht="board">${I.board}Board</button><button data-sicht="logbuch">${I.logbuch}Logbuch</button></nav>
+    <nav class="reiter"><button data-sicht="liste">${I.liste}Liste</button><button data-sicht="board">${I.board}Board</button><button data-sicht="kalender">${I.kalender}Kalender</button><button data-sicht="logbuch">${I.logbuch}Logbuch</button></nav>
     <div class="detail"></div><div class="blatt-hg"></div><div class="blatt"></div><div class="toast"></div></div>`;
   const bs = wurzel.querySelector<HTMLElement>('.bildschirm')!;
   const haupt = bs.querySelector<HTMLElement>('.haupt')!;
@@ -179,7 +180,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     const links = haupt.querySelector('.spalten')?.scrollLeft ?? 0;
     const fokus = document.activeElement as HTMLInputElement | null;
     const fokusSel = fokus?.matches?.('[data-suche],[data-erfassen],[data-notizfeld]') ? [fokus.dataset.suche !== undefined ? '[data-suche]' : fokus.dataset.erfassen !== undefined ? '[data-erfassen]' : '[data-notizfeld]', fokus.value, fokus.selectionStart] as const : null;
-    const html = z.sicht === 'liste' ? await liste() : z.sicht === 'board' ? await board() : await logbuch();
+    const html = z.sicht === 'liste' ? await liste() : z.sicht === 'board' ? await board() : z.sicht === 'kalender' ? await kal.html() : await logbuch();
     if (nr !== lauf) return; // inzwischen neuer Auftrag
     const zuNeu = (await body.datenstand()).zuNeu;
     if (nr !== lauf) return;
@@ -190,6 +191,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     if (fokusSel) { const f = haupt.querySelector<HTMLInputElement>(fokusSel[0]); if (f) { f.value = fokusSel[1]; f.focus(); if (fokusSel[2] !== null) f.setSelectionRange(fokusSel[2], fokusSel[2]); } }
     reiter.querySelectorAll<HTMLElement>('button').forEach(b => b.classList.toggle('an', b.dataset.sicht === z.sicht));
     wischenAnbinden(); ziehenAnbinden(); punkteAnbinden();
+    if (z.sicht === 'kalender') kal.nachZeichnen(haupt);
   }
 
   function willkommen(): void {
@@ -275,6 +277,13 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
 
   // ---------------- Schubladen ----------------
   const blattZu = () => { blattEl.className = 'blatt'; blattHg.classList.remove('offen'); einstOffen = false; };
+  // Kalender (Tag/Woche/Monat) als eigenes Modul – bekommt nur, was es braucht
+  const kal = phoneKalender({
+    body, esc, pruefe: (r, ok) => pruefe(r, ok), toast: (t, f) => toast(t, f), kopf: t => kopf(t), detail,
+    blattAuf: h => blattAuf(h), blattZu: () => blattZu(), neuZeichnen: () => void zeichnen(),
+    aufgabeOeffnen: id => { z.detail = { art: 'aufgabe', id }; void detailZeigen(); },
+  });
+  kal.ziehenAnbinden(bs);
   const blattAuf = (html: string, klasse = 'angaben-blatt') => {
     blattEl.className = `blatt ${klasse} offen`; blattEl.innerHTML = html; blattHg.classList.add('offen');
     // Datumsfelder bekommen ihren Wert erst hier: iOS setzt mit „Zurücksetzen“ auf den Ausgangswert (value-Attribut) zurück –
@@ -372,6 +381,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     const [art, rest] = el.dataset.zweistufig!.split(/:(.*)/s) as [string, string];
     if (art === 'loeschen' || art === 'log-aufgabe') { pruefe(await body.aufgabeVerwerfen({ aufgabeId: rest }), 'Gelöscht'); }
     else if (art === 'detail-loeschen') { if (pruefe(await body.aufgabeVerwerfen({ aufgabeId: rest }), 'Gelöscht')) detailSchliessen(); }
+    else if (await kal.zweistufig(art, rest)) { /* Kalender */ }
     else if (art === 'log-notiz') pruefe(await body.notizVerwerfen({ notizId: rest }), 'Notiz gelöscht');
     else if (art === 'notiz-loeschen') { if (pruefe(await body.notizVerwerfen({ notizId: rest }), 'Notiz gelöscht')) detailSchliessen(); }
     else if (art === 'log-punkt') {
@@ -542,6 +552,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
     if (abmeldenFragen && !q('[data-abmelden]')) { abmeldenFragen = false; clearTimeout(abmeldenUhr); if (einstOffen && q('.blatt')) { void einstellungen(); return; } }
 
     if (q('[data-verbinden]')) { pruefe(await body.abgleichVerbinden()); return; }
+    if (await kal.klick(t, e.clientY)) return;
     if (q('[data-sicht]')) { z.sicht = q('[data-sicht]')!.dataset.sicht as Sicht; z.suche = false; z.filter = ''; merken(); void zeichnen(); return; }
     if (q('[data-wolke]')) { const r = await body.abgleichen(); const s = await body.abgleich(); toast(!r.ok ? r.fehler.join(' ') : !s.online ? 'Offline – alles wird lokal gespeichert' : 'Abgeglichen mit der Dropbox', !r.ok); return; }
     if (q('[data-einst]')) { abmeldenFragen = false; void einstellungen(); return; }
@@ -634,6 +645,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
   });
   bs.addEventListener('change', async e => {
     const t = e.target as HTMLInputElement;
+    if (await kal.aendern(t)) return;
     const a = detailDaten;
     if (t.matches('[data-bild-neu]') && a) {
       const dateien = [...(t.files ?? [])];
@@ -683,6 +695,7 @@ export function phoneStarten(body: Body, wurzel: HTMLElement, pwa: Pwa): void {
       // offene Aufgabe aktualisieren – aber nicht, während darin getippt wird
       const tippt = detail.contains(document.activeElement) && /INPUT|TEXTAREA/.test(document.activeElement!.tagName);
       if (z.detail && !tippt && !bs.querySelector('.bildansicht')) void detailZeigen();
+      else if (kal.detailOffen() && !tippt) kal.detailNeu();
     };
     neuUhr = setTimeout(() => void verarbeiten(), 60);
   });

@@ -14,7 +14,7 @@ window.addEventListener('unhandledrejection', e => console.log('TB-REJECT ' + (e
   const enc = new TextEncoder();
   let version = 1;
   const roh = (() => { const x = new XMLHttpRequest(); x.open('GET', '/test-daten.json', false); x.send(); return x.status === 200 ? JSON.parse(x.responseText) : {}; })();
-  const dateien = new Map(Object.entries(roh).map(([n, t]) => ['/events/' + n, { daten: enc.encode(t), rev: 'r1', v: 1 }]));
+  const dateien = new Map(Object.entries(roh).map(([n, t]) => [n.includes('/') ? '/' + n : '/events/' + n, { daten: enc.encode(t), rev: 'r1', v: 1 }]));
   window.__dropbox = { dateien, protokoll: [], anhaengen(name, text) { const d = dateien.get(name); version++; const neu = new Uint8Array([...(d ? d.daten : []), ...enc.encode(text)]); dateien.set(name, { daten: neu, rev: 'r' + version, v: version }); } };
   const antwort = (j, status = 200, kopf = {}) => new Response(typeof j === 'string' || j instanceof Uint8Array ? j : JSON.stringify(j), { status, headers: kopf });
   const echt = window.fetch.bind(window);

@@ -327,3 +327,95 @@
 .wh-zeichen svg { width: 12px; height: 12px; }
 .wh { display: inline-flex; align-items: center; gap: 8px; flex: 1; }
 .wh input[type=number] { width: 56px; }
+
+/* ---------------- Kalender (Tag · Woche · Monat) ---------------- */
+.k-leiste { display: flex; align-items: center; gap: 6px; padding: 0 12px 6px; flex: none; }
+.k-seg { display: flex; background: rgba(0,0,0,.06); border-radius: 9px; padding: 2px; margin-right: auto; }
+.k-seg button { border: 0; background: none; font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 7px; color: var(--ink2); }
+.k-seg button.an { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.k-nav, .k-heute, .k-neu { border: 1px solid var(--line); background: #fff; border-radius: 9px; height: 30px; display: grid; place-items: center; color: var(--ink2); font: inherit; font-size: 13px; }
+.k-nav, .k-neu { width: 30px; padding: 0; }
+.k-heute { padding: 0 9px; }
+.k-neu { color: var(--own); }
+.k-nav svg.lucide, .k-neu svg.lucide { width: 17px; height: 17px; }
+.k-titel { padding: 0 16px 6px; font-size: 15px; font-weight: 650; display: flex; flex-direction: column; flex: none; }
+.k-stand { font-size: 11px; color: var(--mute); font-weight: 400; margin-top: 1px; }
+.k-inhalt { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #fff; border-top: 1px solid var(--line); }
+
+/* Zeitraster */
+.k-tage, .k-band { display: flex; flex: none; border-bottom: 1px solid var(--line); }
+.k-ecke { width: 34px; flex: none; }
+.k-tk { flex: 1; text-align: center; padding: 4px 0; font-size: 11px; color: var(--mute); display: flex; flex-direction: column; align-items: center; }
+.k-tk b { font-size: 15px; color: var(--ink); font-weight: 600; width: 26px; height: 26px; line-height: 26px; border-radius: 50%; }
+.k-tk.heute b { background: var(--over); color: #fff; }
+.k-band { max-height: 30%; overflow-y: auto; }
+.k-bandtag { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 3px 1px; min-height: 22px; border-left: 1px solid var(--line); }
+.k-chip { font-size: 11px; line-height: 16px; padding: 1px 5px; border-radius: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 3px; }
+.k-chip svg.lucide { width: 10px; height: 10px; flex: none; }
+.k-chip.res { border: 1.5px dashed var(--own); color: var(--own); }
+.k-chip.ganz { background: var(--kf); color: #fff; }
+.k-chip.frist { color: var(--d-spaeter); background: #fbf6e6; }
+.k-chip.frist.ueberfaellig { color: var(--d-ueberfaellig); background: #fdeeee; }
+.k-chip.frist.heute { color: var(--d-heute); background: #fbe9ea; }
+.k-raster { flex: 1; min-height: 0; overflow-y: auto; position: relative; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.k-innen { position: relative; display: flex; }
+.k-nacht { position: absolute; left: 34px; right: 0; background: #f7f6f3; pointer-events: none; }
+.k-stunden { width: 34px; flex: none; position: relative; }
+.k-std { position: absolute; left: 0; right: -100vw; border-top: 1px solid #efede8; pointer-events: none; }
+.k-std span { position: absolute; top: -7px; left: 4px; font-size: 10px; color: var(--mute); background: #fff; padding: 0 2px; }
+.k-spalten { flex: 1; display: flex; position: relative; }
+.k-spalte { flex: 1; min-width: 0; position: relative; border-left: 1px solid var(--line); }
+.k-spalte.we { background: rgba(0,0,0,.015); }
+.k-jetzt { position: absolute; left: 0; right: 0; height: 2px; background: var(--over); z-index: 3; pointer-events: none; }
+.k-ev { position: absolute; border-radius: 6px; padding: 2px 4px; overflow: hidden; font-size: 11px; line-height: 13px; display: flex; flex-direction: column; z-index: 2;
+  background: color-mix(in srgb, var(--kf) 16%, #fff); border-left: 3px solid var(--kf); color: color-mix(in srgb, var(--kf) 70%, #000); }
+.k-ev b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.k-ev span { opacity: .8; font-size: 10px; }
+.k-ev.eigen { background: var(--kf); color: #fff; border-left-color: rgba(0,0,0,.18); }
+.k-ev.eigen.fertig { opacity: .5; text-decoration: line-through; }
+.k-ev.wartet { border-style: dashed; opacity: .8; }
+.k-wartet { position: absolute; right: 3px; top: 2px; }
+.k-wartet svg.lucide { width: 11px; height: 11px; }
+.k-inhalt.woche .k-ev { padding: 1px 2px; font-size: 10px; }
+.k-inhalt.woche .k-ev span { display: none; }
+.k-platz { opacity: .3; }
+.k-geist { z-index: 20; box-shadow: 0 8px 24px rgba(0,0,0,.25); opacity: .95; pointer-events: none; }
+.k-geist .k-zeit { position: absolute; left: 0; top: -20px; font-style: normal; font-size: 11px; font-weight: 600; background: var(--ink); color: #fff; padding: 2px 6px; border-radius: 6px; white-space: nowrap; }
+
+/* Monat */
+.k-monat { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.k-mk { display: grid; grid-template-columns: repeat(7, 1fr); font-size: 11px; color: var(--mute); text-align: center; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.k-mg { flex: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); }
+.k-zelle { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 2px; overflow: hidden; display: flex; flex-direction: column; gap: 1px; min-height: 0; }
+.k-zelle.anders { background: #f7f6f3; color: var(--mute); }
+.k-zk { display: flex; align-items: center; justify-content: space-between; font-size: 12px; padding: 0 2px; }
+.k-zelle.heute .k-zk b { background: var(--over); color: #fff; border-radius: 50%; width: 20px; height: 20px; display: grid; place-items: center; font-size: 11px; }
+.k-fr { display: flex; align-items: center; gap: 1px; font-size: 10px; color: var(--d-spaeter); }
+.k-fr svg.lucide { width: 9px; height: 9px; }
+.k-m { font-size: 10px; line-height: 13px; padding: 0 3px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 2px solid var(--kf); background: color-mix(in srgb, var(--kf) 14%, #fff); }
+.k-m.eigen { background: var(--kf); color: #fff; }
+.k-m.res { border: 1px dashed var(--own); color: var(--own); background: none; }
+.k-m.ganz { background: var(--kf); color: #fff; }
+.k-mehr { font-size: 10px; color: var(--own); font-weight: 600; padding-left: 3px; }
+
+/* Kalender-Details */
+.k-punkt { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.k-kal { background: none; border: 0; padding: 0; min-height: 0; color: var(--ink2); }
+.k-wartet-text { margin-left: auto; color: var(--own); font-size: 13px; display: inline-flex; gap: 4px; align-items: center; }
+.k-wartet-text svg.lucide { width: 14px; height: 14px; }
+.k-hinweis { background: #fff6e6; color: #8a5a00; border-radius: 10px; padding: 9px 11px; font-size: 13px; }
+.k-reihe { display: flex; gap: 8px; }
+.k-reihe select { flex: 1; }
+.feld .wert select, .feld .wert input[type=date] { border: 0; background: none; font: inherit; font-size: 15px; color: var(--ink); width: 100%; outline: none; -webkit-appearance: none; appearance: none; }
+.k-reihe select { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 15px; }
+.k-knopf { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 10px 14px; font: inherit; font-size: 15px; color: var(--own); font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; }
+.k-knopf.voll { margin-top: 0; }
+.k-check { gap: 8px; }
+.k-link { border: 1px solid var(--line); font: inherit; text-align: left; color: var(--own); width: 100%; }
+.k-notiz { width: 100%; min-height: 110px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 15px; resize: vertical; background: #fff; }
+.k-kal { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.k-geist { overflow: visible; }
+.k-geist > span { display: none; }
+.k-check { justify-content: flex-start; color: var(--ink); }
+.k-check input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--own); }
+.feld label.wert.k-check { font-size: 15px; color: var(--ink); margin: 0; display: flex; }

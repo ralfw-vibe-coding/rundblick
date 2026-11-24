@@ -1,6 +1,6 @@
 // Symbole der Phone App – ausschließlich Lucide, als SVG-Strings (Klasse „lucide“ wie im Entwurf).
 import {
-  Archive, ArrowUpToLine, CalendarClock, Check, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleArrowDown, CircleCheck, Cloud,
+  Archive, ArrowUpToLine, Calendar, CalendarClock, Check, ChevronLeft, ChevronRight, ChevronUp, Circle, CircleArrowDown, CircleCheck, Cloud,
   CloudCheck, CloudOff, CloudUpload, Diamond, Eye, HardDrive, ImagePlus, List, Lock, LogIn, MapPin, NotebookPen, Plus, RefreshCw, Repeat, Search,
   Settings, SquareCheck, SquareKanban, StickyNote, Trash2, X,
 } from 'lucide';
@@ -10,7 +10,7 @@ const svg = (n: unknown) => `<svg class="lucide" xmlns="http://www.w3.org/2000/s
   (n as Knoten).map(([tag, attr]) => `<${tag} ${Object.entries(attr).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}="${v}"`).join(' ')}/>`).join('')}</svg>`;
 
 export const I = {
-  archiv: svg(Archive), nachOben: svg(ArrowUpToLine), wiedervorlage: svg(CalendarClock), wiederholung: svg(Repeat), haken: svg(Check), zurueck: svg(ChevronLeft),
+  archiv: svg(Archive), kalender: svg(Calendar), nachOben: svg(ArrowUpToLine), wiedervorlage: svg(CalendarClock), wiederholung: svg(Repeat), haken: svg(Check), zurueck: svg(ChevronLeft),
   rechts: svg(ChevronRight), hoch: svg(ChevronUp), kreis: svg(Circle), update: svg(CircleArrowDown), erledigt: svg(CircleCheck), wolke: svg(Cloud),
   wolkeOk: svg(CloudCheck), wolkeAus: svg(CloudOff), wolkeHoch: svg(CloudUpload), frist: svg(Diamond), gesehen: svg(Eye), speicher: svg(HardDrive),
   bildNeu: svg(ImagePlus), liste: svg(List), schloss: svg(Lock), anmelden: svg(LogIn), ort: svg(MapPin), logbuch: svg(NotebookPen), plus: svg(Plus),

@@ -15,6 +15,8 @@ python3 - "$DATEN" <<'PY'
 import json, os, sys
 o = os.path.join(sys.argv[1], 'events')
 d = {f: open(os.path.join(o, f)).read() for f in os.listdir(o) if f.endswith('.jsonl')} if os.path.isdir(o) else {}
+k = os.path.join(sys.argv[1], 'kalender')
+if os.path.isdir(k): d.update({'kalender/' + f: open(os.path.join(k, f)).read() for f in os.listdir(k) if f.endswith('.json') and not f.startswith('.')})
 json.dump(d, open('/tmp/rb-phone-site/test-daten.json', 'w'))
 PY
 sed -i '' 's#<div id="app"></div>#<div id="app"></div><script src="/fake-dropbox.js"></script>#' /tmp/rb-phone-site/index.html
