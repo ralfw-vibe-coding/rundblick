@@ -1,4 +1,5 @@
 // Implementierung des Domain interface. Kennt nur den Event Store.
+import * as K from './commands/kalenderauftraege';
 import { KATEGORIEN } from '../schema/werte';
 import type { EventStore } from '../providers/eventstore/interface';
 import type { Datum, Id } from '../schema/werte';
@@ -25,6 +26,8 @@ export class Domain implements DomainInterface {
   }
 
   aufgabeErfassen: DomainInterface['aufgabeErfassen'] = c => A.aufgabeErfassen(this.es, c);
+  kalenderauftragErteilen: DomainInterface['kalenderauftragErteilen'] = c => K.kalenderauftragErteilen(this.es, c);
+  kalenderauftragErledigen: DomainInterface['kalenderauftragErledigen'] = c => K.kalenderauftragErledigen(this.es, c);
   aufgabeAendern: DomainInterface['aufgabeAendern'] = c => A.aufgabeAendern(this.es, c);
   statusSetzen: DomainInterface['statusSetzen'] = c => A.statusSetzen(this.es, c);
   aufgabeAbschliessen: DomainInterface['aufgabeAbschliessen'] = c => A.aufgabeAbschliessen(this.es, c);
@@ -64,6 +67,7 @@ export class Domain implements DomainInterface {
   buchungen(von?: Datum, bis?: Datum): BuchungZ[] {
     return [...this.bestand.buchungen.values()].filter(b => !b.storniert && (!von || b.datum >= von) && (!bis || b.datum <= bis));
   }
+  kalenderauftraege() { return [...this.bestand.auftraege.values()].sort((a, b) => a.erteilt.localeCompare(b.erteilt)); }
   buchung(id: Id) { const b = this.bestand.buchungen.get(id); return b && !b.storniert ? b : null; }
   buchungenDerAufgabe(aufgabeId: Id) {
     return this.buchungen().filter(b => b.aufgabeId === aufgabeId).sort((a, b) => (a.datum + (a.start ?? '')).localeCompare(b.datum + (b.start ?? '')));

@@ -9,7 +9,10 @@ export const SCHEMA_VERSION = 2;
  * Ältere Apps überspringen nur diese Events (und melden „bitte aktualisieren“), alles andere lesen sie weiter.
  * 2: Wiederholungen (eine ältere App würde nach dem Weiterspringen die alte Frist zeigen).
  */
-const AB_VERSION: Partial<Record<string, number>> = { WiederholungGesetzt: 2, WiederholungAufgehoben: 2, WiederholungErledigt: 2 };
+const AB_VERSION: Partial<Record<string, number>> = {
+  WiederholungGesetzt: 2, WiederholungAufgehoben: 2, WiederholungErledigt: 2,
+  KalenderauftragErteilt: 2, KalenderauftragErledigt: 2,
+};
 export const schemaVon = (typ: string): number => AB_VERSION[typ] ?? 1;
 
 type E<T extends string, D> = { typ: T; daten: D };
@@ -67,6 +70,20 @@ export type DomainEvent =
   | E<'BuchungAbgeglichen', { buchungId: Id; stand: string }>
   | E<'VerknuepfungGeloest', { buchungId: Id; grund: 'manuell' | 'externGeloescht' }>
   | E<'AufgabeAusBuchungErstellt', { aufgabeId: Id; buchungId: Id; titel: string; beschreibung: string; status: Id | null }>
+  // ---- Kalender-Aufträge: ein Gerät ohne direkten Kalenderzugang (Phone, Kalender aus der Ablage) bittet ein Gerät
+  // mit Zugang (Mac), einen externen Termin anzulegen (Spiegeln), zu verschieben oder zu löschen.
+  | E<'KalenderauftragErteilt', {
+      auftragId: Id; art: 'spiegeln' | 'verschieben' | 'loeschen';
+      /** spiegeln: die Buchung; loeschen einer gespiegelten Buchung: auch */
+      buchungId?: Id;
+      /** Zielkalender (spiegeln) bzw. Kalender des Termins – Kennung ist gerätebezogen, Name + Konto helfen beim Wiederfinden */
+      kalender: { id: string; name: string; konto: string };
+      /** verschieben/loeschen: welches Vorkommen */
+      termin?: { terminId: string; uid?: string; titel: string; datum: Datum; start: Uhrzeit | null; dauer: Minuten };
+      /** verschieben: wohin */
+      ziel?: { datum: Datum; start: Uhrzeit; dauer: Minuten };
+    }>
+  | E<'KalenderauftragErledigt', { auftragId: Id; ok: boolean; meldung: string; geraet: string }>
   // ---- Notizen (Logbuch): nur Text, Tags, Bilder und ein Tag; quasi schon erledigt
   | E<'NotizErfasst', { notizId: Id; text: string; tags: string[]; datum: Datum }>
   | E<'NotizTextGeaendert', { notizId: Id; text: string }>
@@ -118,4 +135,5 @@ export const tag = {
   notiz: (id: Id) => `notiz:${id}`,
   spalten: 'spalten',
   planung: 'planung',
+  kalenderauftraege: 'kalenderauftraege',
 } as const;

@@ -19,6 +19,7 @@ import { ulidGenerator } from '../providers/ids/ulid';
 import { kalenderCache } from '../providers/kalender/cache';
 import { eventKitKalender } from '../providers/kalender/eventkit';
 import { beispielKalender } from '../providers/kalender/fake';
+import { dateiKalenderAblage } from '../providers/kalender/ablage-datei';
 import type { Kalenderquelle } from '../providers/kalender/interface';
 import { systemUhr } from '../providers/uhr/system';
 import { aktualisiererErzeugen } from './aktualisierung';
@@ -69,7 +70,9 @@ async function starte(): Promise<void> {
   // ---- Domain & Body
   const domain = new Domain(store);
   const aktualisierer = aktualisiererErzeugen();
-  const body = new RundblickBody({ domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender, cache, anhaenge: dateiAnhaenge(datenordner), info: { datenordner, geraet }, aktualisierer, zuNeueEvents: zuNeueAnzahl });
+  // Kalender-Stand für das Phone ablegen (kalender/<gerät>.json) – Beispielkalender nie in die echten Daten
+  const ablage = process.env.RB_KALENDER === 'beispiel' && !process.env.RB_DATEN ? undefined : dateiKalenderAblage(datenordner);
+  const body = new RundblickBody({ domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender, cache, anhaenge: dateiAnhaenge(datenordner), info: { datenordner, geraet }, aktualisierer, zuNeueEvents: zuNeueAnzahl, ablage });
   body.einrichten();
   if (process.env.RB_DEMO === '1' && store.lesen().events.length <= 7) await demoDatenAnlegen(body, systemUhr.heute());
 

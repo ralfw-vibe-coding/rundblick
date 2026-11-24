@@ -54,7 +54,7 @@ export type BuchungDto = {
   id: Id; aufgabeId: Id | null; titel: string; beschreibung: string; aufgabentitel: string | null;
   datum: Datum; start: Uhrzeit | null; dauer: Minuten; belegt: boolean; abgeschlossen: boolean;
   /** gespiegelt in Google/iCloud (Zielkalender), sonst null */
-  spiegel: { kalender: string; konto: string; farbe: string; ursprung: 'rundblick' | 'extern' } | null;
+  spiegel: { kalender: string; konto: string; farbe: string; ursprung: 'rundblick' | 'extern'; /** Spiegeln beauftragt, ein Mac führt es aus */ wartet?: boolean } | null;
   /** Hinweis an der Buchung, z. B. nach externem Löschen */
   hinweis: string | null;
   /** wo die zugehörige Aufgabe steht: auf dem Board (hat Status) oder nur in der Aufgabenliste; null = freie Buchung */
@@ -70,6 +70,8 @@ export type ExternDto = {
   loeschbar: boolean;
   /** Vorkommen einer Serie – gelöscht wird nur dieses */
   serie: boolean;
+  /** Verschieben beauftragt, ein Mac führt es aus (steht schon am neuen Platz) */
+  wartet?: boolean;
 };
 
 export type Auslastung = { belegt: Minuten; eigene: Minuten; extern: Minuten; nichtBelegend: Minuten; kapazitaet: Minuten };
@@ -118,6 +120,11 @@ export type EinstellungenDto = {
   kalender: KalenderEintrag[];
   zugriff: KalenderZugriff;
   letzteSynchronisation: string | null;
+  /** woher die externen Kalender kommen: direkt (EventKit …) oder aus der Ablage eines Macs; offene/fehlgeschlagene Aufträge */
+  kalenderquelle: {
+    art: 'direkt' | 'ablage'; herkunft: { geraet: string; zeit: string } | null; offeneAuftraege: number;
+    fehler: { art: 'spiegeln' | 'verschieben' | 'loeschen'; titel: string; meldung: string; zeit: string }[];
+  };
   datenordner: string;
   geraet: string;
 };

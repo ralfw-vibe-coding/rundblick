@@ -7,6 +7,7 @@ const NICHT = () => Promise.reject(new Error('Externe Kalender gibt es auf diese
 
 export function ohneKalender(): Kalenderquelle {
   return {
+    art: 'ablage',
     zugriff: async () => 'nichtVerfuegbar',
     kalender: async () => [],
     termine: async () => [],

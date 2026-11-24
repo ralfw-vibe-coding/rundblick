@@ -7,7 +7,7 @@
 //   → {"id":5,"op":"aendern","uid":"…", titel, notiz, datum, start, dauer}   ← Termin oder null (nicht gefunden)
 //   → {"id":6,"op":"loeschen","uid":"…"}                                       ← true/false
 //   → {"id":7,"op":"lesen","uid":"…"}                                          ← Termin oder null
-//   → {"id":8,"op":"entfernen","termin":"<id aus termine>"}                     ← true/false (nur dieses Vorkommen, auch in Serien)
+//   → {"id":8,"op":"entfernen","termin":"<id aus termine>","uid":"…","tag":"…","beginn":"10:00"|null}                     ← true/false (nur dieses Vorkommen, auch in Serien)
 //   → {"id":9,"op":"verschieben","termin":"<id>","datum":"…","start":"10:00","dauer":60}  ← Termin oder null (nur dieses Vorkommen)
 //   ← {"ereignis":"geaendert"}   (wenn macOS Kalenderänderungen meldet)
 // Termine tragen „uid“ (Kennung beim Anbieter, geräteübergreifend gleich), „notiz“ und „geaendert“ (ISO-Zeit).
@@ -50,13 +50,22 @@ func finde(_ u: String) -> EKEvent? {
   return store.calendarItem(withIdentifier: u) as? EKEvent
 }
 
-/** Vorkommen zur Termin-Kennung aus „termine“: <calendarItemIdentifier>@<Beginn in Sekunden>[#Tag] */
-func vorkommen(_ termin: String?) -> EKEvent? {
-  guard let roh = termin?.split(separator: "#").first, let at = roh.lastIndex(of: "@"),
-        let sek = Double(roh[roh.index(after: at)...]) else { return nil }
-  let kennung = String(roh[..<at]), beginn = Date(timeIntervalSince1970: sek)
-  let p = store.predicateForEvents(withStart: beginn.addingTimeInterval(-86400), end: beginn.addingTimeInterval(86400), calendars: nil)
-  return store.events(matching: p).first(where: { $0.calendarItemIdentifier == kennung && Int($0.startDate.timeIntervalSince1970) == Int(sek) })
+/** Vorkommen finden: zuerst per Termin-Kennung dieses Geräts (<calendarItemIdentifier>@<Beginn in Sekunden>[#Tag]),
+ *  sonst per UID + Tag + Beginn (Kennung stammt von einem anderen Gerät, z. B. Auftrag vom Phone) */
+func vorkommen(_ a: [String: Any]) -> EKEvent? {
+  if let roh = (a["termin"] as? String)?.split(separator: "#").first, let at = roh.lastIndex(of: "@"), let sek = Double(roh[roh.index(after: at)...]) {
+    let kennung = String(roh[..<at]), beginn = Date(timeIntervalSince1970: sek)
+    let p = store.predicateForEvents(withStart: beginn.addingTimeInterval(-86400), end: beginn.addingTimeInterval(86400), calendars: nil)
+    if let e = store.events(matching: p).first(where: { $0.calendarItemIdentifier == kennung && Int($0.startDate.timeIntervalSince1970) == Int(sek) }) { return e }
+  }
+  guard let u = a["uid"] as? String, let tag = a["tag"] as? String, let t0 = tagFormat.date(from: tag),
+        let t1 = Calendar.current.date(byAdding: .day, value: 1, to: t0) else { return nil }
+  let beginn = a["beginn"] as? String
+  let p = store.predicateForEvents(withStart: t0, end: t1, calendars: nil)
+  return store.events(matching: p).first(where: { e in
+    guard uid(e) == u, let s = e.startDate else { return false }
+    return beginn == nil ? e.isAllDay : (!e.isAllDay && tagFormat.string(from: s) == tag && zeitFormat.string(from: s) == beginn)
+  })
 }
 
 func eintrag(_ e: EKEvent) -> [String: Any] {
@@ -165,12 +174,12 @@ func bearbeite(_ zeile: String) {
     catch { sende(["id": id, "ok": false, "fehler": error.localizedDescription]) }
   case "entfernen":
     // genau dieses Vorkommen löschen
-    guard let e = vorkommen(anfrage["termin"] as? String) else { sende(["id": id, "ok": true, "daten": false]); return }
+    guard let e = vorkommen(anfrage) else { sende(["id": id, "ok": true, "daten": false]); return }
     do { try store.remove(e, span: .thisEvent, commit: true); sende(["id": id, "ok": true, "daten": true]) }
     catch { sende(["id": id, "ok": false, "fehler": error.localizedDescription]) }
   case "verschieben":
     // genau dieses Vorkommen auf neuen Tag/Beginn/Dauer setzen (Titel und Notiz bleiben)
-    guard let e = vorkommen(anfrage["termin"] as? String) else { sende(["id": id, "ok": true, "daten": NSNull()]); return }
+    guard let e = vorkommen(anfrage) else { sende(["id": id, "ok": true, "daten": NSNull()]); return }
     guard let datum = anfrage["datum"] as? String, let start = anfrage["start"] as? String, let tag = tagFormat.date(from: datum) else { sende(["id": id, "ok": false, "fehler": "Datum/Uhrzeit ungültig"]); return }
     let teile = start.split(separator: ":").compactMap { Int($0) }
     guard teile.count == 2, let beginn = Calendar.current.date(bySettingHour: teile[0], minute: teile[1], second: 0, of: tag) else { sende(["id": id, "ok": false, "fehler": "Datum/Uhrzeit ungültig"]); return }

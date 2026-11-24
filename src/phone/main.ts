@@ -12,7 +12,9 @@ import { lokaleEinstellungen } from '../providers/einstellungen/lokal';
 import { FernEventStore, OfflineFehler, type Fernablage } from '../providers/eventstore/fern';
 import { zuNeueAnzahl } from '../providers/eventstore/format';
 import { ulidGenerator } from '../providers/ids/ulid';
-import { ohneKalender, speicherKalenderCache } from '../providers/kalender/ohne';
+import { ablageKalender } from '../providers/kalender/ablage';
+import { fernKalenderAblage, type KalenderFern } from '../providers/kalender/ablage-fern';
+import { speicherKalenderCache } from '../providers/kalender/ohne';
 import { systemUhr } from '../providers/uhr/system';
 import { anhangSpeicher, datenbankLoeschen, datenbankOeffnen, eventSpeicher } from './idb';
 
@@ -44,6 +46,20 @@ function anhangAblage(db: Dropbox): AnhangFern {
     lesen: async id => (await db.laden(`/anhaenge/${id}`))?.daten ?? null,
     schreiben: async (id, d) => { await db.hochladen(`/anhaenge/${id}`, d, null, true); },
     loeschen: id => db.loeschen(`/anhaenge/${id}`),
+  };
+}
+
+/** Kalender-Stände der Macs (Dropbox: /kalender/<gerät>.json) */
+function kalenderFern(db: Dropbox): KalenderFern {
+  return {
+    auflisten: () => offline(async () => {
+      const namen: string[] = [];
+      let r = await db.auflisten('/kalender', null).catch((e: unknown) => { if (e instanceof DropboxOffline) throw e; return null; });
+      while (r) { namen.push(...r.eintraege.map(e => e.name)); r = r.mehr ? await db.auflisten('/kalender', r.cursor) : null; }
+      return namen;
+    }),
+    lesen: name => offline(async () => (await db.laden(`/kalender/${name}`))?.daten ?? null),
+    schreiben: async (name, daten) => { await offline(() => db.hochladen(`/kalender/${name}`, daten, null, true)); },
   };
 }
 
@@ -134,8 +150,10 @@ async function starten(): Promise<void> {
 
   // ---- Domain & Body
   const domain = new Domain(store);
+  // Externe Kalender kommen aus dem Stand, den ein Mac ablegt; Spiegeln/Verschieben/Löschen werden Aufträge an ihn
+  const kalenderAblage = fernKalenderAblage(kalenderFern(db));
   const body = new RundblickBody({
-    domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender: ohneKalender(), cache: speicherKalenderCache(),
+    domain, uhr: systemUhr, ids: ulidGenerator, einstellungen, kalender: ablageKalender(kalenderAblage), cache: speicherKalenderCache(), ablage: kalenderAblage,
     anhaenge, info: { datenordner: 'Dropbox · Apps/Rundblick', geraet }, abgleich, zuNeueEvents: zuNeueAnzahl,
   });
 
@@ -147,6 +165,11 @@ async function starten(): Promise<void> {
   store.abonnieren(a => { if (!a.fremd) { clearTimeout(buendel); buendel = setTimeout(() => void abgleich.abgleichen(), 400); } });
   window.addEventListener('online', () => void abgleich.abgleichen());
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void abgleich.abgleichen(); });
+  // Kalender-Stand der Macs: beim Start, beim Zurückkehren und alle 5 Minuten
+  const kalenderLesen = () => { if (db.angemeldet() && document.visibilityState === 'visible') void body.synchronisieren(); };
+  kalenderLesen();
+  document.addEventListener('visibilitychange', kalenderLesen);
+  setInterval(kalenderLesen, 5 * 60_000);
 
   while (db.angemeldet()) {
     await abgleich.abgleichen();

@@ -8,7 +8,8 @@ import type { Aktualisierer, AktualisierungsStand } from '../providers/aktualisi
 import type { Anhangspeicher } from '../providers/anhaenge/interface';
 import type { Einstellungen } from '../providers/einstellungen/interface';
 import type { IdGenerator } from '../providers/ids/interface';
-import type { KalenderCache, Kalenderquelle } from '../providers/kalender/interface';
+import type { KalenderAblage, KalenderCache, Kalenderquelle } from '../providers/kalender/interface';
+import { auftragKontext, mitAuftraegen, offen } from './abfragen/auftraege';
 import type { Uhr } from '../providers/uhr/interface';
 import type { ExternerTermin, KalenderEinstellung, KalenderZugriff } from '../schema/extern';
 import type { Datum, Minuten, Uhrzeit } from '../schema/werte';
@@ -33,6 +34,9 @@ export type BodyAbhaengigkeiten = {
   abgleich?: Abgleich;
   /** Anzahl gelesener Events mit neuerem Schema (vom Event-Format gezählt); fehlt = 0 */
   zuNeueEvents?: () => number;
+  /** Ablage für Kalender-Stände (Dropbox: kalender/<gerät>.json): direkte Quellen legen hier ab, Ablage-Quellen lesen von hier;
+   *  auch daran erkennt ein Mac, ob er Kalender-Aufträge ausführt (der alphabetisch erste mit frischem Stand) */
+  ablage?: KalenderAblage;
 };
 
 const NICHT_VERFUEGBAR: AktualisierungsStand = { stand: 'nichtVerfuegbar' };
@@ -199,10 +203,20 @@ export class RundblickBody implements Body {
     return status(e);
   }
   async buchungStornieren(c: { buchungId: string }) {
-    const v = this.x.domain.buchung(c.buchungId)?.verknuepfung;
+    const zuvor = this.x.domain.buchung(c.buchungId);
+    const v = zuvor?.verknuepfung;
     const e = this.x.domain.buchungStornieren(c);
     // von Rundblick angelegt: der externe Eintrag verschwindet mit; war er zuerst extern da, bleibt er
-    if (e.ok && v && v.ursprung === 'rundblick') await this.x.kalender.terminLoeschen(v.externeUid).catch(() => false);
+    if (e.ok && v && v.ursprung === 'rundblick') {
+      if (this.x.kalender.art === 'direkt') await this.x.kalender.terminLoeschen(v.externeUid).catch(() => false);
+      else {
+        const b = zuvor!;
+        this.x.domain.kalenderauftragErteilen({
+          auftragId: this.x.ids.neu(), art: 'loeschen', buchungId: c.buchungId, kalender: { id: v.kalenderId, name: v.kalender, konto: v.konto },
+          termin: { terminId: '', uid: v.externeUid, titel: b.titel, datum: b.datum, start: b.start, dauer: b.dauer },
+        });
+      }
+    }
     return status(e);
   }
 
@@ -214,6 +228,10 @@ export class RundblickBody implements Body {
     if (b.verknuepfung) return { ok: false, fehler: ['Die Buchung ist schon gespiegelt.'] };
     const k = this.x.cache.kalender().find(x => x.id === c.kalenderId);
     if (!k?.schreibbar) return { ok: false, fehler: ['In diesen Kalender kann Rundblick nicht schreiben.'] };
+    // ohne direkten Kalenderzugang: Auftrag an einen Mac
+    if (this.x.kalender.art !== 'direkt') {
+      return status(this.x.domain.kalenderauftragErteilen({ auftragId: this.x.ids.neu(), art: 'spiegeln', buchungId: b.id, kalender: { id: k.id, name: k.name, konto: k.konto } }));
+    }
     let extern;
     try { extern = await this.x.kalender.terminAnlegen(k.id, ausBuchung(b)); }
     catch (e) { return { ok: false, fehler: [`Spiegeln fehlgeschlagen: ${(e as Error).message}`] }; }
@@ -249,8 +267,9 @@ export class RundblickBody implements Body {
     if (!e) return { ok: false, fehler: ['Externer Termin nicht gefunden.'] };
     const kalender = this.x.cache.kalender();
     if (kalender.find(k => k.id === e.kalenderId)?.schreibbar === false) return { ok: false, fehler: ['Dieser Kalender ist schreibgeschützt.'] };
+    if (this.x.kalender.art !== 'direkt') return this.externAuftrag('loeschen', e);
     try {
-      if (!await this.x.kalender.vorkommenLoeschen(e.id)) return { ok: false, fehler: ['Der Termin ist im Kalender nicht mehr da.'] };
+      if (!await this.x.kalender.vorkommenLoeschen({ terminId: e.id, uid: e.uid, datum: e.datum, start: e.start })) return { ok: false, fehler: ['Der Termin ist im Kalender nicht mehr da.'] };
     } catch (f) {
       return { ok: false, fehler: [`Löschen im Kalender fehlgeschlagen: ${(f as Error).message}`] };
     }
@@ -271,8 +290,9 @@ export class RundblickBody implements Body {
     const ziel = { datum: c.datum, start: c.start ?? e.start, dauer: c.dauer ?? e.dauer };
     if (!istDatum(ziel.datum) || !istUhrzeit(ziel.start) || !(Number.isInteger(ziel.dauer) && ziel.dauer > 0 && ziel.dauer <= 24 * 60)) return { ok: false, fehler: ['Datum, Uhrzeit oder Dauer ist ungültig.'] };
     if (ziel.datum === e.datum && ziel.start === e.start && ziel.dauer === e.dauer) return { ok: true, ids: { externId: e.id } };
+    if (this.x.kalender.art !== 'direkt') return this.externAuftrag('verschieben', e, ziel);
     let neu: ExternerTermin | null;
-    try { neu = await this.x.kalender.vorkommenVerschieben(e.id, ziel); }
+    try { neu = await this.x.kalender.vorkommenVerschieben({ terminId: e.id, uid: e.uid, datum: e.datum, start: e.start }, ziel); }
     catch (f) { return { ok: false, fehler: [`Verschieben im Kalender fehlgeschlagen: ${(f as Error).message}`] }; }
     if (!neu) return { ok: false, fehler: ['Der Termin ist im Kalender nicht mehr da.'] };
     // sofort im Zwischenspeicher umsetzen, dann frisch laden
@@ -281,6 +301,19 @@ export class RundblickBody implements Body {
     void this.laden(st.von!, st.bis!);
     return { ok: true, ids: { externId: neu.id } };
   }
+  /** ohne direkten Kalenderzugang: Verschieben/Löschen eines externen Termins als Auftrag an einen Mac */
+  private externAuftrag(art: 'verschieben' | 'loeschen', e: ExternerTermin, ziel?: { datum: Datum; start: Uhrzeit; dauer: Minuten }): CommandStatus {
+    const k = this.x.cache.kalender().find(x => x.id === e.kalenderId);
+    // ein noch offener Auftrag für denselben Termin wird ersetzt (der neue Auftrag zählt, der alte gilt als erledigt)
+    const alt = offen(this.x.domain.kalenderauftraege()).filter(a => a.termin && (a.termin.terminId === e.id || (!!e.uid && a.termin.uid === e.uid && a.termin.datum === e.datum && a.termin.start === e.start)));
+    const r = this.x.domain.kalenderauftragErteilen({
+      auftragId: this.x.ids.neu(), art, kalender: { id: e.kalenderId, name: k?.name ?? '', konto: k?.konto ?? '' },
+      termin: { terminId: e.id, uid: e.uid, titel: e.titel, datum: e.datum, start: e.start, dauer: e.dauer }, ...(ziel ? { ziel } : {}),
+    });
+    if (r.ok) alt.forEach(a => this.x.domain.kalenderauftragErledigen({ auftragId: a.auftragId, ok: true, meldung: 'ersetzt', geraet: this.x.info.geraet }));
+    return r.ok ? { ok: true, ids: { externId: e.id } } : status(r);
+  }
+
   async aufgabeAusBuchung(c: Parameters<Body['aufgabeAusBuchung']>[0]) {
     const aufgabeId = this.x.ids.neu();
     return status(this.x.domain.aufgabeAusBuchung({ ...c, aufgabeId }), { aufgabeId });
@@ -358,7 +391,9 @@ export class RundblickBody implements Body {
     return zeitraum({
       von: q.von, bis: q.bis, heute: this.x.uhr.heute(), jetzt: this.x.uhr.minuteDesTages(),
       aufgaben: d.aufgaben(), buchungen: d.buchungen(q.von, q.bis), planung: d.planung(),
-      extern: this.ohneGespiegelte(this.x.cache.termine(q.von, q.bis)), kalender: this.x.cache.kalender(), kalenderEinstellungen: this.kalenderEinstellungen(),
+      // offene Aufträge über den ganzen Zwischenspeicher einrechnen – ein verschobener Termin kann aus einem anderen Tag kommen
+      extern: mitAuftraegen(this.ohneGespiegelte(st.von && st.bis ? this.x.cache.termine(st.von, st.bis) : []), d.kalenderauftraege()).filter(t => t.datum >= q.von && t.datum <= q.bis), kalender: this.x.cache.kalender(), kalenderEinstellungen: this.kalenderEinstellungen(),
+      auftraege: this.kontext(),
     });
   }
 
@@ -369,7 +404,7 @@ export class RundblickBody implements Body {
     return {
       ...zeile(a, d.buchungen(), new Map(d.spalten().map(s => [s.id, s])), this.x.uhr.heute()),
       beschreibung: a.beschreibung,
-      buchungsliste: d.buchungenDerAufgabe(a.id).map(b => buchungDto(b, amap)),
+      buchungsliste: d.buchungenDerAufgabe(a.id).map(b => buchungDto(b, amap, this.kontext())),
       anhangliste: a.anhaenge.map((x, i) => ({ ...x, nr: i + 1 })),
     };
   }
@@ -379,7 +414,7 @@ export class RundblickBody implements Body {
     if (!b) return null;
     const amap = new Map(d.aufgaben().map(x => [x.id, x]));
     const tag = (await this.zeitraum({ von: b.datum, bis: b.datum })).tage[0]!;
-    return { ...buchungDto(b, amap), tag: tag.auslastung };
+    return { ...buchungDto(b, amap, this.kontext()), tag: tag.auslastung };
   }
 
   async einstellungen(): Promise<EinstellungenDto> {
@@ -391,6 +426,7 @@ export class RundblickBody implements Body {
       tageszeit: this.x.einstellungen.lesen('tageszeit', TAGESZEIT_STANDARD),
       kalender: this.x.cache.kalender().map(k => ({ ...k, schreibbar: !!k.schreibbar, ...(e[k.id] ?? KALENDER_STANDARD) })),
       zugriff: this.zugriffStand, letzteSynchronisation: this.x.cache.stand().zuletzt,
+      kalenderquelle: this.kalenderquelle(),
       datenordner: this.x.info.datenordner, geraet: this.x.info.geraet,
     };
   }
@@ -450,22 +486,99 @@ export class RundblickBody implements Body {
     return { ...this.x.einstellungen.lesen<Record<string, KalenderEinstellung>>('kalender', {}) };
   }
 
+  private nachladen: [Datum, Datum] | null = null;
+
   private async laden(von: Datum, bis: Datum): Promise<CommandStatus> {
-    if (this.laedt) return { ok: true };
+    // läuft schon: danach noch einmal (sonst gingen Anstöße während des Ladens verloren, z. B. neue Aufträge)
+    if (this.laedt) { this.nachladen = this.nachladen ? [this.nachladen[0] < von ? this.nachladen[0] : von, this.nachladen[1] > bis ? this.nachladen[1] : bis] : [von, bis]; return { ok: true }; }
     this.laedt = true;
+    let nochmal = false;
     try {
       this.zugriffStand = await this.x.kalender.zugriff();
       if (this.zugriffStand !== 'erlaubt') { this.melde(['einstellungen']); return { ok: false, fehler: [this.zugriffText()] }; }
       const [kalender, termine] = await Promise.all([this.x.kalender.kalender(), this.x.kalender.termine(von, bis)]);
       this.x.cache.ersetzen(von, bis, kalender, termine);
-      await this.spiegelAbgleichen(termine);
+      if (this.x.kalender.art === 'direkt') {
+        // nur mit direktem Zugang: Spiegelungen abgleichen, Aufträge anderer Geräte ausführen, Stand für andere ablegen
+        await this.spiegelAbgleichen(termine);
+        nochmal = (await this.auftraegeAusfuehren()) > 0;
+        if (!nochmal) await this.standAblegen();
+      }
       this.melde(['kalender', 'einstellungen']);
       return { ok: true };
     } catch (e) {
       return { ok: false, fehler: [`Kalender konnten nicht gelesen werden: ${(e as Error).message}`] };
     } finally {
       this.laedt = false;
+      // nach ausgeführten Aufträgen frisch lesen (und erst dann den Stand ablegen); angestautes Laden nachholen
+      const n = this.nachladen;
+      this.nachladen = null;
+      if (nochmal || n) void this.laden(n && n[0] < von ? n[0] : von, n && n[1] > bis ? n[1] : bis);
     }
+  }
+
+  /** Stand der externen Kalender für Geräte ohne direkten Zugang ablegen (ganzer zwischengespeicherter Zeitraum) */
+  private async standAblegen(): Promise<void> {
+    const st = this.x.cache.stand();
+    if (!this.x.ablage || !st.von || !st.bis) return;
+    await this.x.ablage.veroeffentlichen({
+      geraet: this.x.info.geraet, zeit: this.x.uhr.jetzt().toISOString(), von: st.von, bis: st.bis,
+      kalender: this.x.cache.kalender(), termine: this.x.cache.termine(st.von, st.bis),
+    }).catch(() => { /* Ablage nicht erreichbar: beim nächsten Laden wieder */ });
+  }
+
+  /** Führt dieses Gerät Kalender-Aufträge aus? Der alphabetisch erste Mac mit frischem Stand (≤ 15 min) – so nie zwei zugleich. */
+  private async ausfuehrer(): Promise<boolean> {
+    if (!this.x.ablage) return true;
+    const jetzt = this.x.uhr.jetzt().getTime();
+    let staende: { geraet: string; zeit: string }[] = [];
+    try { staende = await this.x.ablage.staende(); } catch { return false; }
+    const frisch = staende.filter(s => s.geraet !== this.x.info.geraet && jetzt - Date.parse(s.zeit) <= 15 * 60_000).map(s => s.geraet);
+    return [...frisch, this.x.info.geraet].sort()[0] === this.x.info.geraet;
+  }
+
+  /** offene Kalender-Aufträge (vom Phone) ausführen; liefert die Anzahl erledigter */
+  private async auftraegeAusfuehren(): Promise<number> {
+    const o = offen(this.x.domain.kalenderauftraege());
+    if (!o.length || !(await this.ausfuehrer())) return 0;
+    const kalender = this.x.cache.kalender();
+    let n = 0;
+    for (const a of o) {
+      const fertig = (ok: boolean, meldung: string) => { this.x.domain.kalenderauftragErledigen({ auftragId: a.auftragId, ok, meldung, geraet: this.x.info.geraet }); n++; };
+      const k = kalender.find(x => x.id === a.kalender.id) ?? kalender.find(x => x.name === a.kalender.name && x.konto === a.kalender.konto);
+      try {
+        if (a.art === 'spiegeln') {
+          const b = a.buchungId ? this.x.domain.buchung(a.buchungId) : null;
+          if (!b || !b.start || b.verknuepfung) { fertig(false, 'Die Buchung lässt sich nicht (mehr) spiegeln.'); continue; }
+          if (!k?.schreibbar) { fertig(false, `Kalender „${a.kalender.name}“ auf ${this.x.info.geraet} nicht gefunden oder schreibgeschützt.`); continue; }
+          const extern = await this.x.kalender.terminAnlegen(k.id, ausBuchung(b));
+          const r = this.x.domain.buchungVerknuepfen({ buchungId: b.id, kalenderId: k.id, kalender: k.name, konto: k.konto, farbe: k.farbe, externeUid: extern.uid ?? '', stand: fingerabdruck(ausBuchung(b)), ursprung: 'rundblick' });
+          if (!r.ok) { await this.x.kalender.terminLoeschen(extern.uid ?? '').catch(() => false); fertig(false, r.fehler.join(' ')); } else fertig(true, '');
+        } else {
+          const t = a.termin!;
+          const v = { terminId: t.terminId, uid: t.uid, datum: t.datum, start: t.start };
+          if (a.art === 'loeschen') {
+            const weg = t.terminId ? await this.x.kalender.vorkommenLoeschen(v) : await this.x.kalender.terminLoeschen(t.uid ?? '');
+            fertig(weg, weg ? '' : 'Der Termin war im Kalender nicht mehr da.');
+          } else {
+            const neu = await this.x.kalender.vorkommenVerschieben(v, a.ziel!);
+            fertig(!!neu, neu ? '' : 'Der Termin war im Kalender nicht mehr da.');
+          }
+        }
+      } catch { /* Kalender gerade nicht erreichbar: beim nächsten Abgleich wieder */ }
+    }
+    return n;
+  }
+
+  private kontext() { return auftragKontext(this.x.domain.kalenderauftraege(), this.x.cache.kalender()); }
+
+  private kalenderquelle(): EinstellungenDto['kalenderquelle'] {
+    const alle = this.x.domain.kalenderauftraege(), seit = this.x.uhr.jetzt().getTime() - 7 * 86_400_000;
+    return {
+      art: this.x.kalender.art, herkunft: this.x.kalender.herkunft?.() ?? null, offeneAuftraege: offen(alle).length,
+      fehler: alle.filter(a => a.erledigt && !a.erledigt.ok && Date.parse(a.erledigt.zeit) >= seit)
+        .map(a => ({ art: a.art, titel: a.termin?.titel ?? (a.buchungId ? this.x.domain.buchung(a.buchungId)?.titel ?? '' : ''), meldung: a.erledigt!.meldung, zeit: a.erledigt!.zeit })),
+    };
   }
 
   /** gespiegelte Buchungen erscheinen nur einmal – als Rundblick-Buchung; ihr externer Doppelgänger wird ausgeblendet */
@@ -476,6 +589,8 @@ export class RundblickBody implements Body {
 
   /** Änderung einer gespiegelten Buchung sofort nach außen schreiben */
   private async nachExtern(buchungId: string): Promise<void> {
+    // ohne direkten Kalenderzugang (Phone): das holt der Abgleich eines Macs nach (Fingerabdruck weicht vom Stand ab)
+    if (this.x.kalender.art !== 'direkt') return;
     const b = this.x.domain.buchung(buchungId);
     if (!b?.verknuepfung || !b.start) return;
     try {

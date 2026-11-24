@@ -5,7 +5,10 @@ import type { AufgabeAenderungen, AufgabeFelder } from './commands/aufgaben';
 import type { Ergebnis } from './commands/basis';
 import type { BuchungAenderungen, VerknuepfungEingabe } from './commands/buchungen';
 import type { NotizAenderungen } from './commands/notizen';
-import type { AnhangZ, AufgabeZ, BuchungZ, NotizZ, PlanungZ, SpalteZ } from './zustand';
+import type { AuftragEingabe } from './commands/kalenderauftraege';
+import type { AnhangZ, AufgabeZ, BuchungZ, KalenderauftragZ, NotizZ, PlanungZ, SpalteZ } from './zustand';
+
+export type { AuftragEingabe, KalenderauftragZ };
 
 export type { NotizAenderungen, NotizZ };
 export type { VerknuepfungEingabe };
@@ -13,6 +16,8 @@ export type { AufgabeAenderungen, AufgabeFelder, BuchungAenderungen, Ergebnis, A
 
 export interface DomainInterface {
   // ---- Commands
+  kalenderauftragErteilen(c: AuftragEingabe): Ergebnis;
+  kalenderauftragErledigen(c: { auftragId: Id; ok: boolean; meldung: string; geraet: string }): Ergebnis;
   aufgabeErfassen(c: { aufgabeId: Id; felder: AufgabeFelder; buchung?: { buchungId: Id; datum: Datum; start?: Uhrzeit | null; dauer?: Minuten } }): Ergebnis;
   aufgabeAendern(c: { aufgabeId: Id; aenderungen: AufgabeAenderungen }): Ergebnis;
   statusSetzen(c: { aufgabeId: Id; status: Id | null }): Ergebnis;
@@ -57,6 +62,8 @@ export interface DomainInterface {
   /** nicht stornierte Buchungen, optional auf einen Datumsbereich begrenzt */
   buchungen(von?: Datum, bis?: Datum): BuchungZ[];
   buchung(id: Id): BuchungZ | null;
+  /** alle Kalender-Aufträge (offene und erledigte), älteste zuerst */
+  kalenderauftraege(): KalenderauftragZ[];
   buchungenDerAufgabe(aufgabeId: Id): BuchungZ[];
   /** aktive Spalten, sortiert nach Kategorie und Rang */
   spalten(): SpalteZ[];

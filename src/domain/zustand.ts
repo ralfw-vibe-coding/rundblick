@@ -185,3 +185,19 @@ export function aktiveSpalten(m: Map<Id, SpalteZ>): SpalteZ[] {
   const reihe: KategorieId[] = ['nichtBegonnen', 'begonnen', 'beendet'];
   return [...m.values()].filter(s => !s.entfernt).sort((a, b) => reihe.indexOf(a.kategorie) - reihe.indexOf(b.kategorie) || a.rang - b.rang);
 }
+
+// ---------- Kalender-Aufträge (Phone → Mac) ----------
+type AuftragDaten = Extract<DomainEvent, { typ: 'KalenderauftragErteilt' }>['daten'];
+export type KalenderauftragZ = AuftragDaten & {
+  /** Zeitpunkt (ISO) des Erteilens */
+  erteilt: string;
+  erledigt: { ok: boolean; meldung: string; geraet: string; zeit: string } | null;
+};
+
+export function auftraegeEntwickeln(m: Map<Id, KalenderauftragZ>, e: ZeitEvent): void {
+  if (e.typ === 'KalenderauftragErteilt') m.set(e.daten.auftragId, { ...e.daten, erteilt: e.zeit ?? '', erledigt: null });
+  if (e.typ === 'KalenderauftragErledigt') {
+    const a = m.get(e.daten.auftragId);
+    if (a && !a.erledigt) m.set(a.auftragId, { ...a, erledigt: { ok: e.daten.ok, meldung: e.daten.meldung, geraet: e.daten.geraet, zeit: e.zeit ?? '' } });
+  }
+}

@@ -1,6 +1,6 @@
 // Beispiel-Kalenderquelle für Entwicklung, Demo und Tests (RB_KALENDER=beispiel).
 // Wiederkehrende Beispieltermine plus ein Speicher für gespiegelte Termine (Anlegen/Ändern/Löschen).
-import type { ExternerTermin, KalenderInfo, KalenderZugriff, TerminDaten } from '../../schema/extern';
+import type { ExternerTermin, KalenderInfo, KalenderZugriff, TerminDaten, Vorkommen } from '../../schema/extern';
 import type { Datum } from '../../schema/werte';
 import type { Kalenderquelle } from './interface';
 
@@ -34,7 +34,10 @@ export function beispielKalender(zugriff: KalenderZugriff = 'erlaubt', jetzt: ()
   const als = (kalenderId: string, uid: string, t: TerminDaten, geaendert: string): ExternerTermin =>
     ({ id: `${uid}@${t.datum}`, kalenderId, titel: t.titel, datum: t.datum, start: t.start, dauer: t.dauer, ort: '', uid, notiz: t.notiz, geaendert });
   const inhalt = (e: ExternerTermin): TerminDaten => ({ titel: e.titel, notiz: e.notiz ?? '', datum: e.datum, start: e.start!, dauer: e.dauer });
+  /** Vorkommen finden: per id, sonst per uid + Tag (wie ein anderes Gerät es täte) */
+  const finden = (v: Vorkommen, liste: ExternerTermin[]) => liste.find(e => e.id === v.terminId) ?? (v.uid ? liste.find(e => e.uid === v.uid && e.datum === v.datum && e.start === v.start) : undefined);
   return {
+    art: 'direkt',
     zugriff: async () => zugriff,
     kalender: async () => KALENDER,
     termine: async (von, bis) => {
@@ -70,22 +73,24 @@ export function beispielKalender(zugriff: KalenderZugriff = 'erlaubt', jetzt: ()
       return e;
     },
     terminLoeschen: async uid => gespiegelt.delete(uid),
-    vorkommenLoeschen: async terminId => {
-      const g = [...gespiegelt.values()].find(e => e.id === terminId);
+    vorkommenLoeschen: async v => {
+      const g = finden(v, [...gespiegelt.values()]);
       if (g) return gespiegelt.delete(g.uid!);
-      if (geloescht.has(terminId) || !/^(arbeit|privat|familie)-/.test(terminId)) return false;
-      geloescht.add(terminId);
+      const vv = finden(v, [...verschoben.values()]);
+      if (vv) { verschoben.delete(vv.uid!); geloescht.add(vv.uid!); return true; }
+      const id = beispielId(v);
+      if (!id || geloescht.has(id) || verschoben.has(id)) return false;
+      geloescht.add(id);
       return true;
     },
-    vorkommenVerschieben: async (terminId, z) => {
-      const g = [...gespiegelt.values()].find(e => e.id === terminId);
+    vorkommenVerschieben: async (v, z) => {
+      const g = finden(v, [...gespiegelt.values()]);
       if (g) { const e = als(g.kalenderId, g.uid!, { ...inhalt(g), ...z }, jetzt()); gespiegelt.set(g.uid!, e); return e; }
-      const v = [...verschoben.entries()].find(([, e]) => e.id === terminId);
-      const m = terminId.match(/^(arbeit|privat|familie)-(.+)-(\d{4}-\d{2}-\d{2})$/);
-      const alt = v ? v[0] : m && !geloescht.has(terminId) ? terminId : null;
-      if (!alt) return null;
-      const kalenderId = alt.split('-')[0]!, titel = v ? v[1].titel : m![2]!;
-      const e: ExternerTermin = { id: `${alt}>${z.datum}T${z.start}`, kalenderId, titel, datum: z.datum, start: z.start, dauer: z.dauer, ort: '', uid: alt, notiz: '', geaendert: jetzt(), serie: true };
+      const vv = finden(v, [...verschoben.values()]);
+      const alt = vv ? vv.uid! : beispielId(v);
+      if (!alt || geloescht.has(alt) || (!vv && verschoben.has(alt))) return null;
+      const titel = vv ? vv.titel : alt.split('-').slice(1, -3).join('-');
+      const e: ExternerTermin = { id: `${alt}>${z.datum}T${z.start}`, kalenderId: alt.split('-')[0]!, titel, datum: z.datum, start: z.start, dauer: z.dauer, ort: '', uid: alt, notiz: '', geaendert: jetzt(), serie: true };
       verschoben.set(alt, e);
       return e;
     },
@@ -96,4 +101,10 @@ export function beispielKalender(zugriff: KalenderZugriff = 'erlaubt', jetzt: ()
       alle: () => [...gespiegelt.values()],
     },
   };
+}
+
+/** Kennung eines Beispiel-Serientermins (<kalender>-<titel>-<datum>), per id oder uid */
+function beispielId(v: Vorkommen): string | null {
+  const id = [v.terminId, v.uid].find(x => x && /^(arbeit|privat|familie)-.+-\d{4}-\d{2}-\d{2}$/.test(x));
+  return id ?? null;
 }

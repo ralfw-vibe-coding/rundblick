@@ -3,7 +3,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createInterface } from 'node:readline';
-import type { ExternerTermin, KalenderInfo, KalenderZugriff, TerminDaten } from '../../schema/extern';
+import type { Vorkommen, ExternerTermin, KalenderInfo, KalenderZugriff, TerminDaten } from '../../schema/extern';
 import type { Kalenderquelle } from './interface';
 
 type Offen = { ok: (d: unknown) => void; nein: (e: Error) => void; timer: ReturnType<typeof setTimeout> };
@@ -50,6 +50,7 @@ export function eventKitKalender(helferPfad: string, zeitlimit = { anfrage: 15_0
   }
 
   return {
+    art: 'direkt',
     async zugriff(): Promise<KalenderZugriff> {
       if (!existsSync(helferPfad)) return 'nichtVerfuegbar';
       try { return await frage<KalenderZugriff>('zugriff'); } catch { return 'nichtVerfuegbar'; }
@@ -60,9 +61,12 @@ export function eventKitKalender(helferPfad: string, zeitlimit = { anfrage: 15_0
     terminAnlegen: (kalenderId: string, t: TerminDaten) => frage<ExternerTermin>('anlegen', { kalenderId, ...t }),
     terminAendern: (uid: string, t: TerminDaten) => frage<ExternerTermin | null>('aendern', { uid, ...t }),
     terminLoeschen: (uid: string) => frage<boolean>('loeschen', { uid }),
-    vorkommenLoeschen: (terminId: string) => frage<boolean>('entfernen', { termin: terminId }),
-    vorkommenVerschieben: (terminId, z) => frage<ExternerTermin | null>('verschieben', { termin: terminId, ...z }),
+    vorkommenLoeschen: v => frage<boolean>('entfernen', vorkommen(v)),
+    vorkommenVerschieben: (v, z) => frage<ExternerTermin | null>('verschieben', { ...vorkommen(v), ...z }),
     terminLesen: (uid: string) => frage<ExternerTermin | null>('lesen', { uid }),
     beenden: () => { proc?.kill(); proc = null; },
   };
 }
+
+/** Vorkommen für den Helfer: Termin-Kennung dieses Geräts, ersatzweise UID + Tag/Beginn (Auftrag von einem anderen Gerät) */
+const vorkommen = (v: Vorkommen) => ({ termin: v.terminId, uid: v.uid ?? null, tag: v.datum, beginn: v.start });

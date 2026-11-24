@@ -37,3 +37,17 @@ export type TerminDaten = { titel: string; notiz: string; datum: Datum; start: U
 export type KalenderEinstellung = { sichtbar: boolean; belegt: boolean };
 
 export type KalenderZugriff = 'erlaubt' | 'verweigert' | 'unbestimmt' | 'nichtVerfuegbar';
+
+/** Ein bestimmtes Vorkommen eines externen Termins. terminId ist gerätebezogen (EventKit); uid + Datum/Beginn
+ *  finden es auch auf einem anderen Gerät wieder (z. B. Auftrag vom Phone, ausgeführt auf einem Mac). */
+export type Vorkommen = { terminId: string; uid?: string; datum: Datum; start: Uhrzeit | null };
+
+/** Kalender-Stand, den ein Gerät mit direktem Kalenderzugang für andere ablegt (Dropbox: kalender/<gerät>.json) */
+export type KalenderStand = {
+  geraet: string;
+  /** Zeitpunkt (ISO) des Lesens */
+  zeit: string;
+  von: Datum; bis: Datum;
+  kalender: KalenderInfo[];
+  termine: ExternerTermin[];
+};

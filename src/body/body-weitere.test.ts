@@ -438,8 +438,8 @@ describe('Externe Termine löschen', () => {
     expect(await body.externLoeschen({ externId: 'x' })).toMatchObject({ ok: false });
     const q = beispielKalender();
     const e = await q.terminAnlegen('arbeit', { titel: 'T', notiz: '', datum: '2026-11-20', start: '10:00', dauer: 30 });
-    expect(await q.vorkommenLoeschen(e.id)).toBe(true);
-    expect(await q.vorkommenLoeschen('anderes-x')).toBe(false);
+    expect(await q.vorkommenLoeschen({ terminId: e.id, datum: e.datum, start: e.start })).toBe(true);
+    expect(await q.vorkommenLoeschen({ terminId: 'anderes-x', datum: '2026-11-20', start: null })).toBe(false);
   });
 });
 
@@ -481,9 +481,9 @@ describe('Externe Termine verschieben', () => {
   it('Beispielkalender verschiebt gespiegelte und schon verschobene Termine; Unbekanntes → null', async () => {
     const q = beispielKalender();
     const e = await q.terminAnlegen('arbeit', { titel: 'T', notiz: '', datum: '2026-11-20', start: '10:00', dauer: 30 });
-    expect(await q.vorkommenVerschieben(e.id, { datum: '2026-11-21', start: '11:00', dauer: 30 })).toMatchObject({ datum: '2026-11-21', uid: e.uid });
-    const v = (await q.vorkommenVerschieben('privat-Yoga-2026-11-17', { datum: '2026-11-18', start: '19:00', dauer: 60 }))!;
-    expect(await q.vorkommenVerschieben(v.id, { datum: '2026-11-19', start: '19:00', dauer: 60 })).toMatchObject({ datum: '2026-11-19', titel: 'Yoga' });
-    expect(await q.vorkommenVerschieben('gibts-nicht', { datum: '2026-11-19', start: '19:00', dauer: 60 })).toBeNull();
+    expect(await q.vorkommenVerschieben({ terminId: e.id, datum: e.datum, start: e.start }, { datum: '2026-11-21', start: '11:00', dauer: 30 })).toMatchObject({ datum: '2026-11-21', uid: e.uid });
+    const v = (await q.vorkommenVerschieben({ terminId: 'privat-Yoga-2026-11-17', datum: '2026-11-17', start: '18:30' }, { datum: '2026-11-18', start: '19:00', dauer: 60 }))!;
+    expect(await q.vorkommenVerschieben({ terminId: v.id, datum: v.datum, start: v.start }, { datum: '2026-11-19', start: '19:00', dauer: 60 })).toMatchObject({ datum: '2026-11-19', titel: 'Yoga' });
+    expect(await q.vorkommenVerschieben({ terminId: 'gibts-nicht', datum: '2026-11-19', start: '19:00' }, { datum: '2026-11-19', start: '19:00', dauer: 60 })).toBeNull();
   });
 });

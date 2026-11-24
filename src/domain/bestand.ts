@@ -3,6 +3,7 @@ import type { Id } from '../schema/werte';
 import {
   aufgabeEntwickeln, buchungEntwickeln, notizEntwickeln, type NotizZ, type ZeitEvent, PLANUNG_STANDARD, planungEntwickeln, spaltenEntwickeln,
   type AufgabeZ, type BuchungZ, type PlanungZ, type SpalteZ, kategorienEntwickeln, kategorienStandard, type KategorienamenZ,
+  auftraegeEntwickeln, type KalenderauftragZ,
 } from './zustand';
 
 export type Bestand = {
@@ -12,10 +13,11 @@ export type Bestand = {
   planung: PlanungZ;
   kategorien: KategorienamenZ;
   notizen: Map<Id, NotizZ>;
+  auftraege: Map<Id, KalenderauftragZ>;
 };
 
 export function leererBestand(): Bestand {
-  return { aufgaben: new Map(), buchungen: new Map(), spalten: new Map(), planung: PLANUNG_STANDARD, kategorien: kategorienStandard(), notizen: new Map() };
+  return { aufgaben: new Map(), buchungen: new Map(), spalten: new Map(), planung: PLANUNG_STANDARD, kategorien: kategorienStandard(), notizen: new Map(), auftraege: new Map() };
 }
 
 /** Events, die den gespiegelten Inhalt einer Buchung ändern (Titel, Notiz, Zeit, Dauer) */
@@ -46,6 +48,7 @@ export function anwenden(b: Bestand, e: ZeitEvent): void {
   spaltenEntwickeln(b.spalten, e);
   b.planung = planungEntwickeln(b.planung, e);
   b.kategorien = kategorienEntwickeln(b.kategorien, e);
+  auftraegeEntwickeln(b.auftraege, e);
 }
 
 export function aufbauen(events: readonly ZeitEvent[]): Bestand {
